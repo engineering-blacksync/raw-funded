@@ -1,0 +1,567 @@
+# RAW FUNDED — Full Platform Build Prompt
+# Paste everything below this line into Replit Agent
+
+---
+
+Build a full-stack proprietary trading platform called **Raw Funded** at rawfunded.com. This is a no-rules, no-challenge prop trading platform for traders who have already passed funded evaluations elsewhere. Dark premium aesthetic. Zero access fees — traders verify their funded status and unlock leverage tiers immediately.
+
+---
+
+## TECH STACK
+
+- **Framework**: Next.js 14 (App Router)
+- **Database + Auth**: Supabase (email/password auth)
+- **Styling**: TailwindCSS
+- **Charts**: TradingView Lightweight Charts (`npm install lightweight-charts`) — Apache 2.0, free commercial use
+- **Payments**: Stripe (for optional future deposits — scaffold but don't wire up)
+- **Fonts**: Barlow Condensed (headings), JetBrains Mono (numbers/data), Barlow (body) — all from Google Fonts
+- **Deployment**: Vercel-ready
+
+---
+
+## DESIGN SYSTEM
+
+```
+--bg:      #09090B   (page background)
+--s1:      #0F0F12   (card background)
+--s2:      #141418   (input/surface)
+--s3:      #1C1C22   (hover state)
+--b1:      #222228   (border)
+--b2:      #2E2E36   (subtle border)
+--accent:  #E8C547   (gold — primary accent)
+--red:     #EF4444
+--green:   #22C55E
+--blue:    #3B82F6
+--text:    #F4F4F5
+--muted:   #71717A
+--muted2:  #52525B
+```
+
+Rules: no rounded corners above 12px, no shadows (use borders for depth), no gradients except hero, all numbers in JetBrains Mono, all headings in Barlow Condensed 800.
+
+---
+
+## SUPABASE SCHEMA
+
+```sql
+-- Profiles
+create table profiles (
+  id uuid references auth.users primary key,
+  email text,
+  username text unique,
+  full_name text,
+  tier text default 'unverified',
+  -- unverified | verified | elite | titan | banned
+  tries_used int default 0,
+  -- unverified only: increments when account hits zero
+  tries_visible bool default false,
+  -- flips to true after first account zero
+  banned_at timestamp,
+  ban_expires_at timestamp,
+  -- auto-set to banned_at + 6 months
+  balance numeric default 10000,
+  -- starting demo balance
+  created_at timestamp default now()
+);
+
+-- Trades
+create table trades (
+  id uuid primary key default gen_random_uuid(),
+  account_id uuid references profiles(id),
+  instrument text,
+  -- XAUUSD_m, XAGUSD_m, MNQ_m, MES_m (micro)
+  -- XAUUSD, XAGUSD, MNQ, MES (standard - verified+)
+  side text, -- BUY | SELL
+  size numeric, -- lot size
+  open_price numeric,
+  close_price numeric,
+  pnl numeric default 0,
+  status text default 'pending',
+  -- pending | open | closed | error
+  mt5_ticket bigint,
+  opened_at timestamp default now(),
+  closed_at timestamp
+);
+
+-- Verifications
+create table verifications (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid references profiles(id),
+  prop_firm text,
+  -- FTMO | TopStep | MyForexFunds | Funded Next | TFT | Apex | Earn2Trade | Leeloo | Lark | Lucid | Other
+  proof_type text, -- screenshot | url | email_forward | certificate
+  proof_url text,
+  -- Supabase storage URL after upload
+  payout_count int default 0,
+  -- 0 = just passed, 1 = Elite, 2-3 = Titan
+  notes text,
+  status text default 'pending',
+  -- pending | approved | rejected
+  submitted_at timestamp default now(),
+  reviewed_at timestamp,
+  reviewed_by text
+);
+
+-- Withdrawals
+create table withdrawals (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid references profiles(id),
+  amount numeric,
+  method text, -- wise | usdc | usdt
+  destination text,
+  -- email for Wise, wallet address for crypto
+  status text default 'pending',
+  -- pending | processing | completed | rejected
+  requested_at timestamp default now(),
+  processed_at timestamp
+);
+
+-- Ban appeals
+create table ban_appeals (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid references profiles(id),
+  proof_type text,
+  -- profitable_track_record | passed_eval
+  proof_url text,
+  notes text,
+  status text default 'pending',
+  -- pending | approved | rejected
+  submitted_at timestamp default now()
+);
+```
+
+---
+
+## TIER SYSTEM — ENFORCE IN ALL TRADE LOGIC
+
+```javascript
+const TIERS = {
+  unverified: {
+    leverage: 50,
+    maxLot: 0.01,
+    instruments: ['XAUUSD_m', 'XAGUSD_m', 'MNQ_m', 'MES_m'],
+    // Micro only
+    tries: 3,
+    // account zero = try used
+    label: 'Unverified',
+    color: '#71717A'
+  },
+  verified: {
+    leverage: 250,
+    maxLot: 0.10,
+    instruments: ['XAUUSD_m', 'XAGUSD_m', 'MNQ_m', 'MES_m',
+                  'XAUUSD', 'XAGUSD', 'MNQ', 'MES'],
+    tries: null,
+    // unlimited
+    label: 'Verified',
+    color: '#3B82F6'
+  },
+  elite: {
+    leverage: 500,
+    maxLot: 0.50,
+    instruments: ['XAUUSD_m', 'XAGUSD_m', 'MNQ_m', 'MES_m',
+                  'XAUUSD', 'XAGUSD', 'MNQ', 'MES'],
+    tries: null,
+    label: 'Elite',
+    color: '#E8C547'
+  },
+  titan: {
+    leverage: 2000,
+    maxLot: 999,
+    // no limit
+    instruments: ['XAUUSD_m', 'XAGUSD_m', 'MNQ_m', 'MES_m',
+                  'XAUUSD', 'XAGUSD', 'MNQ', 'MES', 'EURUSD', 'GBPUSD'],
+    tries: null,
+    label: 'Titan',
+    color: '#22C55E'
+  },
+  banned: {
+    leverage: 0,
+    maxLot: 0,
+    instruments: [],
+    label: 'Banned',
+    color: '#EF4444'
+  }
+}
+```
+
+**Ban logic (enforce server-side in API route):**
+- When a trade closes and account balance hits 0 or below → increment `tries_used`, set `tries_visible = true`
+- If `tries_used >= 3` → set `tier = 'banned'`, set `banned_at = now()`, set `ban_expires_at = now() + 6 months`
+- After first try used → show try counter in dashboard: "Try 2 of 3" with yellow warning
+- Banned users see ban screen with expiry date and appeal option
+
+**Trade validation (before any order):**
+```javascript
+// Check tier limits before accepting trade
+if (trade.size > TIERS[user.tier].maxLot) {
+  return error('Lot size exceeds your tier limit. Verify your funded status to unlock larger positions.')
+}
+if (!TIERS[user.tier].instruments.includes(trade.instrument)) {
+  return error('This instrument requires a higher tier. Verify your funded status.')
+}
+if (user.tier === 'banned') {
+  return error('Account suspended. Check your verification status.')
+}
+```
+
+---
+
+## PAGES
+
+### Page 1: Landing `/`
+
+**Hero section** (full viewport height):
+- Nav: Logo left ("RAW" white + "FUNDED" gold), right side: "Apply Now" gold button + "Login" ghost button
+- Huge headline (Barlow Condensed 900, ~80px): "No Rules.\nNo Challenges.\nJust Prove It."
+- Subheading: "The only prop trading platform for traders who've already won. Verify your funded status. Unlock real leverage. Withdraw same day."
+- Single CTA button: "Submit Your Proof →" (gold, large) — links to `/apply`
+- Below CTA: "Already verified? Login →"
+- Background: pure black with subtle grid lines (CSS grid pattern)
+
+**Stats bar** (below hero):
+- 1:2000 Max Leverage
+- 94% Profit Split
+- Same-Day Withdrawals  
+- $0 Access Fees
+- Zero Rules
+
+**How It Works** section (3 steps):
+1. "Prove It" — Submit your funded account proof from any prop firm. Takes 2 minutes.
+2. "Get Verified" — Our team reviews within 24 hours. Your tier unlocks automatically.
+3. "Trade & Withdraw" — No rules, no limits, no waiting. Withdraw same day.
+
+**The No-Rules Difference** section — comparison table:
+| | Other Prop Firms | Raw Funded |
+|---|---|---|
+| Daily Loss Limit | ✓ Yes | ✗ None |
+| Consistency Rule | ✓ Yes | ✗ None |
+| Min Trading Days | ✓ Yes | ✗ None |
+| Challenge Fee | $100–$1,000 | $0 |
+| Withdrawal Wait | 14–30 days | Same Day |
+| News Trading Ban | ✓ Yes | ✗ None |
+| Weekend Holding Ban | ✓ Yes | ✗ None |
+
+**Tier section** (4 cards, dark cards with gold/blue/green accents):
+Show the 4 tiers as cards — Unverified / Verified / Elite / Titan with leverage, instruments, limits clearly shown.
+
+**Verified Leaderboard preview** (show top 5 from leaderboard as a teaser):
+- "Join the traders already winning on Raw Funded"
+- Static placeholder data for now
+
+**Footer**: rawfunded.com, minimal links
+
+---
+
+### Page 2: Apply `/apply`
+
+This is where visitors submit verification proof. This IS the signup — they create an account here.
+
+**Step 1 — Create Account:**
+- Email, username, password
+- Supabase signup
+- Creates profile with tier = 'unverified'
+
+**Step 2 — Verification Form** (appears after account created):
+
+Left column:
+- Prop firm dropdown: FTMO, TopStep, MyForexFunds, Funded Next, The Funded Trader, Apex, Earn2Trade, Leeloo, Lark Funding, Lucid Trading, Other
+- Proof type tabs:
+  - **Screenshot** — drag/drop upload zone → Supabase Storage bucket 'verifications'
+  - **URL** — paste public profile link
+  - **Email Forward** — instructions: "Forward your funded account email to verify@rawfunded.com with your username in the subject line" (especially for TopStep/Wise payout emails)
+  - **Certificate** — PDF upload
+- Payout count selector: "How many payouts have you received?" — 0 / 1 / 2 / 3+
+  - 0 = applying for Verified tier
+  - 1 = applying for Elite tier  
+  - 2-3+ = applying for Titan tier
+- Additional notes (optional)
+- Submit button → inserts into verifications table, sends confirmation email
+
+Right column:
+- Live preview of what tier they'll unlock based on payout count selected
+- Accepted firms list
+- What counts as proof (green checkmarks) vs what doesn't (red X)
+- "Reviewed within 24 hours. You'll get an email when your tier updates."
+
+**After submit:** Full-screen pending confirmation with spinner, tier they applied for, estimated review time.
+
+---
+
+### Page 3: Login `/login`
+
+Clean centered card. Email + password. Supabase auth. Redirect to `/dashboard`.
+Include "Don't have an account? Apply →" link.
+
+---
+
+### Page 4: Dashboard `/dashboard`
+
+Protected route. Redirect to `/login` if not authenticated.
+
+**Top nav:**
+- Logo
+- Instrument ticker strip: XAUUSD 2641.80 +0.34% | XAGUSD 29.96 +0.89% | MNQ 21204 +0.67% | MES 5840 +0.45% (static data for now)
+- Right: Balance chip (show balance from profiles), Tier badge (colored by tier), "Withdraw" gold button, avatar/username
+
+**If user is BANNED — show full-screen ban overlay:**
+```
+🚫 Account Suspended
+
+You've used all 3 tries as an unverified trader.
+
+Ban expires: [date]
+Time remaining: [countdown]
+
+[Submit Profitability Proof] — links to appeal form
+[Learn how to get verified] — links to /apply
+```
+
+**If user is UNVERIFIED and tries_visible = true — show try counter banner:**
+```
+⚠ Try [X] of 3 — Prove your funded status to remove this limit entirely →
+```
+Gold warning banner at top of dashboard. Only shows after first account zero.
+
+**Sidebar:**
+- Terminal (default)
+- Compass
+- Leaderboard
+- Verification Status
+- Withdraw
+- Settings
+
+**Terminal tab:**
+
+Two column layout:
+
+Left (chart + order entry):
+- Instrument selector tabs: show only instruments available for user's tier
+- TradingView Lightweight Charts — candlestick chart
+- Generate 200 realistic OHLCV candles for XAUUSD (realistic gold price range $2,600–$2,650)
+- Timeframe buttons: 1m 5m 15m 1H 4H 1D
+- Below chart: Order entry panel
+  - Lot size control with +/- and preset buttons
+  - Show max allowed lot for tier: "Max: 0.01 lot (Unverified)"
+  - BUY (green) and SELL (red) buttons
+  - On click: validate against tier limits → insert into trades table with status 'pending'
+  - If invalid: show inline error with upgrade CTA
+
+Right (positions + account):
+- Open positions table: instrument, side, size, entry, current price, P&L, Close button
+- Account summary: Balance, Equity, Used Margin, Free Margin
+- For unverified: show try counter if tries_visible
+
+**Compass tab:**
+- Net P&L card (total from closed trades)
+- Win Rate (wins / total closed trades)
+- Profit Factor
+- Avg Win / Avg Loss ratio
+- P&L equity curve (Lightweight Charts area chart — cumulative P&L over time from trades)
+- Trade history table: all closed trades with date, instrument, side, size, P&L
+
+---
+
+### Page 5: Leaderboard `/leaderboard`
+
+Public page — no auth required to view.
+
+**Header:** "The Verified Board" — "Only traders who've proven their funded status make it here."
+
+**Filter bar:** All Tiers | Verified | Elite | Titan | by instrument (XAUUSD / XAGUSD / MNQ / MES)
+
+**Leaderboard table** — pull from profiles + trades, show only verified/elite/titan tier users:
+
+| Rank | Trader | Tier | Net P&L | Win Rate | Profit Factor | Avg W/L | Instruments | Since |
+|------|--------|------|---------|----------|---------------|---------|-------------|-------|
+
+- Rank 1-3 get gold/silver/bronze styling
+- Tier badge colored by tier
+- Real-time from Supabase (use Supabase Realtime subscription)
+- Paginated, 25 per page
+
+**Below table:** "Want to be on this board? Verify your funded status →" CTA
+
+---
+
+### Page 6: Withdraw `/dashboard/withdraw`
+
+Protected. Accessible from sidebar and nav button.
+
+**Available balance** display (large, prominent)
+**No withdrawal cap** — trader can withdraw their full balance
+
+Form:
+- Amount input — max = full balance, no cap
+- Method tabs: Wise | USDC | USDT
+  - Wise: email address input
+  - USDC/USDT: wallet address input, network selector (Ethereum / Tron / BSC)
+- "Confirm Withdrawal" button → inserts into withdrawals table with status 'pending'
+- Show: "Same-day processing. Usually within 2 hours."
+
+**Withdrawal history table** below form:
+- Date, amount, method, status (color coded: pending yellow, processing blue, completed green)
+
+---
+
+### Page 7: Verification Status `/dashboard/verification`
+
+Show user's current tier prominently.
+
+If unverified:
+- Show the 4-tier ladder (Unverified → Verified → Elite → Titan)
+- Show try counter if tries_visible
+- CTA: "Submit Verification Proof →" links to /apply verification step
+
+If verified/elite/titan:
+- Show current tier card with all unlocked features
+- Show verification submission history
+- Option to submit additional payout proofs to upgrade tier
+- "Submit More Proof" form (same as /apply step 2 but for upgrades)
+
+If banned:
+- Ban expiry date and countdown
+- Appeal form:
+  - Proof type: Profitable track record | Passed a prop firm evaluation
+  - File upload or URL
+  - Notes
+  - Submit appeal → inserts into ban_appeals table
+
+---
+
+### Page 8: Admin `/admin`
+
+Protected — only accessible if profile has `is_admin = true` flag (add this column to profiles).
+
+**Verification queue:**
+- Table of all pending verifications
+- Each row: username, tier applied for, firm, proof type, submitted time
+- "Review" button opens modal with:
+  - Proof image/URL displayed
+  - Approve button (updates profiles.tier to verified/elite/titan based on payout_count)
+  - Reject button (updates status to rejected, sends email)
+  - Notes field
+  - Reviewer name auto-populated
+
+**Active traders:**
+- Table of all profiles with tier, balance, tries_used, last active
+
+**Ban appeals queue:**
+- Pending appeals table
+- Approve (resets tries_used to 0, sets tier back to unverified) or Reject
+
+**Withdrawal queue:**
+- Pending withdrawals table: username, amount, method, destination
+- Mark as Processing / Completed buttons
+- Note field for reference numbers
+
+---
+
+## API ROUTES TO BUILD
+
+```
+POST /api/trades/open      — validate tier limits, insert trade
+POST /api/trades/close     — close trade, calculate P&L, check if balance hit zero
+POST /api/verify/submit    — upload proof to storage, insert verification row
+POST /api/withdraw/request — validate amount, insert withdrawal row
+POST /api/appeal/submit    — insert ban appeal row
+GET  /api/leaderboard      — fetch verified+ traders with aggregated stats
+```
+
+**In `/api/trades/close` — ban logic:**
+```javascript
+// After closing trade and updating balance
+if (newBalance <= 0 && user.tier === 'unverified') {
+  await supabase.from('profiles').update({
+    tries_used: user.tries_used + 1,
+    tries_visible: true,
+    balance: 10000 // reset balance for next try
+  }).eq('id', user.id)
+  
+  if (user.tries_used + 1 >= 3) {
+    const banExpiry = new Date()
+    banExpiry.setMonth(banExpiry.getMonth() + 6)
+    await supabase.from('profiles').update({
+      tier: 'banned',
+      banned_at: new Date().toISOString(),
+      ban_expires_at: banExpiry.toISOString()
+    }).eq('id', user.id)
+  }
+}
+```
+
+---
+
+## ENV VARIABLES
+
+Create `.env.local.example`:
+```
+NEXT_PUBLIC_SUPABASE_URL=
+NEXT_PUBLIC_SUPABASE_ANON_KEY=
+SUPABASE_SERVICE_ROLE_KEY=
+NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=
+STRIPE_SECRET_KEY=
+```
+
+---
+
+## FILE STRUCTURE
+
+```
+/app
+  /page.tsx                    — landing
+  /apply/page.tsx              — verification signup
+  /login/page.tsx              — login
+  /leaderboard/page.tsx        — public leaderboard
+  /dashboard
+    /page.tsx                  — terminal (default)
+    /compass/page.tsx          — analytics
+    /verification/page.tsx     — tier status
+    /withdraw/page.tsx         — withdrawals
+  /admin/page.tsx              — admin panel
+  /api
+    /trades/open/route.ts
+    /trades/close/route.ts
+    /verify/submit/route.ts
+    /withdraw/request/route.ts
+    /appeal/submit/route.ts
+    /leaderboard/route.ts
+
+/components
+  /ui
+    TierBadge.tsx
+    TryCounter.tsx
+    BanOverlay.tsx
+    InstrumentTicker.tsx
+  /charts
+    CandlestickChart.tsx       — Lightweight Charts wrapper
+    EquityCurve.tsx            — Lightweight Charts area
+  /dashboard
+    Sidebar.tsx
+    TopNav.tsx
+    OrderPanel.tsx
+    PositionsTable.tsx
+  /verification
+    TierLadder.tsx
+    ProofUpload.tsx
+    UnlockPreview.tsx
+  /leaderboard
+    LeaderboardTable.tsx
+
+/lib
+  supabase.ts                  — client + server clients
+  tiers.ts                     — TIERS config object
+  validation.ts                — trade validation functions
+```
+
+---
+
+## NOTES FOR REPLIT
+
+- All chart data is fake/generated for MVP — real MT5 price feed connects later via Python bridge writing to Supabase
+- Trades written to Supabase trades table with status 'pending' — a separate Python script on a VPS will pick these up and mirror to MT5 (don't build the bridge, just make sure the trades table schema is correct)
+- Keep components clean and modular — Rook (co-founder/engineer) will be extending this
+- No mobile optimization needed for MVP — desktop only
+- Include a README.md with: project overview, how to run locally, env variables needed, Supabase setup instructions, folder structure explanation
+- Supabase Storage bucket needed: 'verifications' (public read, authenticated write)
+- Add Row Level Security policies: users can only read/write their own rows except leaderboard (public read)

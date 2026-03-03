@@ -101,7 +101,7 @@ export async function registerRoutes(
 
   const CONTRACT_SIZES: Record<string, number> = {
     'Bitcoin': 1,
-    'Gold': 100,
+    'Gold (GC)': 100,
     'Silver': 5000,
     'Oil (WTI)': 1000,
     'S&P 500': 50,
@@ -266,14 +266,14 @@ export async function registerRoutes(
 
   const PRICE_SOURCES: Record<string, () => Promise<number>> = {
     'Bitcoin': () => fetchCoinbasePrice('BTC-USD'),
-    'Gold': () => fetchYahooPrice('GC=F'),
+    'Gold (GC)': () => fetchYahooPrice('GC=F'),
     'Silver': () => fetchYahooPrice('SI=F'),
     'Oil (WTI)': () => fetchYahooPrice('CL=F'),
     'S&P 500': () => fetchYahooPrice('%5EGSPC'),
     'Nasdaq': () => fetchYahooPrice('NQ=F'),
     'MNQ': () => fetchYahooPrice('MNQ=F'),
     'MES': () => fetchYahooPrice('MES=F'),
-    'MGC': () => fetchYahooPrice('MGC=F'),
+    'MGC': () => fetchYahooPrice('GC=F'),
     'SIL': () => fetchYahooPrice('SIL=F'),
     'MCL': () => fetchYahooPrice('MCL=F'),
   };

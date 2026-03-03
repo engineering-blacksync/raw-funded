@@ -62,6 +62,8 @@ A prop trading platform for traders who've already won elsewhere. Users verify t
 - Trade history: right panel has Positions/History tabs; closed trades show entry, exit, P&L, date
 - Live P&L: `useLivePrices()` polls `/api/prices/:instrument` every 1s for all open position instruments
 - P&L formula: BUY = (current - entry) × size × contractSize; SELL = (entry - current) × size × contractSize
-- Contract sizes: BTC=1, Gold/MGC=100/10, Silver/SIL=5000, Oil/MCL=1000, S&P/MES=50/5, Nasdaq/MNQ=20/2
+- Contract sizes: BTC=1, Gold(GC)=100oz, MGC=10oz, Silver/SIL=5000, Oil/MCL=1000, S&P/MES=50/5, Nasdaq/MNQ=20/2
+- Gold (GC) and MGC share same TradingView chart (COMEX:GC1!) and same GC=F price feed
+- GC trades in full lots (1,2,3... × 100oz), MGC trades in micro units (1,2,3... × 10oz = 0.1 GC lot each)
 - Price sources: Coinbase (BTC), Yahoo Finance (all others)
 - Supabase proxy still available at `/api/supabase/trades` (env: SUPABASE_URL, SUPABASE_ANON_KEY)

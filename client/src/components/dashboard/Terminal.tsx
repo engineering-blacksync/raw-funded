@@ -18,20 +18,20 @@ interface InstrumentConfig {
 
 const INSTRUMENTS: InstrumentConfig[] = [
   { label: 'Bitcoin', symbol: 'COINBASE:BTCUSD', default: 0.01, step: 0.01, min: 0.01, max: 1.00, decimals: 2 },
-  { label: 'Gold', symbol: 'OANDA:XAUUSD', default: 0.01, step: 0.01, min: 0.01, max: 10.00, decimals: 2 },
+  { label: 'Gold (GC)', symbol: 'COMEX:GC1!', default: 1, step: 1, min: 1, max: 10, decimals: 0 },
   { label: 'Silver', symbol: 'OANDA:XAGUSD', default: 0.01, step: 0.01, min: 0.01, max: 10.00, decimals: 2 },
   { label: 'Oil (WTI)', symbol: 'OANDA:WTICOUSD', default: 1, step: 1, min: 1, max: 20, decimals: 0 },
   { label: 'S&P 500', symbol: 'OANDA:SPX500USD', default: 1, step: 1, min: 1, max: 20, decimals: 0 },
   { label: 'Nasdaq', symbol: 'OANDA:NAS100USD', default: 1, step: 1, min: 1, max: 20, decimals: 0 },
   { label: 'MNQ', symbol: 'CME_MINI:MNQ1!', default: 1, step: 1, min: 1, max: 20, decimals: 0 },
   { label: 'MES', symbol: 'CME_MINI:MES1!', default: 1, step: 1, min: 1, max: 20, decimals: 0 },
-  { label: 'MGC', symbol: 'COMEX:MGC1!', default: 1, step: 1, min: 1, max: 20, decimals: 0 },
+  { label: 'MGC', symbol: 'COMEX:GC1!', default: 1, step: 1, min: 1, max: 20, decimals: 0 },
   { label: 'SIL', symbol: 'COMEX:SIL1!', default: 1, step: 1, min: 1, max: 20, decimals: 0 },
   { label: 'MCL', symbol: 'NYMEX:MCL1!', default: 1, step: 1, min: 1, max: 20, decimals: 0 },
 ];
 
 const CONTRACT_SIZES: Record<string, number> = {
-  'Bitcoin': 1, 'Gold': 100, 'Silver': 5000, 'Oil (WTI)': 1000,
+  'Bitcoin': 1, 'Gold (GC)': 100, 'Silver': 5000, 'Oil (WTI)': 1000,
   'S&P 500': 50, 'Nasdaq': 20, 'MNQ': 2, 'MES': 5, 'MGC': 10, 'SIL': 5000, 'MCL': 1000,
 };
 

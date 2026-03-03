@@ -1,7 +1,8 @@
 import { Navbar } from "@/components/layout/Navbar";
 import { Link } from "wouter";
-import { Check, X } from "lucide-react";
-import { TIERS, LEADERBOARD_MOCK } from "@/lib/constants";
+import { Check, X, ArrowRight } from "lucide-react";
+import { TIERS } from "@/lib/constants";
+import Terminal from "@/components/dashboard/Terminal";
 
 export default function Home() {
   return (
@@ -9,36 +10,72 @@ export default function Home() {
       <Navbar />
       
       {/* Hero Section */}
-      <section className="relative min-h-[90vh] flex flex-col items-center justify-center pt-20 pb-32 px-6 hero-gradient overflow-hidden">
-        <div className="max-w-4xl mx-auto text-center space-y-8 z-10">
-          <h1 className="text-6xl md:text-8xl lg:text-9xl leading-[0.9] text-white">
-            NO RULES.<br/>
-            NO CHALLENGES.<br/>
-            <span className="text-gold">JUST PROVE IT.</span>
+      <section
+        className="relative min-h-[90vh] flex flex-col items-center justify-start pt-24 md:pt-32 pb-20 px-6 overflow-hidden"
+        style={{ animation: "fadeIn 0.6s ease-out" }}
+      >
+        <style>{`
+          @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+          }
+        `}</style>
+        
+        <div className="max-w-5xl mx-auto text-center z-10 flex flex-col items-center w-full">
+          <aside className="mb-8 inline-flex flex-wrap items-center justify-center gap-2 px-4 py-2 rounded-full border border-[#2E2E36] bg-[#111113]/50 backdrop-blur-sm max-w-full">
+            <span className="text-xs text-center whitespace-nowrap text-[#A1A1AA]">
+              Raw Funded is now live for futures traders!
+            </span>
+            <Link href="/apply">
+              <a className="flex items-center gap-1 text-xs text-gold hover:text-white transition-all active:scale-95 whitespace-nowrap">
+                Read more
+                <ArrowRight size={12} />
+              </a>
+            </Link>
+          </aside>
+
+          <h1
+            className="text-5xl md:text-7xl lg:text-[5.5rem] font-bold text-center max-w-4xl px-6 leading-[1.1] mb-6 font-heading"
+            style={{
+              background: "linear-gradient(to bottom, #ffffff, #ffffff, rgba(255, 255, 255, 0.5))",
+              WebkitBackgroundClip: "text",
+              WebkitTextFillColor: "transparent",
+              backgroundClip: "text",
+              letterSpacing: "0.02em"
+            }}
+          >
+            NO RULES. NO CHALLENGES.<br />
+            <span style={{
+              background: "linear-gradient(to bottom, #E8C547, #E8C547, rgba(232, 197, 71, 0.5))",
+              WebkitBackgroundClip: "text",
+              WebkitTextFillColor: "transparent",
+              backgroundClip: "text",
+            }}>JUST PROVE IT.</span>
           </h1>
           
-          <p className="text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto font-medium leading-relaxed">
-            Taking payouts on Future prop firms before? Trade one good set up, withdraw same day. No consistency rules, no minimum trading days, no pass challenge buffer, etc.
+          <p className="text-sm md:text-base text-center max-w-2xl px-6 mb-10 text-[#A1A1AA]">
+            Taking payouts on Future prop firms before? Trade one good set up, withdraw same day.<br />
+            No consistency rules, no minimum trading days, no pass challenge buffer.
           </p>
 
-          <div className="flex flex-col items-center gap-4 pt-4 mb-16">
+          <div className="flex items-center gap-4 relative z-10 mb-16">
             <Link href="/apply">
-              <a className="bg-gold text-black font-heading text-2xl px-12 py-4 rounded-sm hover:bg-white transition-all transform hover:scale-105 active:scale-95" data-testid="link-apply-hero">
-                SUBMIT YOUR PROOF →
+              <a className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-lg font-bold transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 h-12 px-8 text-base bg-gradient-to-b from-[#E8C547] via-[#E8C547]/95 to-[#E8C547]/70 text-black hover:scale-105 active:scale-95 shadow-lg shadow-gold/20" data-testid="link-apply-hero">
+                Get started
               </a>
             </Link>
             <Link href="/login">
-              <a className="text-sm text-muted-foreground hover:text-white" data-testid="link-login-hero">
-                Already verified? Login →
+              <a className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-lg font-medium transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 h-12 px-8 text-base hover:bg-white/5 text-white" data-testid="link-login-hero">
+                Log in
               </a>
             </Link>
           </div>
 
-          <div className="w-full max-w-5xl relative pb-20 mx-auto mt-12 animate-in fade-in slide-in-from-bottom-8 duration-1000">
+          <div className="w-full relative pb-20 mt-4">
             <div
-              className="absolute left-1/2 w-[120%] md:w-[100%] pointer-events-none z-0 opacity-50 mix-blend-screen"
+              className="absolute left-1/2 w-[110%] md:w-[90%] pointer-events-none z-0 opacity-70"
               style={{
-                top: "-30%",
+                top: "-23%",
                 transform: "translateX(-50%)"
               }}
               aria-hidden="true"
@@ -46,19 +83,33 @@ export default function Home() {
               <img
                 src="https://i.postimg.cc/Ss6yShGy/glows.png"
                 alt=""
-                className="w-full h-auto"
+                className="w-full h-auto mix-blend-screen"
                 loading="eager"
               />
             </div>
             
-            <div className="relative z-10 rounded-xl overflow-hidden border border-b1 shadow-2xl shadow-gold/10">
-              <img
-                src="https://i.postimg.cc/SKcdVTr1/Dashboard2.png"
-                alt="Dashboard preview showing analytics and metrics interface"
-                className="w-full h-auto"
-                loading="eager"
-              />
-              <div className="absolute inset-0 bg-gradient-to-t from-background via-transparent to-transparent"></div>
+            <div className="relative z-10 rounded-xl overflow-hidden border border-[#222228] shadow-2xl shadow-gold/5 bg-[#09090B] text-left pointer-events-none select-none max-w-5xl mx-auto">
+              
+              {/* Mock App Header */}
+              <div className="h-14 border-b border-[#222228] bg-[#111113] flex items-center px-6 gap-6">
+                <div className="flex gap-2 shrink-0">
+                  <div className="w-3 h-3 rounded-full bg-red-500/80"></div>
+                  <div className="w-3 h-3 rounded-full bg-yellow-500/80"></div>
+                  <div className="w-3 h-3 rounded-full bg-green-500/80"></div>
+                </div>
+                <div className="flex gap-6 text-sm font-medium pt-4">
+                  <div className="text-white border-b-2 border-gold pb-4">Terminal</div>
+                  <div className="text-[#71717A] pb-4">Your Data</div>
+                  <div className="text-[#71717A] pb-4">Leaderboard</div>
+                </div>
+              </div>
+
+              {/* Mock App Content */}
+              <div className="h-[500px] flex flex-col overflow-hidden opacity-90">
+                <Terminal tier={TIERS.unverified} userTierName="unverified" />
+              </div>
+
+              <div className="absolute inset-0 bg-gradient-to-t from-background via-background/20 to-transparent z-20" style={{ background: 'linear-gradient(to top, hsl(var(--background)) 5%, transparent 40%)' }}></div>
             </div>
           </div>
         </div>

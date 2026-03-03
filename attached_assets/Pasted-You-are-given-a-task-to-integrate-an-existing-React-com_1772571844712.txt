@@ -1,0 +1,251 @@
+You are given a task to integrate an existing React component in the codebase
+
+The codebase should support:
+- shadcn project structure  
+- Tailwind CSS
+- Typescript
+
+If it doesn't, provide instructions on how to setup project via shadcn CLI, install Tailwind or Typescript.
+
+Determine the default path for components and styles. 
+If default path for components is not /components/ui, provide instructions on why it's important to create this folder
+Copy-paste this component to /components/ui folder:
+```tsx
+estimated-arrival.tsx
+import { cn } from "@/lib/utils";
+import { useState } from "react";
+
+export interface EstimatedDateBadgeProps {
+    estimatedDate?: string;
+    dayOfWeek?: string;
+    deliveryType?: string;
+}
+
+const EstimatedDateBadge: React.FC<EstimatedDateBadgeProps> = ({
+    estimatedDate = 'September 28',
+    dayOfWeek = 'Friday delivery',
+    deliveryType = 'Free',
+}) => {
+    const [isOpen, setIsOpen] = useState<boolean>(false);
+
+    const toggleDetails = (): void => {
+        setIsOpen(!isOpen);
+    };
+
+    return (
+        <div className="slide-in">
+            <div className="badge-wrapper">
+                <div className="badge-container">
+                    <div
+                        className="badge-card"
+                        onClick={toggleDetails}
+                    >
+                        <div className="shimmer-overlay"></div>
+
+                        <div className="badge-content">
+                            <div className="icon-container">
+                                <div className="icon-wrapper">
+                                    <svg className="clock-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path
+                                            strokeLinecap="round"
+                                            strokeLinejoin="round"
+                                            strokeWidth="2"
+                                            d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
+                                        />
+                                    </svg>
+                                </div>
+                            </div>
+
+                            <div className="text-content">
+                                <p className="label">Estimated Arrival</p>
+                                <h3 className="date">{estimatedDate}</h3>
+                                <p className="day">{dayOfWeek}</p>
+                            </div>
+
+                            <div className="badge-pill-container">
+                                <div className="badge-pill">
+                                    <p className="badge-text">{deliveryType}</p>
+                                </div>
+                                <svg
+                                    className={`arrow-icon ${isOpen ? 'open' : ''}`}
+                                    fill="none"
+                                    stroke="currentColor"
+                                    viewBox="0 0 24 24"
+                                >
+                                    <path
+                                        strokeLinecap="round"
+                                        strokeLinejoin="round"
+                                        strokeWidth="2"
+                                        d="M19 9l-7 7-7-7"
+                                    />
+                                </svg>
+                            </div>
+                        </div>
+                    </div>
+                    <svg className="border-svg">
+                        <rect
+                            x="1"
+                            y="1"
+                            width="calc(100% - 2px)"
+                            height="calc(100% - 2px)"
+                            rx="16"
+                            ry="16"
+                            fill="none"
+                            stroke="#db5d34"
+                            strokeWidth="2"
+                            className="sliding-line"
+                            pathLength="1"
+                        />
+                    </svg>
+                </div>
+
+                <div className={`details-section ${isOpen ? 'open' : ''}`}>
+                    <div className="details-card">
+                        <div className="details-content">
+                            <div className="detail-item">
+                                <h4 className="detail-title">
+                                    <span className="detail-number">1</span>
+                                    Delivery Time
+                                </h4>
+                                <p className="detail-text">
+                                    Orders are usually delivered within 7 working days.
+                                </p>
+                            </div>
+
+                            <div className="detail-item detail-item-2">
+                                <h4 className="detail-title">
+                                    <span className="detail-number">2</span>
+                                    Assembly
+                                </h4>
+                                <p className="detail-text">
+                                    Products are sent unassembled. All necessary parts and assembly instructions are included in the package.
+                                </p>
+                            </div>
+
+                            <div className="detail-item detail-item-3">
+                                <h4 className="detail-title">
+                                    <span className="detail-number">3</span>
+                                    Technical Support
+                                </h4>
+                                <p className="detail-text">
+                                    If needed, you can contact our technical team at <strong>+1 555 55 5</strong> phone number.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+};
+
+export default EstimatedDateBadge;
+
+demo.tsx
+import EstimatedDateBadge from "@/components/ui/estimated-arrival";
+
+export default function DemoOne() {
+  return <EstimatedDateBadge />;
+}
+
+```
+
+Extend existing Tailwind 4 index.css with this code (or if project uses Tailwind 3, extend tailwind.config.js or globals.css):
+```css
+@import "tailwindcss";
+@import "tw-animate-css";
+
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes slideRight {
+  from {
+    width: 0;
+  }
+  to {
+    width: 100%;
+  }
+}
+
+@keyframes pulse-soft {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.7;
+  }
+}
+
+@keyframes bounce-gentle {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-4px);
+  }
+}
+
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateX(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes pulseGlow {
+  0%, 100% {
+    box-shadow: 0 0 0 0 rgba(219, 93, 52, 0.4);
+  }
+  50% {
+    box-shadow: 0 0 0 8px rgba(219, 93, 52, 0);
+  }
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: -1000px 0;
+  }
+  100% {
+    background-position: 1000px 0;
+  }
+}
+
+@keyframes slidingLine {
+  0% {
+    stroke-dashoffset: 1;
+  }
+  100% {
+    stroke-dashoffset: 0;
+  }
+}
+```
+
+Implementation Guidelines
+ 1. Analyze the component structure and identify all required dependencies
+ 2. Review the component's argumens and state
+ 3. Identify any required context providers or hooks and install them
+ 4. Questions to Ask
+ - What data/props will be passed to this component?
+ - Are there any specific state management requirements?
+ - Are there any required assets (images, icons, etc.)?
+ - What is the expected responsive behavior?
+ - What is the best place to use this component in the app?
+
+Steps to integrate
+ 0. Copy paste all the code above in the correct directories
+ 1. Install external dependencies
+ 2. Fill image assets with Unsplash stock images you know exist
+ 3. Use lucide-react icons for svgs or logos if component requires them

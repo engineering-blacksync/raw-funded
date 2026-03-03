@@ -1,17 +1,38 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link, useLocation } from "wouter";
 import { useQuery } from "@tanstack/react-query";
-import { LogOut, Activity, BarChart2, Shield, Check, CreditCard, ChevronDown, Settings } from "lucide-react";
+import { LogOut, Activity, BarChart2, Shield, Check, CreditCard, ChevronDown, Settings, Clock } from "lucide-react";
 import Terminal from "@/components/dashboard/Terminal";
 import { BalanceCard } from "@/components/ui/analytics-bento";
 import { StatCard, CalendarGrid } from "@/components/ui/data-components";
 import { TIERS } from "@/lib/constants";
 import { useAuth } from "@/lib/auth";
 
+function useNYTime() {
+  const [time, setTime] = useState("");
+  useEffect(() => {
+    const update = () => {
+      const now = new Date();
+      setTime(now.toLocaleString("en-US", {
+        timeZone: "America/New_York",
+        hour: "numeric",
+        minute: "2-digit",
+        second: "2-digit",
+        hour12: true,
+      }));
+    };
+    update();
+    const id = setInterval(update, 1000);
+    return () => clearInterval(id);
+  }, []);
+  return time;
+}
+
 export default function Dashboard() {
   const [activeTab, setActiveTab] = useState("terminal");
   const [, setLocation] = useLocation();
   const { user, isLoading, isAuthenticated, logout } = useAuth();
+  const nyTime = useNYTime();
 
   const { data: tradeStats } = useQuery({
     queryKey: ["/api/trades/stats"],
@@ -60,6 +81,12 @@ export default function Dashboard() {
             <span className="font-heading text-xl text-white tracking-wider">RAW</span>
             <span className="font-heading text-xl text-gold tracking-wider">FUNDED</span>
           </Link>
+
+          <div className="hidden md:flex items-center gap-1.5 text-[10px] text-muted-foreground bg-s2 border border-b1 rounded px-2 py-1 mr-2">
+            <Clock className="w-3 h-3 text-gold" />
+            <span className="uppercase tracking-wider font-medium">NY</span>
+            <span className="data-number text-white font-semibold">{nyTime}</span>
+          </div>
 
           <div className="hidden lg:flex items-center gap-4 text-xs font-mono">
             <div className="flex items-center gap-2">

@@ -96,24 +96,16 @@ export function BalanceCard({ balance = 10000 }: { balance?: number }) {
   )
 
   return (
-    <div className="relative w-full rounded-[32px] bg-gradient-to-b from-muted/50 to-muted/60 p-2.5 shadow-[0_25px_50px_-12px_rgba(0,0,0,0.15),0_0_0_1px_rgba(255,255,255,0.4)_inset] dark:shadow-[0_25px_50px_-12px_rgba(0,0,0,0.4),0_0_0_1px_rgba(255,255,255,0.05)_inset] h-full flex flex-col">
-      {/* Inner highlight */}
-      <div
-        className="absolute inset-[1px] rounded-[31px] bg-gradient-to-b from-background/60 to-transparent pointer-events-none dark:from-background/30"
-        style={{ height: "50%" }}
-      />
-
-      <div className="relative flex-1 overflow-hidden rounded-[22px] bg-card p-4 pb-3 shadow-[0_2px_8px_rgba(0,0,0,0.08),0_0_0_1px_rgba(0,0,0,0.04)] dark:shadow-[0_2px_8px_rgba(0,0,0,0.2),0_0_0_1px_rgba(255,255,255,0.05)] flex flex-col">
-        {/* Header Section */}
+    <div className="bg-[#0F0F12] border border-[#222228] rounded-xl p-3 h-full flex flex-col hover:border-[#2E2E36] transition-colors">
         <div className="flex items-start justify-between">
           <div className="flex-1">
-            <p className="text-[11px] font-medium tracking-wide text-muted-foreground uppercase">Balance</p>
-            <h2 className="mt-0.5 text-[22px] font-semibold leading-[1] tracking-[-0.02em] text-card-foreground data-number">
+            <p className="text-[10px] font-medium tracking-wide text-[#A1A1AA] uppercase">Balance</p>
+            <h2 className="mt-0.5 text-lg font-semibold leading-[1] tracking-[-0.02em] text-white data-number">
               ${balance.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
             </h2>
-            <div className="mt-2 inline-flex items-center gap-1 rounded-full border border-border bg-background/40 px-2 py-1">
-              <span className="text-[10px] font-semibold text-green data-number">+ $850.50</span>
-              <svg width="10" height="10" viewBox="0 0 16 16" fill="none" className="text-green">
+            <div className="mt-1.5 inline-flex items-center gap-1 rounded-full border border-[#222228] bg-[#141418] px-2 py-0.5">
+              <span className="text-[9px] font-semibold text-[#22C55E] data-number">+ $850.50</span>
+              <svg width="8" height="8" viewBox="0 0 16 16" fill="none" className="text-[#22C55E]">
                 <path d="M2 11L6 7L9 10L14 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
                 <path d="M10 4H14V8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
               </svg>
@@ -121,8 +113,7 @@ export function BalanceCard({ balance = 10000 }: { balance?: number }) {
           </div>
         </div>
 
-        {/* Chart Section */}
-        <div className="relative mt-auto pt-2">
+        <div className="relative mt-auto pt-1">
           <svg
             ref={chartRef}
             viewBox={`0 0 ${chartWidth} ${chartHeight}`}
@@ -225,7 +216,6 @@ export function BalanceCard({ balance = 10000 }: { balance?: number }) {
           </svg>
 
         </div>
-      </div>
     </div>
   )
 }

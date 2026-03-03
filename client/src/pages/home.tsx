@@ -26,11 +26,9 @@ export default function Home() {
             <span className="text-xs text-center whitespace-nowrap text-[#A1A1AA]">
               Raw Funded is now live for futures traders!
             </span>
-            <Link href="/apply">
-              <a className="flex items-center gap-1 text-xs text-gold hover:text-white transition-all active:scale-95 whitespace-nowrap">
-                Read more
-                <ArrowRight size={12} />
-              </a>
+            <Link href="/apply" className="flex items-center gap-1 text-xs text-gold hover:text-white transition-all active:scale-95 whitespace-nowrap">
+              Read more
+              <ArrowRight size={12} />
             </Link>
           </aside>
 
@@ -59,15 +57,11 @@ export default function Home() {
           </p>
 
           <div className="flex items-center gap-4 relative z-10 mb-16">
-            <Link href="/apply">
-              <a className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-lg font-bold transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 h-12 px-8 text-base bg-gradient-to-b from-[#E8C547] via-[#E8C547]/95 to-[#E8C547]/70 text-black hover:scale-105 active:scale-95 shadow-lg shadow-gold/20" data-testid="link-apply-hero">
-                Get started
-              </a>
+            <Link href="/apply" className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-lg font-bold transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 h-12 px-8 text-base bg-gradient-to-b from-[#E8C547] via-[#E8C547]/95 to-[#E8C547]/70 text-black hover:scale-105 active:scale-95 shadow-lg shadow-gold/20" data-testid="link-apply-hero">
+              Get started
             </Link>
-            <Link href="/login">
-              <a className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-lg font-medium transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 h-12 px-8 text-base hover:bg-white/5 text-white" data-testid="link-login-hero">
-                Log in
-              </a>
+            <Link href="/login" className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-lg font-medium transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 h-12 px-8 text-base hover:bg-white/5 text-white" data-testid="link-login-hero">
+              Log in
             </Link>
           </div>
 

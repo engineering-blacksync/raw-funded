@@ -1,3 +1,5 @@
+import React from "react";
+
 export function StatCard({ title, value, subtext }: { title: string, value: string | React.ReactNode, subtext: string }) {
   return (
     <div className="bg-[#111113] border border-[#222228] p-5 rounded-xl flex flex-col justify-between h-full hover:border-[#2E2E36] transition-colors">

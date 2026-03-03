@@ -73,7 +73,7 @@ export default function Apply() {
                       CONTINUE TO PROOF →
                     </button>
                     <p className="text-center text-sm text-muted-foreground mt-4">
-                      Already have an account? <Link href="/login"><a className="text-white hover:text-gold" data-testid="link-login">Login</a></Link>
+                      Already have an account? <Link href="/login" className="text-white hover:text-gold" data-testid="link-login">Login</Link>
                     </p>
                   </>
                 ) : (

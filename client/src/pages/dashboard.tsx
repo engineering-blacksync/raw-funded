@@ -27,18 +27,16 @@ export default function Dashboard() {
         <div className="bg-gold text-black px-4 py-2 flex justify-center items-center gap-2 text-sm font-bold font-heading tracking-wide z-50">
           <span className="text-lg">⚠</span>
           TRY {user.triesUsed + 1} OF 3 — PROVE YOUR FUNDED STATUS TO REMOVE THIS LIMIT ENTIRELY 
-          <Link href="/dashboard/verification"><a className="underline ml-2">VERIFY NOW →</a></Link>
+          <Link href="/dashboard/verification" className="underline ml-2">VERIFY NOW →</Link>
         </div>
       )}
 
       {/* Header */}
       <header className="h-16 border-b border-b1 bg-s1 flex items-center justify-between px-4 shrink-0">
         <div className="flex items-center gap-6">
-          <Link href="/">
-            <a className="flex items-center gap-2 mr-4">
-              <span className="font-heading text-xl text-white tracking-wider">RAW</span>
-              <span className="font-heading text-xl text-gold tracking-wider">FUNDED</span>
-            </a>
+          <Link href="/" className="flex items-center gap-2 mr-4">
+            <span className="font-heading text-xl text-white tracking-wider">RAW</span>
+            <span className="font-heading text-xl text-gold tracking-wider">FUNDED</span>
           </Link>
 
           {/* Ticker */}

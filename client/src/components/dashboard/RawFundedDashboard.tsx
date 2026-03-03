@@ -1,3 +1,4 @@
+import React from "react";
 // ── Raw Funded Dashboard (replaces the CRM dashboard image) ──────────────────
 const RawFundedDashboard = () => {
   const mono = "'JetBrains Mono', monospace";

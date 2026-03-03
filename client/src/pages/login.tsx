@@ -45,7 +45,7 @@ export default function Login() {
           </form>
 
           <p className="text-center text-sm text-muted-foreground mt-8 border-t border-b1 pt-6">
-            Don't have an account? <Link href="/apply"><a className="text-white hover:text-gold" data-testid="link-register">Apply Now →</a></Link>
+            Don't have an account? <Link href="/apply" className="text-white hover:text-gold" data-testid="link-register">Apply Now →</Link>
           </p>
         </div>
       </div>

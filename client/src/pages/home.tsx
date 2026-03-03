@@ -2,7 +2,7 @@ import { Navbar } from "@/components/layout/Navbar";
 import { Link } from "wouter";
 import { Check, X, ArrowRight } from "lucide-react";
 import { TIERS } from "@/lib/constants";
-import Terminal from "@/components/dashboard/Terminal";
+import RawFundedDashboard from "@/components/dashboard/RawFundedDashboard";
 
 export default function Home() {
   return (
@@ -88,28 +88,8 @@ export default function Home() {
               />
             </div>
             
-            <div className="relative z-10 rounded-xl overflow-hidden border border-[#222228] shadow-2xl shadow-gold/5 bg-[#09090B] text-left pointer-events-none select-none max-w-5xl mx-auto">
-              
-              {/* Mock App Header */}
-              <div className="h-14 border-b border-[#222228] bg-[#111113] flex items-center px-6 gap-6">
-                <div className="flex gap-2 shrink-0">
-                  <div className="w-3 h-3 rounded-full bg-red-500/80"></div>
-                  <div className="w-3 h-3 rounded-full bg-yellow-500/80"></div>
-                  <div className="w-3 h-3 rounded-full bg-green-500/80"></div>
-                </div>
-                <div className="flex gap-6 text-sm font-medium pt-4">
-                  <div className="text-white border-b-2 border-gold pb-4">Terminal</div>
-                  <div className="text-[#71717A] pb-4">Your Data</div>
-                  <div className="text-[#71717A] pb-4">Leaderboard</div>
-                </div>
-              </div>
-
-              {/* Mock App Content */}
-              <div className="h-[500px] flex flex-col overflow-hidden opacity-90">
-                <Terminal tier={TIERS.unverified} userTierName="unverified" />
-              </div>
-
-              <div className="absolute inset-0 bg-gradient-to-t from-background via-background/20 to-transparent z-20" style={{ background: 'linear-gradient(to top, hsl(var(--background)) 5%, transparent 40%)' }}></div>
+            <div className="relative z-10 max-w-5xl mx-auto shadow-2xl shadow-gold/5 rounded-xl">
+              <RawFundedDashboard />
             </div>
           </div>
         </div>

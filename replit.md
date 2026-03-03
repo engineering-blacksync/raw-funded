@@ -55,3 +55,8 @@ A prop trading platform for traders who've already won elsewhere. Users verify t
 - Switching instrument tabs resets quantity to that instrument's default
 - BUY/SELL buttons insert trades to Supabase via `/api/supabase/trades` (server-side proxy, requires auth)
 - Supabase credentials stored in env vars: SUPABASE_URL, SUPABASE_ANON_KEY
+- Live P&L: `useLivePrices()` polls `/api/prices/:instrument` every 1s for all open position instruments
+- P&L formula: BUY = (current - entry) × qty × contractSize; SELL = (entry - current) × qty × contractSize
+- Contract sizes: BTC=1, Gold/MGC=100/10, Silver/SIL=5000, Oil/MCL=1000, S&P/MES=50/5, Nasdaq/MNQ=20/2
+- Closing a position locks in P&L and adds to equity permanently
+- Price sources: Coinbase (BTC), Yahoo Finance (all others — same exchanges as TradingView)

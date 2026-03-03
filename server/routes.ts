@@ -211,5 +211,62 @@ export async function registerRoutes(
     }
   });
 
+  const priceCache: Record<string, { price: number; ts: number }> = {};
+
+  async function fetchYahooPrice(symbol: string): Promise<number> {
+    const res = await fetch(
+      `https://query1.finance.yahoo.com/v8/finance/chart/${symbol}?interval=1m&range=1d`,
+      { headers: { 'User-Agent': 'Mozilla/5.0' } }
+    );
+    if (!res.ok) throw new Error(`Yahoo Finance returned ${res.status}`);
+    const data = await res.json();
+    const price = data?.chart?.result?.[0]?.meta?.regularMarketPrice;
+    if (typeof price !== 'number' || isNaN(price) || price <= 0) throw new Error('Invalid price');
+    return price;
+  }
+
+  async function fetchCoinbasePrice(pair: string): Promise<number> {
+    const res = await fetch(`https://api.coinbase.com/v2/prices/${pair}/spot`);
+    if (!res.ok) throw new Error(`Coinbase returned ${res.status}`);
+    const data = await res.json();
+    const price = parseFloat(data?.data?.amount);
+    if (isNaN(price) || price <= 0) throw new Error('Invalid price');
+    return price;
+  }
+
+  const PRICE_SOURCES: Record<string, () => Promise<number>> = {
+    'Bitcoin': () => fetchCoinbasePrice('BTC-USD'),
+    'Gold': () => fetchYahooPrice('GC=F'),
+    'Silver': () => fetchYahooPrice('SI=F'),
+    'Oil (WTI)': () => fetchYahooPrice('CL=F'),
+    'S&P 500': () => fetchYahooPrice('%5EGSPC'),
+    'Nasdaq': () => fetchYahooPrice('NQ=F'),
+    'MNQ': () => fetchYahooPrice('MNQ=F'),
+    'MES': () => fetchYahooPrice('MES=F'),
+    'MGC': () => fetchYahooPrice('MGC=F'),
+    'SIL': () => fetchYahooPrice('SIL=F'),
+    'MCL': () => fetchYahooPrice('MCL=F'),
+  };
+
+  app.get("/api/prices/:instrument", async (req: Request, res: Response) => {
+    const instrument = decodeURIComponent(req.params.instrument);
+    const fetcher = PRICE_SOURCES[instrument];
+    if (!fetcher) return res.status(404).json({ message: "Unknown instrument" });
+
+    const cached = priceCache[instrument];
+    if (cached && Date.now() - cached.ts < 800) {
+      return res.json({ price: cached.price });
+    }
+
+    try {
+      const price = await fetcher();
+      priceCache[instrument] = { price, ts: Date.now() };
+      return res.json({ price });
+    } catch {
+      if (cached) return res.json({ price: cached.price });
+      return res.status(502).json({ message: "Price fetch failed" });
+    }
+  });
+
   return httpServer;
 }

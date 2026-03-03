@@ -15,6 +15,15 @@ interface InstrumentConfig {
   decimals: number;
 }
 
+interface Position {
+  id: string;
+  instrument: string;
+  side: 'BUY' | 'SELL';
+  size: number;
+  entry: number;
+  pnl: number;
+}
+
 const INSTRUMENTS: InstrumentConfig[] = [
   { label: 'Bitcoin', symbol: 'COINBASE:BTCUSD', default: 0.01, step: 0.01, min: 0.01, max: 1.00, decimals: 2 },
   { label: 'Gold', symbol: 'OANDA:XAUUSD', default: 0.01, step: 0.01, min: 0.01, max: 10.00, decimals: 2 },
@@ -28,6 +37,20 @@ const INSTRUMENTS: InstrumentConfig[] = [
   { label: 'SIL', symbol: 'COMEX:SIL1!', default: 1, step: 1, min: 1, max: 20, decimals: 0 },
   { label: 'MCL', symbol: 'NYMEX:MCL1!', default: 1, step: 1, min: 1, max: 20, decimals: 0 },
 ];
+
+const CONTRACT_SIZES: Record<string, number> = {
+  'Bitcoin': 1,
+  'Gold': 100,
+  'Silver': 5000,
+  'Oil (WTI)': 1000,
+  'S&P 500': 50,
+  'Nasdaq': 20,
+  'MNQ': 2,
+  'MES': 5,
+  'MGC': 10,
+  'SIL': 5000,
+  'MCL': 1000,
+};
 
 declare global {
   interface Window {
@@ -51,15 +74,77 @@ function useTradingViewScript() {
   return loaded;
 }
 
+function useLivePrices(instruments: string[]) {
+  const [prices, setPrices] = useState<Record<string, number>>({});
+  const pricesRef = useRef<Record<string, number>>({});
+
+  useEffect(() => {
+    if (instruments.length === 0) return;
+    let active = true;
+
+    const fetchAll = async () => {
+      const unique = [...new Set(instruments)];
+      const results = await Promise.allSettled(
+        unique.map(async (inst) => {
+          const res = await fetch(`/api/prices/${encodeURIComponent(inst)}`);
+          if (!res.ok) return null;
+          const data = await res.json();
+          return { inst, price: data.price as number };
+        })
+      );
+
+      if (!active) return;
+      const updated = { ...pricesRef.current };
+      for (const r of results) {
+        if (r.status === 'fulfilled' && r.value && r.value.price > 0) {
+          updated[r.value.inst] = r.value.price;
+        }
+      }
+      pricesRef.current = updated;
+      setPrices({ ...updated });
+    };
+
+    fetchAll();
+    const interval = setInterval(fetchAll, 1000);
+    return () => { active = false; clearInterval(interval); };
+  }, [instruments.join(',')]);
+
+  return prices;
+}
+
+function calcPnl(pos: Position, currentPrice: number): number {
+  const contractSize = CONTRACT_SIZES[pos.instrument] ?? 1;
+  if (pos.side === 'BUY') {
+    return (currentPrice - pos.entry) * pos.size * contractSize;
+  } else {
+    return (pos.entry - currentPrice) * pos.size * contractSize;
+  }
+}
+
 export default function Terminal({ tier, userTierName }: TerminalProps) {
   const chartContainerRef = useRef<HTMLDivElement>(null);
   const tvLoaded = useTradingViewScript();
   const [activeInstrument, setActiveInstrument] = useState(INSTRUMENTS[0]);
   const [quantity, setQuantity] = useState<number>(INSTRUMENTS[0].default);
-  const [positions, setPositions] = useState<any[]>([]);
+  const [positions, setPositions] = useState<Position[]>([]);
   const [viewMode, setViewMode] = useState<'simple' | 'pro'>('simple');
   const [tradeLoading, setTradeLoading] = useState<'BUY' | 'SELL' | null>(null);
   const [tradeStatus, setTradeStatus] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
+  const [closedPnl, setClosedPnl] = useState(0);
+  const BASE_EQUITY = 10000;
+
+  const openInstruments = positions.map(p => p.instrument);
+  const allInstruments = [...new Set([activeInstrument.label, ...openInstruments])];
+  const livePrices = useLivePrices(allInstruments);
+
+  const positionsWithPnl = positions.map(pos => {
+    const currentPrice = livePrices[pos.instrument];
+    const pnl = currentPrice ? calcPnl(pos, currentPrice) : 0;
+    return { ...pos, pnl, currentPrice };
+  });
+
+  const totalOpenPnl = positionsWithPnl.reduce((sum, p) => sum + p.pnl, 0);
+  const equity = BASE_EQUITY + closedPnl + totalOpenPnl;
 
   const handleInstrumentChange = (inst: InstrumentConfig) => {
     setActiveInstrument(inst);
@@ -112,6 +197,13 @@ export default function Terminal({ tier, userTierName }: TerminalProps) {
       return;
     }
 
+    const entryPrice = livePrices[activeInstrument.label];
+    if (!entryPrice) {
+      setTradeStatus({ type: 'error', message: 'Waiting for price data...' });
+      setTimeout(() => setTradeStatus(null), 3000);
+      return;
+    }
+
     setTradeLoading(side);
     setTradeStatus(null);
 
@@ -128,15 +220,16 @@ export default function Terminal({ tier, userTierName }: TerminalProps) {
       });
 
       if (response.ok) {
-        const newPosition = {
+        const newPosition: Position = {
           id: Math.random().toString(36).substring(7),
           instrument: activeInstrument.label,
           side,
           size: quantity,
-          pnl: 0.00,
+          entry: entryPrice,
+          pnl: 0,
         };
-        setPositions([...positions, newPosition]);
-        setTradeStatus({ type: 'success', message: `${side} order placed` });
+        setPositions(prev => [...prev, newPosition]);
+        setTradeStatus({ type: 'success', message: `${side} ${activeInstrument.label} @ ${entryPrice.toLocaleString()}` });
         setTimeout(() => setTradeStatus(null), 3000);
       } else {
         const err = await response.json().catch(() => ({ message: 'Unknown error' }));
@@ -152,12 +245,18 @@ export default function Terminal({ tier, userTierName }: TerminalProps) {
   };
 
   const closePosition = (id: string) => {
-    setPositions(positions.filter(p => p.id !== id));
+    const pos = positionsWithPnl.find(p => p.id === id);
+    if (pos) {
+      setClosedPnl(prev => prev + pos.pnl);
+    }
+    setPositions(prev => prev.filter(p => p.id !== id));
   };
 
   const displayQty = activeInstrument.decimals > 0
     ? quantity.toFixed(activeInstrument.decimals)
     : String(quantity);
+
+  const formatPnl = (val: number) => `${val >= 0 ? '+' : ''}$${val.toFixed(2)}`;
 
   return (
     <div className="flex flex-col lg:flex-row h-full">
@@ -270,19 +369,25 @@ export default function Terminal({ tier, userTierName }: TerminalProps) {
         <div className="p-4 border-b border-b1 bg-s2 grid grid-cols-2 gap-4 shrink-0">
           <div>
             <div className="text-xs text-muted-foreground uppercase mb-1">Equity</div>
-            <div className="data-number text-white font-bold">$10,000.00</div>
+            <div className={`data-number font-bold ${equity >= BASE_EQUITY ? 'text-white' : 'text-red'}`}>
+              ${equity.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+            </div>
           </div>
           <div>
-            <div className="text-xs text-muted-foreground uppercase mb-1">Free Margin</div>
-            <div className="data-number text-white font-bold">$9,950.00</div>
+            <div className="text-xs text-muted-foreground uppercase mb-1">Closed PnL</div>
+            <div className={`data-number font-bold ${closedPnl >= 0 ? 'text-green' : 'text-red'}`}>
+              {formatPnl(closedPnl)}
+            </div>
           </div>
           <div>
-            <div className="text-xs text-muted-foreground uppercase mb-1">Margin Lvl</div>
-            <div className="data-number text-white font-bold">2000%</div>
+            <div className="text-xs text-muted-foreground uppercase mb-1">Positions</div>
+            <div className="data-number text-white font-bold">{positions.length}</div>
           </div>
           <div>
             <div className="text-xs text-muted-foreground uppercase mb-1">Open PnL</div>
-            <div className="data-number text-white font-bold">$0.00</div>
+            <div className={`data-number font-bold ${totalOpenPnl >= 0 ? 'text-green' : 'text-red'}`} data-testid="text-open-pnl">
+              {formatPnl(totalOpenPnl)}
+            </div>
           </div>
         </div>
 
@@ -297,7 +402,7 @@ export default function Terminal({ tier, userTierName }: TerminalProps) {
             </div>
           ) : (
             <div className="divide-y divide-b2">
-              {positions.map(pos => (
+              {positionsWithPnl.map(pos => (
                 <div key={pos.id} className="p-4 hover:bg-s2 transition-colors">
                   <div className="flex justify-between items-start mb-2">
                     <div className="flex items-center gap-2">
@@ -320,11 +425,21 @@ export default function Terminal({ tier, userTierName }: TerminalProps) {
                         <div className="text-[10px] text-muted-foreground uppercase">Qty</div>
                         <div className="data-number text-sm text-white">{pos.size}</div>
                       </div>
+                      <div>
+                        <div className="text-[10px] text-muted-foreground uppercase">Entry</div>
+                        <div className="data-number text-sm text-white">{pos.entry.toLocaleString()}</div>
+                      </div>
+                      {pos.currentPrice && (
+                        <div>
+                          <div className="text-[10px] text-muted-foreground uppercase">Current</div>
+                          <div className="data-number text-sm text-white">{pos.currentPrice.toLocaleString()}</div>
+                        </div>
+                      )}
                     </div>
                     <div className="text-right">
                       <div className="text-[10px] text-muted-foreground uppercase">P&L</div>
                       <div className={`data-number text-sm font-bold ${pos.pnl >= 0 ? 'text-green' : 'text-red'}`}>
-                        {pos.pnl >= 0 ? '+' : ''}${pos.pnl.toFixed(2)}
+                        {formatPnl(pos.pnl)}
                       </div>
                     </div>
                   </div>

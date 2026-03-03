@@ -125,43 +125,47 @@ export default function Dashboard() {
             <div className="flex-1 overflow-y-auto p-8">
               <div className="max-w-6xl mx-auto space-y-6">
                 
-                <div className="flex flex-col xl:flex-row gap-6">
-                  {/* Balance Card - scaled down */}
-                  <div className="shrink-0 w-full xl:w-auto flex justify-center">
-                    <div className="transform scale-[0.75] origin-top-left xl:origin-top w-[420px] h-[300px]">
-                      <BalanceCard />
-                    </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-6">
+                  {/* Balance Card - spans 2 columns */}
+                  <div className="col-span-1 md:col-span-2 lg:col-span-3 xl:col-span-2">
+                    <BalanceCard />
                   </div>
                   
-                  {/* Stats Row */}
-                  <div className="flex-1 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                  {/* Stats */}
+                  <div className="col-span-1">
                     <StatCard 
                       title="Net P&L" 
                       value={<span className="text-[#36B37E]">$1,340.00</span>}
                       subtext="Track your daily change" 
                     />
+                  </div>
+                  <div className="col-span-1">
                     <StatCard 
                       title="Win Rate" 
                       value={
-                        <div className="flex items-center justify-between w-full">
+                        <div className="flex items-center justify-between w-full gap-2">
                           <span>73.68%</span>
-                          <div className="w-12 h-12 rounded-full border-4 border-[#36B37E] border-l-[#EF4444] border-b-[#EF4444] rotate-45 relative ml-2 shrink-0">
-                            <div className="absolute -bottom-2 -right-4 bg-white text-black text-[10px] px-1 rounded -rotate-45 font-bold">73.68%</div>
+                          <div className="w-10 h-10 lg:w-12 lg:h-12 rounded-full border-4 border-[#36B37E] border-l-[#EF4444] border-b-[#EF4444] rotate-45 relative shrink-0">
+                            <div className="absolute -bottom-2 -right-4 bg-white text-black text-[9px] px-1 rounded -rotate-45 font-bold">73.68%</div>
                           </div>
                         </div>
                       }
                       subtext="Track your daily change" 
                     />
+                  </div>
+                  <div className="col-span-1">
                     <StatCard 
                       title="Profit Factor" 
                       value={
-                        <div className="flex items-center justify-between w-full">
+                        <div className="flex items-center justify-between w-full gap-2">
                           <span>3.16</span>
-                          <div className="w-12 h-12 rounded-full border-4 border-[#36B37E] border-r-transparent border-t-[#EF4444] ml-2 shrink-0"></div>
+                          <div className="w-10 h-10 lg:w-12 lg:h-12 rounded-full border-4 border-[#36B37E] border-r-transparent border-t-[#EF4444] shrink-0"></div>
                         </div>
                       }
                       subtext="Track your daily change" 
                     />
+                  </div>
+                  <div className="col-span-1">
                     <StatCard 
                       title="Avg. Win/Loss Ratio" 
                       value={<span>1.13</span>}

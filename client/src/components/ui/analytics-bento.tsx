@@ -96,24 +96,24 @@ export function BalanceCard() {
   )
 
   return (
-    <div className="relative w-[420px] rounded-[40px] bg-gradient-to-b from-muted/50 to-muted/60 p-3.5 shadow-[0_25px_50px_-12px_rgba(0,0,0,0.15),0_0_0_1px_rgba(255,255,255,0.4)_inset] dark:shadow-[0_25px_50px_-12px_rgba(0,0,0,0.4),0_0_0_1px_rgba(255,255,255,0.05)_inset]">
+    <div className="relative w-full rounded-[32px] bg-gradient-to-b from-muted/50 to-muted/60 p-2.5 shadow-[0_25px_50px_-12px_rgba(0,0,0,0.15),0_0_0_1px_rgba(255,255,255,0.4)_inset] dark:shadow-[0_25px_50px_-12px_rgba(0,0,0,0.4),0_0_0_1px_rgba(255,255,255,0.05)_inset] h-full flex flex-col">
       {/* Inner highlight */}
       <div
-        className="absolute inset-[1px] rounded-[39px] bg-gradient-to-b from-background/60 to-transparent pointer-events-none dark:from-background/30"
+        className="absolute inset-[1px] rounded-[31px] bg-gradient-to-b from-background/60 to-transparent pointer-events-none dark:from-background/30"
         style={{ height: "50%" }}
       />
 
-      <div className="relative overflow-hidden rounded-[28px] bg-card p-7 pb-5 shadow-[0_2px_8px_rgba(0,0,0,0.08),0_0_0_1px_rgba(0,0,0,0.04)] dark:shadow-[0_2px_8px_rgba(0,0,0,0.2),0_0_0_1px_rgba(255,255,255,0.05)]">
+      <div className="relative flex-1 overflow-hidden rounded-[22px] bg-card p-5 pb-4 shadow-[0_2px_8px_rgba(0,0,0,0.08),0_0_0_1px_rgba(0,0,0,0.04)] dark:shadow-[0_2px_8px_rgba(0,0,0,0.2),0_0_0_1px_rgba(255,255,255,0.05)] flex flex-col">
         {/* Header Section */}
         <div className="flex items-start justify-between">
           <div className="flex-1">
-            <p className="text-[15px] font-medium tracking-wide text-muted-foreground uppercase">Balance</p>
-            <h2 className="mt-1.5 text-[46px] font-semibold leading-[1] tracking-[-0.02em] text-card-foreground data-number">
+            <p className="text-[13px] font-medium tracking-wide text-muted-foreground uppercase">Balance</p>
+            <h2 className="mt-1 text-[32px] md:text-[38px] font-semibold leading-[1] tracking-[-0.02em] text-card-foreground data-number">
               $10,000.00
             </h2>
-            <div className="mt-4 inline-flex items-center gap-2 rounded-full border border-border bg-background/40 px-4 py-2 shadow-[0_1px_3px_rgba(0,0,0,0.04),0_4px_12px_rgba(0,0,0,0.03)] dark:shadow-[0_1px_3px_rgba(0,0,0,0.2),0_1px_3px_rgba(255,255,255,0.05)]">
-              <span className="text-[14px] font-semibold text-green data-number">+ $850.50</span>
-              <svg width="16" height="16" viewBox="0 0 16 16" fill="none" className="text-green">
+            <div className="mt-3 inline-flex items-center gap-1.5 rounded-full border border-border bg-background/40 px-3 py-1.5 shadow-[0_1px_3px_rgba(0,0,0,0.04),0_4px_12px_rgba(0,0,0,0.03)] dark:shadow-[0_1px_3px_rgba(0,0,0,0.2),0_1px_3px_rgba(255,255,255,0.05)]">
+              <span className="text-[12px] font-semibold text-green data-number">+ $850.50</span>
+              <svg width="14" height="14" viewBox="0 0 16 16" fill="none" className="text-green">
                 <path
                   d="M2 11L6 7L9 10L14 4"
                   stroke="currentColor"
@@ -132,13 +132,13 @@ export function BalanceCard() {
             </div>
           </div>
 
-          <div className="relative -mr-1 -mt-1 h-[110px] w-[130px]">
+          <div className="relative -mr-2 -mt-2 h-[80px] w-[95px] shrink-0">
             <MoneyIllustration />
           </div>
         </div>
 
         {/* Chart Section */}
-        <div className="relative mt-2">
+        <div className="relative mt-auto pt-4">
           <svg
             ref={chartRef}
             viewBox={`0 0 ${chartWidth} ${chartHeight}`}

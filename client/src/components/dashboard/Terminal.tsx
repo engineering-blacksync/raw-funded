@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
+import type { Trade } from '@shared/schema';
 
 interface TerminalProps {
   tier: any;
@@ -13,15 +14,6 @@ interface InstrumentConfig {
   min: number;
   max: number;
   decimals: number;
-}
-
-interface Position {
-  id: string;
-  instrument: string;
-  side: 'BUY' | 'SELL';
-  size: number;
-  entry: number;
-  pnl: number;
 }
 
 const INSTRUMENTS: InstrumentConfig[] = [
@@ -39,28 +31,16 @@ const INSTRUMENTS: InstrumentConfig[] = [
 ];
 
 const CONTRACT_SIZES: Record<string, number> = {
-  'Bitcoin': 1,
-  'Gold': 100,
-  'Silver': 5000,
-  'Oil (WTI)': 1000,
-  'S&P 500': 50,
-  'Nasdaq': 20,
-  'MNQ': 2,
-  'MES': 5,
-  'MGC': 10,
-  'SIL': 5000,
-  'MCL': 1000,
+  'Bitcoin': 1, 'Gold': 100, 'Silver': 5000, 'Oil (WTI)': 1000,
+  'S&P 500': 50, 'Nasdaq': 20, 'MNQ': 2, 'MES': 5, 'MGC': 10, 'SIL': 5000, 'MCL': 1000,
 };
 
 declare global {
-  interface Window {
-    TradingView: any;
-  }
+  interface Window { TradingView: any; }
 }
 
 function useTradingViewScript() {
   const [loaded, setLoaded] = useState(!!window.TradingView);
-
   useEffect(() => {
     if (window.TradingView) { setLoaded(true); return; }
     const script = document.createElement('script');
@@ -68,9 +48,7 @@ function useTradingViewScript() {
     script.async = true;
     script.onload = () => setLoaded(true);
     document.head.appendChild(script);
-    return () => {};
   }, []);
-
   return loaded;
 }
 
@@ -81,7 +59,6 @@ function useLivePrices(instruments: string[]) {
   useEffect(() => {
     if (instruments.length === 0) return;
     let active = true;
-
     const fetchAll = async () => {
       const unique = [...new Set(instruments)];
       const results = await Promise.allSettled(
@@ -92,7 +69,6 @@ function useLivePrices(instruments: string[]) {
           return { inst, price: data.price as number };
         })
       );
-
       if (!active) return;
       const updated = { ...pricesRef.current };
       for (const r of results) {
@@ -103,7 +79,6 @@ function useLivePrices(instruments: string[]) {
       pricesRef.current = updated;
       setPrices({ ...updated });
     };
-
     fetchAll();
     const interval = setInterval(fetchAll, 1000);
     return () => { active = false; clearInterval(interval); };
@@ -112,13 +87,10 @@ function useLivePrices(instruments: string[]) {
   return prices;
 }
 
-function calcPnl(pos: Position, currentPrice: number): number {
-  const contractSize = CONTRACT_SIZES[pos.instrument] ?? 1;
-  if (pos.side === 'BUY') {
-    return (currentPrice - pos.entry) * pos.size * contractSize;
-  } else {
-    return (pos.entry - currentPrice) * pos.size * contractSize;
-  }
+function calcPnl(side: string, entry: number, current: number, size: number, instrument: string): number {
+  const contractSize = CONTRACT_SIZES[instrument] ?? 1;
+  const direction = side === 'BUY' ? 1 : -1;
+  return (current - entry) * direction * size * contractSize;
 }
 
 export default function Terminal({ tier, userTierName }: TerminalProps) {
@@ -126,25 +98,67 @@ export default function Terminal({ tier, userTierName }: TerminalProps) {
   const tvLoaded = useTradingViewScript();
   const [activeInstrument, setActiveInstrument] = useState(INSTRUMENTS[0]);
   const [quantity, setQuantity] = useState<number>(INSTRUMENTS[0].default);
-  const [positions, setPositions] = useState<Position[]>([]);
+  const [openTrades, setOpenTrades] = useState<Trade[]>([]);
+  const [closedTrades, setClosedTrades] = useState<Trade[]>([]);
   const [viewMode, setViewMode] = useState<'simple' | 'pro'>('simple');
   const [tradeLoading, setTradeLoading] = useState<'BUY' | 'SELL' | null>(null);
   const [tradeStatus, setTradeStatus] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
-  const [closedPnl, setClosedPnl] = useState(0);
-  const BASE_EQUITY = 10000;
+  const [closingId, setClosingId] = useState<string | null>(null);
+  const closingIdsRef = useRef<Set<string>>(new Set());
+  const [sltpEditing, setSltpEditing] = useState<string | null>(null);
+  const [slInput, setSlInput] = useState('');
+  const [tpInput, setTpInput] = useState('');
+  const [orderSl, setOrderSl] = useState('');
+  const [orderTp, setOrderTp] = useState('');
+  const [activeTab, setActiveTab] = useState<'positions' | 'history'>('positions');
 
-  const openInstruments = positions.map(p => p.instrument);
+  const openInstruments = openTrades.map(t => t.instrument);
   const allInstruments = [...new Set([activeInstrument.label, ...openInstruments])];
   const livePrices = useLivePrices(allInstruments);
 
-  const positionsWithPnl = positions.map(pos => {
-    const currentPrice = livePrices[pos.instrument];
-    const pnl = currentPrice ? calcPnl(pos, currentPrice) : 0;
-    return { ...pos, pnl, currentPrice };
+  useEffect(() => {
+    loadTrades();
+  }, []);
+
+  const loadTrades = async () => {
+    try {
+      const [openRes, historyRes] = await Promise.all([
+        fetch('/api/trades/open'),
+        fetch('/api/trades'),
+      ]);
+      if (openRes.ok) setOpenTrades(await openRes.json());
+      if (historyRes.ok) {
+        const all: Trade[] = await historyRes.json();
+        setClosedTrades(all.filter(t => t.status === 'closed'));
+      }
+    } catch {}
+  };
+
+  const positionsWithPnl = openTrades.map(trade => {
+    const currentPrice = livePrices[trade.instrument];
+    const pnl = currentPrice ? calcPnl(trade.side, trade.entryPrice, currentPrice, trade.size, trade.instrument) : 0;
+    return { ...trade, livePnl: pnl, currentPrice };
   });
 
-  const totalOpenPnl = positionsWithPnl.reduce((sum, p) => sum + p.pnl, 0);
-  const equity = BASE_EQUITY + closedPnl + totalOpenPnl;
+  const totalOpenPnl = positionsWithPnl.reduce((sum, p) => sum + p.livePnl, 0);
+  const totalClosedPnl = closedTrades.reduce((sum, t) => sum + (t.pnl ?? 0), 0);
+
+  useEffect(() => {
+    if (openTrades.length === 0) return;
+    for (const pos of positionsWithPnl) {
+      if (!pos.currentPrice) continue;
+      if (pos.stopLoss && pos.side === 'BUY' && pos.currentPrice <= pos.stopLoss) {
+        handleClose(pos.id, pos.currentPrice);
+      } else if (pos.stopLoss && pos.side === 'SELL' && pos.currentPrice >= pos.stopLoss) {
+        handleClose(pos.id, pos.currentPrice);
+      }
+      if (pos.takeProfit && pos.side === 'BUY' && pos.currentPrice >= pos.takeProfit) {
+        handleClose(pos.id, pos.currentPrice);
+      } else if (pos.takeProfit && pos.side === 'SELL' && pos.currentPrice <= pos.takeProfit) {
+        handleClose(pos.id, pos.currentPrice);
+      }
+    }
+  }, [livePrices]);
 
   const handleInstrumentChange = (inst: InstrumentConfig) => {
     setActiveInstrument(inst);
@@ -162,8 +176,7 @@ export default function Terminal({ tier, userTierName }: TerminalProps) {
   const createChart = useCallback(() => {
     if (!chartContainerRef.current || !window.TradingView) return;
     chartContainerRef.current.innerHTML = '';
-
-    const modeConfig = viewMode === 'pro' 
+    const modeConfig = viewMode === 'pro'
       ? { hide_side_toolbar: false, studies: ["RSI@tv-basicstudies", "MACD@tv-basicstudies"], withdateranges: true, save_image: true }
       : { hide_side_toolbar: true, studies: [] as string[], withdateranges: false, save_image: false };
 
@@ -192,11 +205,6 @@ export default function Terminal({ tier, userTierName }: TerminalProps) {
   }, [tvLoaded, createChart]);
 
   const handleTrade = async (side: 'BUY' | 'SELL') => {
-    if (quantity > tier.maxContractsVal) {
-      alert(`Quantity exceeds your tier limit (${tier.maxContractsText}). Verify to unlock larger positions.`);
-      return;
-    }
-
     const entryPrice = livePrices[activeInstrument.label];
     if (!entryPrice) {
       setTradeStatus({ type: 'error', message: 'Waiting for price data...' });
@@ -208,28 +216,28 @@ export default function Terminal({ tier, userTierName }: TerminalProps) {
     setTradeStatus(null);
 
     try {
-      const response = await fetch('/api/supabase/trades', {
+      const body: any = {
+        instrument: activeInstrument.label,
+        side,
+        contracts: activeInstrument.decimals > 0 ? 1 : Math.round(quantity),
+        size: quantity,
+        entryPrice,
+      };
+      if (orderSl) body.stopLoss = parseFloat(orderSl);
+      if (orderTp) body.takeProfit = parseFloat(orderTp);
+
+      const response = await fetch('/api/trades', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          instrument: activeInstrument.label,
-          side,
-          size: quantity,
-          status: 'pending',
-        }),
+        body: JSON.stringify(body),
       });
 
       if (response.ok) {
-        const newPosition: Position = {
-          id: Math.random().toString(36).substring(7),
-          instrument: activeInstrument.label,
-          side,
-          size: quantity,
-          entry: entryPrice,
-          pnl: 0,
-        };
-        setPositions(prev => [...prev, newPosition]);
-        setTradeStatus({ type: 'success', message: `${side} ${activeInstrument.label} @ ${entryPrice.toLocaleString()}` });
+        const trade: Trade = await response.json();
+        setOpenTrades(prev => [...prev, trade]);
+        setTradeStatus({ type: 'success', message: `${side} ${quantity} ${activeInstrument.label} @ ${entryPrice.toLocaleString()}` });
+        setOrderSl('');
+        setOrderTp('');
         setTimeout(() => setTradeStatus(null), 3000);
       } else {
         const err = await response.json().catch(() => ({ message: 'Unknown error' }));
@@ -244,12 +252,56 @@ export default function Terminal({ tier, userTierName }: TerminalProps) {
     }
   };
 
-  const closePosition = (id: string) => {
-    const pos = positionsWithPnl.find(p => p.id === id);
-    if (pos) {
-      setClosedPnl(prev => prev + pos.pnl);
+  const handleClose = async (tradeId: string, exitPriceOverride?: number) => {
+    if (closingId === tradeId || closingIdsRef.current.has(tradeId)) return;
+    closingIdsRef.current.add(tradeId);
+    setClosingId(tradeId);
+
+    const trade = openTrades.find(t => t.id === tradeId);
+    if (!trade) { setClosingId(null); return; }
+
+    const exitPrice = exitPriceOverride ?? livePrices[trade.instrument];
+    if (!exitPrice) { setClosingId(null); return; }
+
+    try {
+      const res = await fetch(`/api/trades/${tradeId}/close`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ exitPrice }),
+      });
+      if (res.ok) {
+        const closed: Trade = await res.json();
+        setOpenTrades(prev => prev.filter(t => t.id !== tradeId));
+        setClosedTrades(prev => [closed, ...prev]);
+      }
+    } catch {} finally {
+      closingIdsRef.current.delete(tradeId);
+      setClosingId(null);
     }
-    setPositions(prev => prev.filter(p => p.id !== id));
+  };
+
+  const handleSaveSLTP = async (tradeId: string) => {
+    const sl = slInput ? parseFloat(slInput) : null;
+    const tp = tpInput ? parseFloat(tpInput) : null;
+
+    try {
+      const res = await fetch(`/api/trades/${tradeId}/sltp`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ stopLoss: sl, takeProfit: tp }),
+      });
+      if (res.ok) {
+        const updated: Trade = await res.json();
+        setOpenTrades(prev => prev.map(t => t.id === tradeId ? updated : t));
+      }
+    } catch {}
+    setSltpEditing(null);
+  };
+
+  const startEditSLTP = (trade: Trade) => {
+    setSltpEditing(trade.id);
+    setSlInput(trade.stopLoss?.toString() ?? '');
+    setTpInput(trade.takeProfit?.toString() ?? '');
   };
 
   const displayQty = activeInstrument.decimals > 0
@@ -258,10 +310,17 @@ export default function Terminal({ tier, userTierName }: TerminalProps) {
 
   const formatPnl = (val: number) => `${val >= 0 ? '+' : ''}$${val.toFixed(2)}`;
 
+  const formatPrice = (price: number, instrument: string) => {
+    if (['Bitcoin', 'Gold', 'S&P 500', 'Nasdaq', 'MNQ', 'MES'].includes(instrument)) {
+      return price.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    }
+    return price.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 4 });
+  };
+
   return (
     <div className="flex flex-col lg:flex-row h-full">
       <div className="flex-1 flex flex-col border-r border-b1 min-w-0">
-        
+
         <div className="flex items-center border-b border-b1 bg-s1 shrink-0">
           <div className="flex overflow-x-auto no-scrollbar flex-1">
             {INSTRUMENTS.map((inst) => (
@@ -279,12 +338,14 @@ export default function Terminal({ tier, userTierName }: TerminalProps) {
             <button
               onClick={() => setViewMode('simple')}
               className={`px-2 py-1 text-[10px] font-bold uppercase rounded transition-colors ${viewMode === 'simple' ? 'text-gold border border-gold/50 bg-gold/10' : 'text-muted-foreground hover:text-white'}`}
+              data-testid="btn-simple-mode"
             >
               Simple
             </button>
             <button
               onClick={() => setViewMode('pro')}
               className={`px-2 py-1 text-[10px] font-bold uppercase rounded transition-colors ${viewMode === 'pro' ? 'text-gold border border-gold/50 bg-gold/10' : 'text-muted-foreground hover:text-white'}`}
+              data-testid="btn-pro-mode"
             >
               Pro
             </button>
@@ -301,17 +362,18 @@ export default function Terminal({ tier, userTierName }: TerminalProps) {
         </div>
 
         <div className="border-t border-b1 bg-s1 p-4 shrink-0">
-          <div className="max-w-2xl mx-auto flex flex-col sm:flex-row items-center gap-6">
-            
+          <div className="max-w-3xl mx-auto flex flex-col sm:flex-row items-center gap-6">
+
             <div className="flex flex-col items-center gap-1">
               <div className="text-[10px] text-gold font-bold uppercase tracking-wider mb-1">{activeInstrument.label}</div>
               <div className="flex items-center bg-s2 border border-b2 rounded overflow-hidden">
-                <button 
+                <button
                   onClick={() => setQuantity(clampQuantity(quantity - activeInstrument.step, activeInstrument))}
                   disabled={atMin}
                   className={`px-4 py-3 transition-colors ${atMin ? 'text-muted-foreground/30 cursor-not-allowed' : 'text-muted-foreground hover:text-white hover:bg-s3'}`}
+                  data-testid="btn-qty-minus"
                 >-</button>
-                <input 
+                <input
                   type="text"
                   inputMode="decimal"
                   value={displayQty}
@@ -322,20 +384,50 @@ export default function Terminal({ tier, userTierName }: TerminalProps) {
                   className="w-20 bg-transparent text-center text-white font-mono font-bold outline-none"
                   data-testid="input-contracts"
                 />
-                <button 
+                <button
                   onClick={() => setQuantity(clampQuantity(quantity + activeInstrument.step, activeInstrument))}
                   disabled={atMax}
                   className={`px-4 py-3 transition-colors ${atMax ? 'text-muted-foreground/30 cursor-not-allowed' : 'text-muted-foreground hover:text-white hover:bg-s3'}`}
+                  data-testid="btn-qty-plus"
                 >+</button>
               </div>
               <span className="text-[10px] text-muted-foreground">
-                Min: {activeInstrument.min} · Max: {activeInstrument.max} · Step: {activeInstrument.step}
+                Min: {activeInstrument.min} | Max: {activeInstrument.max}
               </span>
+            </div>
+
+            <div className="flex flex-col gap-2">
+              <div className="flex gap-2">
+                <div className="flex flex-col gap-0.5">
+                  <label className="text-[9px] text-red font-bold uppercase tracking-wider">Stop Loss</label>
+                  <input
+                    type="text"
+                    inputMode="decimal"
+                    placeholder="None"
+                    value={orderSl}
+                    onChange={(e) => setOrderSl(e.target.value)}
+                    className="w-24 bg-s2 border border-b2 rounded px-2 py-1.5 text-xs text-white font-mono outline-none focus:border-red/50"
+                    data-testid="input-order-sl"
+                  />
+                </div>
+                <div className="flex flex-col gap-0.5">
+                  <label className="text-[9px] text-green font-bold uppercase tracking-wider">Take Profit</label>
+                  <input
+                    type="text"
+                    inputMode="decimal"
+                    placeholder="None"
+                    value={orderTp}
+                    onChange={(e) => setOrderTp(e.target.value)}
+                    className="w-24 bg-s2 border border-b2 rounded px-2 py-1.5 text-xs text-white font-mono outline-none focus:border-green/50"
+                    data-testid="input-order-tp"
+                  />
+                </div>
+              </div>
             </div>
 
             <div className="flex-1 flex flex-col gap-2 w-full">
               <div className="flex gap-4">
-                <button 
+                <button
                   onClick={() => handleTrade('SELL')}
                   disabled={tradeLoading !== null}
                   className="flex-1 bg-red/10 text-red border border-red/30 hover:bg-red hover:text-white py-3 rounded transition-all font-heading text-xl flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed"
@@ -343,7 +435,7 @@ export default function Terminal({ tier, userTierName }: TerminalProps) {
                 >
                   {tradeLoading === 'SELL' ? 'Placing...' : 'SELL'}
                 </button>
-                <button 
+                <button
                   onClick={() => handleTrade('BUY')}
                   disabled={tradeLoading !== null}
                   className="flex-1 bg-green/10 text-green border border-green/30 hover:bg-green hover:text-white py-3 rounded transition-all font-heading text-xl flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed"
@@ -358,94 +450,218 @@ export default function Terminal({ tier, userTierName }: TerminalProps) {
                 </div>
               )}
             </div>
-            
+
           </div>
         </div>
 
       </div>
 
       <div className="w-full lg:w-80 bg-s1 flex flex-col shrink-0">
-        
+
         <div className="p-4 border-b border-b1 bg-s2 grid grid-cols-2 gap-4 shrink-0">
-          <div>
-            <div className="text-xs text-muted-foreground uppercase mb-1">Equity</div>
-            <div className={`data-number font-bold ${equity >= BASE_EQUITY ? 'text-white' : 'text-red'}`}>
-              ${equity.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-            </div>
-          </div>
-          <div>
-            <div className="text-xs text-muted-foreground uppercase mb-1">Closed PnL</div>
-            <div className={`data-number font-bold ${closedPnl >= 0 ? 'text-green' : 'text-red'}`}>
-              {formatPnl(closedPnl)}
-            </div>
-          </div>
-          <div>
-            <div className="text-xs text-muted-foreground uppercase mb-1">Positions</div>
-            <div className="data-number text-white font-bold">{positions.length}</div>
-          </div>
           <div>
             <div className="text-xs text-muted-foreground uppercase mb-1">Open PnL</div>
             <div className={`data-number font-bold ${totalOpenPnl >= 0 ? 'text-green' : 'text-red'}`} data-testid="text-open-pnl">
               {formatPnl(totalOpenPnl)}
             </div>
           </div>
+          <div>
+            <div className="text-xs text-muted-foreground uppercase mb-1">Closed PnL</div>
+            <div className={`data-number font-bold ${totalClosedPnl >= 0 ? 'text-green' : 'text-red'}`} data-testid="text-closed-pnl">
+              {formatPnl(totalClosedPnl)}
+            </div>
+          </div>
+          <div>
+            <div className="text-xs text-muted-foreground uppercase mb-1">Open</div>
+            <div className="data-number text-white font-bold" data-testid="text-open-count">{openTrades.length}</div>
+          </div>
+          <div>
+            <div className="text-xs text-muted-foreground uppercase mb-1">Closed</div>
+            <div className="data-number text-white font-bold" data-testid="text-closed-count">{closedTrades.length}</div>
+          </div>
         </div>
 
-        <div className="p-3 border-b border-b2 text-xs font-bold text-muted-foreground uppercase tracking-wider flex justify-between shrink-0">
-          <span>Open Positions ({positions.length})</span>
+        <div className="flex border-b border-b1 shrink-0">
+          <button
+            onClick={() => setActiveTab('positions')}
+            className={`flex-1 py-2.5 text-xs font-bold uppercase tracking-wider transition-colors ${activeTab === 'positions' ? 'text-gold border-b-2 border-gold bg-s2' : 'text-muted-foreground hover:text-white'}`}
+            data-testid="tab-positions"
+          >
+            Positions ({openTrades.length})
+          </button>
+          <button
+            onClick={() => setActiveTab('history')}
+            className={`flex-1 py-2.5 text-xs font-bold uppercase tracking-wider transition-colors ${activeTab === 'history' ? 'text-gold border-b-2 border-gold bg-s2' : 'text-muted-foreground hover:text-white'}`}
+            data-testid="tab-history"
+          >
+            History ({closedTrades.length})
+          </button>
         </div>
 
         <div className="flex-1 overflow-y-auto">
-          {positions.length === 0 ? (
-            <div className="h-full flex items-center justify-center text-muted-foreground text-sm p-4 text-center">
-              No open positions. Select an instrument and execute a trade.
-            </div>
-          ) : (
-            <div className="divide-y divide-b2">
-              {positionsWithPnl.map(pos => (
-                <div key={pos.id} className="p-4 hover:bg-s2 transition-colors">
-                  <div className="flex justify-between items-start mb-2">
-                    <div className="flex items-center gap-2">
-                      <span className={`text-xs font-bold px-1.5 py-0.5 rounded ${pos.side === 'BUY' ? 'bg-green/20 text-green' : 'bg-red/20 text-red'}`}>
-                        {pos.side}
-                      </span>
-                      <span className="font-bold text-white text-sm">{pos.instrument}</span>
+          {activeTab === 'positions' && (
+            openTrades.length === 0 ? (
+              <div className="h-full flex items-center justify-center text-muted-foreground text-sm p-4 text-center">
+                No open positions. Select an instrument and execute a trade.
+              </div>
+            ) : (
+              <div className="divide-y divide-b2">
+                {positionsWithPnl.map(pos => (
+                  <div key={pos.id} className="p-4 hover:bg-s2 transition-colors" data-testid={`position-card-${pos.id}`}>
+                    <div className="flex justify-between items-start mb-2">
+                      <div className="flex items-center gap-2">
+                        <span className={`text-xs font-bold px-1.5 py-0.5 rounded ${pos.side === 'BUY' ? 'bg-green/20 text-green' : 'bg-red/20 text-red'}`}>
+                          {pos.side}
+                        </span>
+                        <span className="font-bold text-white text-sm">{pos.instrument}</span>
+                      </div>
+                      <button
+                        onClick={() => handleClose(pos.id)}
+                        disabled={closingId === pos.id}
+                        className="text-xs text-muted-foreground hover:text-white bg-b1 px-2 py-1 rounded transition-colors disabled:opacity-50"
+                        data-testid={`btn-close-${pos.id}`}
+                      >
+                        {closingId === pos.id ? '...' : 'Close'}
+                      </button>
                     </div>
-                    <button 
-                      onClick={() => closePosition(pos.id)}
-                      className="text-xs text-muted-foreground hover:text-white bg-b1 px-2 py-1 rounded transition-colors"
-                    >
-                      Close
-                    </button>
-                  </div>
-                  
-                  <div className="flex justify-between items-end mt-3">
-                    <div className="flex gap-4">
+
+                    <div className="grid grid-cols-3 gap-2 mt-2">
                       <div>
-                        <div className="text-[10px] text-muted-foreground uppercase">Qty</div>
+                        <div className="text-[10px] text-muted-foreground uppercase">Size</div>
                         <div className="data-number text-sm text-white">{pos.size}</div>
                       </div>
                       <div>
                         <div className="text-[10px] text-muted-foreground uppercase">Entry</div>
-                        <div className="data-number text-sm text-white">{pos.entry.toLocaleString()}</div>
+                        <div className="data-number text-sm text-white">{formatPrice(pos.entryPrice, pos.instrument)}</div>
                       </div>
-                      {pos.currentPrice && (
-                        <div>
-                          <div className="text-[10px] text-muted-foreground uppercase">Current</div>
-                          <div className="data-number text-sm text-white">{pos.currentPrice.toLocaleString()}</div>
+                      <div>
+                        <div className="text-[10px] text-muted-foreground uppercase">Current</div>
+                        <div className="data-number text-sm text-white">
+                          {pos.currentPrice ? formatPrice(pos.currentPrice, pos.instrument) : '---'}
                         </div>
-                      )}
+                      </div>
                     </div>
-                    <div className="text-right">
-                      <div className="text-[10px] text-muted-foreground uppercase">P&L</div>
-                      <div className={`data-number text-sm font-bold ${pos.pnl >= 0 ? 'text-green' : 'text-red'}`}>
-                        {formatPnl(pos.pnl)}
+
+                    <div className="flex justify-between items-end mt-2">
+                      <div className="flex gap-3">
+                        <div>
+                          <div className="text-[10px] text-red uppercase font-bold">SL</div>
+                          <div className="data-number text-xs text-muted-foreground">
+                            {pos.stopLoss ? formatPrice(pos.stopLoss, pos.instrument) : '---'}
+                          </div>
+                        </div>
+                        <div>
+                          <div className="text-[10px] text-green uppercase font-bold">TP</div>
+                          <div className="data-number text-xs text-muted-foreground">
+                            {pos.takeProfit ? formatPrice(pos.takeProfit, pos.instrument) : '---'}
+                          </div>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <div className="text-[10px] text-muted-foreground uppercase">P&L</div>
+                        <div className={`data-number text-sm font-bold ${pos.livePnl >= 0 ? 'text-green' : 'text-red'}`}>
+                          {formatPnl(pos.livePnl)}
+                        </div>
+                      </div>
+                    </div>
+
+                    {sltpEditing === pos.id ? (
+                      <div className="mt-3 pt-3 border-t border-b2 flex gap-2 items-end">
+                        <div className="flex-1">
+                          <label className="text-[9px] text-red font-bold uppercase">SL</label>
+                          <input
+                            type="text"
+                            inputMode="decimal"
+                            value={slInput}
+                            onChange={(e) => setSlInput(e.target.value)}
+                            placeholder="None"
+                            className="w-full bg-s3 border border-b2 rounded px-2 py-1 text-xs text-white font-mono outline-none"
+                            data-testid={`input-sl-${pos.id}`}
+                          />
+                        </div>
+                        <div className="flex-1">
+                          <label className="text-[9px] text-green font-bold uppercase">TP</label>
+                          <input
+                            type="text"
+                            inputMode="decimal"
+                            value={tpInput}
+                            onChange={(e) => setTpInput(e.target.value)}
+                            placeholder="None"
+                            className="w-full bg-s3 border border-b2 rounded px-2 py-1 text-xs text-white font-mono outline-none"
+                            data-testid={`input-tp-${pos.id}`}
+                          />
+                        </div>
+                        <button
+                          onClick={() => handleSaveSLTP(pos.id)}
+                          className="text-xs text-gold hover:text-white bg-gold/10 border border-gold/30 px-2 py-1 rounded"
+                          data-testid={`btn-save-sltp-${pos.id}`}
+                        >
+                          Save
+                        </button>
+                        <button
+                          onClick={() => setSltpEditing(null)}
+                          className="text-xs text-muted-foreground hover:text-white px-1 py-1"
+                        >
+                          X
+                        </button>
+                      </div>
+                    ) : (
+                      <button
+                        onClick={() => startEditSLTP(pos)}
+                        className="mt-2 w-full text-[10px] text-muted-foreground hover:text-gold uppercase tracking-wider py-1 border border-b2 rounded hover:border-gold/30 transition-colors"
+                        data-testid={`btn-edit-sltp-${pos.id}`}
+                      >
+                        Edit SL / TP
+                      </button>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )
+          )}
+
+          {activeTab === 'history' && (
+            closedTrades.length === 0 ? (
+              <div className="h-full flex items-center justify-center text-muted-foreground text-sm p-4 text-center">
+                No closed trades yet.
+              </div>
+            ) : (
+              <div className="divide-y divide-b2">
+                {closedTrades.map(trade => (
+                  <div key={trade.id} className="p-4 hover:bg-s2 transition-colors" data-testid={`history-card-${trade.id}`}>
+                    <div className="flex items-center gap-2 mb-2">
+                      <span className={`text-xs font-bold px-1.5 py-0.5 rounded ${trade.side === 'BUY' ? 'bg-green/20 text-green' : 'bg-red/20 text-red'}`}>
+                        {trade.side}
+                      </span>
+                      <span className="font-bold text-white text-sm">{trade.instrument}</span>
+                      <span className={`ml-auto data-number text-sm font-bold ${(trade.pnl ?? 0) >= 0 ? 'text-green' : 'text-red'}`}>
+                        {formatPnl(trade.pnl ?? 0)}
+                      </span>
+                    </div>
+                    <div className="grid grid-cols-4 gap-2 text-xs">
+                      <div>
+                        <div className="text-[10px] text-muted-foreground uppercase">Size</div>
+                        <div className="data-number text-white">{trade.size}</div>
+                      </div>
+                      <div>
+                        <div className="text-[10px] text-muted-foreground uppercase">Entry</div>
+                        <div className="data-number text-white">{formatPrice(trade.entryPrice, trade.instrument)}</div>
+                      </div>
+                      <div>
+                        <div className="text-[10px] text-muted-foreground uppercase">Exit</div>
+                        <div className="data-number text-white">{trade.exitPrice ? formatPrice(trade.exitPrice, trade.instrument) : '---'}</div>
+                      </div>
+                      <div>
+                        <div className="text-[10px] text-muted-foreground uppercase">Date</div>
+                        <div className="data-number text-muted-foreground">
+                          {trade.closedAt ? new Date(trade.closedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '---'}
+                        </div>
                       </div>
                     </div>
                   </div>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            )
           )}
         </div>
 

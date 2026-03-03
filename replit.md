@@ -53,10 +53,15 @@ A prop trading platform for traders who've already won elsewhere. Users verify t
 - TradingView widget: loads `https://s3.tradingview.com/tv.js`, 11 instruments with Simple/Pro view modes
 - Per-instrument quantity config: Bitcoin/Gold/Silver use 0.01 step with decimal lots; all others use integer contracts (step 1, max 20)
 - Switching instrument tabs resets quantity to that instrument's default
-- BUY/SELL buttons insert trades to Supabase via `/api/supabase/trades` (server-side proxy, requires auth)
-- Supabase credentials stored in env vars: SUPABASE_URL, SUPABASE_ANON_KEY
+- All trades persist in PostgreSQL `trades` table — survive page refresh
+- Trade fields: instrument, side (BUY/SELL), size (decimal lots), entryPrice, exitPrice, pnl, stopLoss, takeProfit, status (open/closed)
+- BUY/SELL → `POST /api/trades` saves to DB, returns full trade object
+- Close → `POST /api/trades/:id/close` computes P&L server-side using contract sizes, updates user balance
+- SL/TP → `PATCH /api/trades/:id/sltp` persists stop loss and take profit on open trades
+- Auto-close: client-side checks live price against SL/TP each tick, auto-closes when triggered (deduplicated via ref)
+- Trade history: right panel has Positions/History tabs; closed trades show entry, exit, P&L, date
 - Live P&L: `useLivePrices()` polls `/api/prices/:instrument` every 1s for all open position instruments
-- P&L formula: BUY = (current - entry) × qty × contractSize; SELL = (entry - current) × qty × contractSize
+- P&L formula: BUY = (current - entry) × size × contractSize; SELL = (entry - current) × size × contractSize
 - Contract sizes: BTC=1, Gold/MGC=100/10, Silver/SIL=5000, Oil/MCL=1000, S&P/MES=50/5, Nasdaq/MNQ=20/2
-- Closing a position locks in P&L and adds to equity permanently
-- Price sources: Coinbase (BTC), Yahoo Finance (all others — same exchanges as TradingView)
+- Price sources: Coinbase (BTC), Yahoo Finance (all others)
+- Supabase proxy still available at `/api/supabase/trades` (env: SUPABASE_URL, SUPABASE_ANON_KEY)

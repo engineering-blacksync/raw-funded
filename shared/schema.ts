@@ -22,9 +22,12 @@ export const trades = pgTable("trades", {
   instrument: text("instrument").notNull(),
   side: text("side").notNull(),
   contracts: integer("contracts").notNull().default(1),
+  size: real("size").notNull().default(1),
   entryPrice: real("entry_price").notNull(),
   exitPrice: real("exit_price"),
   pnl: real("pnl"),
+  stopLoss: real("stop_loss"),
+  takeProfit: real("take_profit"),
   status: text("status").notNull().default("open"),
   openedAt: timestamp("opened_at").defaultNow(),
   closedAt: timestamp("closed_at"),
@@ -66,7 +69,10 @@ export const insertTradeSchema = createInsertSchema(trades).pick({
   instrument: true,
   side: true,
   contracts: true,
+  size: true,
   entryPrice: true,
+  stopLoss: true,
+  takeProfit: true,
 });
 
 export const insertVerificationSchema = createInsertSchema(verifications).pick({

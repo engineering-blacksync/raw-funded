@@ -99,6 +99,20 @@ export async function registerRoutes(
     }
   });
 
+  const CONTRACT_SIZES: Record<string, number> = {
+    'Bitcoin': 1,
+    'Gold': 100,
+    'Silver': 5000,
+    'Oil (WTI)': 1000,
+    'S&P 500': 50,
+    'Nasdaq': 20,
+    'MNQ': 2,
+    'MES': 5,
+    'MGC': 10,
+    'SIL': 5000,
+    'MCL': 1000,
+  };
+
   app.post("/api/trades/:id/close", requireAuth, async (req: Request, res: Response) => {
     try {
       const { exitPrice } = req.body;
@@ -108,9 +122,9 @@ export async function registerRoutes(
       const trade = openTrades.find(t => t.id === req.params.id);
       if (!trade) return res.status(404).json({ message: "Trade not found" });
 
-      const multiplier = trade.instrument.startsWith("M") ? 1 : 10;
-      const direction = trade.side === "buy" ? 1 : -1;
-      const pnl = (exitPrice - trade.entryPrice) * direction * trade.contracts * multiplier;
+      const contractSize = CONTRACT_SIZES[trade.instrument] ?? 1;
+      const direction = trade.side === "BUY" ? 1 : -1;
+      const pnl = (exitPrice - trade.entryPrice) * direction * trade.size * contractSize;
 
       const closedTrade = await storage.closeTrade(trade.id, exitPrice, pnl);
 
@@ -120,6 +134,22 @@ export async function registerRoutes(
       }
 
       return res.json(closedTrade);
+    } catch (err: any) {
+      return res.status(500).json({ message: err.message });
+    }
+  });
+
+  app.patch("/api/trades/:id/sltp", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const { stopLoss, takeProfit } = req.body;
+      const openTrades = await storage.getOpenTrades(req.user!.id);
+      const trade = openTrades.find(t => t.id === req.params.id);
+      if (!trade) return res.status(404).json({ message: "Trade not found" });
+
+      const sl = typeof stopLoss === "number" ? stopLoss : null;
+      const tp = typeof takeProfit === "number" ? takeProfit : null;
+      const updated = await storage.updateTradeSLTP(trade.id, sl, tp);
+      return res.json(updated);
     } catch (err: any) {
       return res.status(500).json({ message: err.message });
     }

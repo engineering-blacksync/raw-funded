@@ -144,45 +144,44 @@ export default function Dashboard() {
             <div className="flex-1 overflow-y-auto p-8">
               <div className="max-w-6xl mx-auto space-y-6">
                 
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-6">
-                  <div className="col-span-1 md:col-span-2 lg:col-span-3 xl:col-span-2">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
+                  <div>
                     <BalanceCard balance={user.balance} />
                   </div>
-                  
-                  <div className="col-span-1">
+                  <div>
                     <StatCard 
                       title="Net P&L" 
                       value={<span className={`${(stats?.totalPnl ?? 0) >= 0 ? 'text-[#36B37E]' : 'text-[#EF4444]'}`}>${(stats?.totalPnl ?? 0).toFixed(2)}</span>}
                       subtext="Track your daily change" 
                     />
                   </div>
-                  <div className="col-span-1">
+                  <div>
                     <StatCard 
                       title="Win Rate" 
                       value={
                         <div className="flex items-center justify-between w-full gap-2">
                           <span>{(stats?.winRate ?? 0).toFixed(2)}%</span>
-                          <div className="w-10 h-10 lg:w-12 lg:h-12 rounded-full border-4 border-[#36B37E] border-l-[#EF4444] border-b-[#EF4444] rotate-45 relative shrink-0">
-                            <div className="absolute -bottom-2 -right-4 bg-white text-black text-[9px] px-1 rounded -rotate-45 font-bold">{(stats?.winRate ?? 0).toFixed(1)}%</div>
+                          <div className="w-9 h-9 rounded-full border-[3px] border-[#36B37E] border-l-[#EF4444] border-b-[#EF4444] rotate-45 relative shrink-0">
+                            <div className="absolute -bottom-2 -right-3 bg-white text-black text-[8px] px-0.5 rounded -rotate-45 font-bold">{(stats?.winRate ?? 0).toFixed(1)}%</div>
                           </div>
                         </div>
                       }
                       subtext="Track your daily change" 
                     />
                   </div>
-                  <div className="col-span-1">
+                  <div>
                     <StatCard 
                       title="Profit Factor" 
                       value={
                         <div className="flex items-center justify-between w-full gap-2">
                           <span>{(stats?.profitFactor ?? 0).toFixed(2)}</span>
-                          <div className="w-10 h-10 lg:w-12 lg:h-12 rounded-full border-4 border-[#36B37E] border-r-transparent border-t-[#EF4444] shrink-0"></div>
+                          <div className="w-9 h-9 rounded-full border-[3px] border-[#36B37E] border-r-transparent border-t-[#EF4444] shrink-0"></div>
                         </div>
                       }
                       subtext="Track your daily change" 
                     />
                   </div>
-                  <div className="col-span-1">
+                  <div>
                     <StatCard 
                       title="Avg. Win/Loss Ratio" 
                       value={<span>{(stats?.avgWinLoss ?? 0).toFixed(2)}</span>}

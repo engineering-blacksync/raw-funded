@@ -19,9 +19,9 @@ export function BalanceCard({ balance = 10000 }: { balance?: number }) {
 
   const maxValue = Math.max(...weekData.map((d) => d.value))
   const minValue = Math.min(...weekData.map((d) => d.value))
-  const chartHeight = 160
-  const chartWidth = 360
-  const padding = { top: 40, bottom: 35, left: 10, right: 10 }
+  const chartHeight = 100
+  const chartWidth = 300
+  const padding = { top: 20, bottom: 25, left: 8, right: 8 }
 
   const getY = (value: number) => {
     const range = maxValue - minValue || 1
@@ -103,42 +103,26 @@ export function BalanceCard({ balance = 10000 }: { balance?: number }) {
         style={{ height: "50%" }}
       />
 
-      <div className="relative flex-1 overflow-hidden rounded-[22px] bg-card p-5 pb-4 shadow-[0_2px_8px_rgba(0,0,0,0.08),0_0_0_1px_rgba(0,0,0,0.04)] dark:shadow-[0_2px_8px_rgba(0,0,0,0.2),0_0_0_1px_rgba(255,255,255,0.05)] flex flex-col">
+      <div className="relative flex-1 overflow-hidden rounded-[22px] bg-card p-4 pb-3 shadow-[0_2px_8px_rgba(0,0,0,0.08),0_0_0_1px_rgba(0,0,0,0.04)] dark:shadow-[0_2px_8px_rgba(0,0,0,0.2),0_0_0_1px_rgba(255,255,255,0.05)] flex flex-col">
         {/* Header Section */}
         <div className="flex items-start justify-between">
           <div className="flex-1">
-            <p className="text-[13px] font-medium tracking-wide text-muted-foreground uppercase">Balance</p>
-            <h2 className="mt-1 text-[32px] md:text-[38px] font-semibold leading-[1] tracking-[-0.02em] text-card-foreground data-number">
+            <p className="text-[11px] font-medium tracking-wide text-muted-foreground uppercase">Balance</p>
+            <h2 className="mt-0.5 text-[22px] font-semibold leading-[1] tracking-[-0.02em] text-card-foreground data-number">
               ${balance.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
             </h2>
-            <div className="mt-3 inline-flex items-center gap-1.5 rounded-full border border-border bg-background/40 px-3 py-1.5 shadow-[0_1px_3px_rgba(0,0,0,0.04),0_4px_12px_rgba(0,0,0,0.03)] dark:shadow-[0_1px_3px_rgba(0,0,0,0.2),0_1px_3px_rgba(255,255,255,0.05)]">
-              <span className="text-[12px] font-semibold text-green data-number">+ $850.50</span>
-              <svg width="14" height="14" viewBox="0 0 16 16" fill="none" className="text-green">
-                <path
-                  d="M2 11L6 7L9 10L14 4"
-                  stroke="currentColor"
-                  strokeWidth="1.5"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                />
-                <path
-                  d="M10 4H14V8"
-                  stroke="currentColor"
-                  strokeWidth="1.5"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                />
+            <div className="mt-2 inline-flex items-center gap-1 rounded-full border border-border bg-background/40 px-2 py-1">
+              <span className="text-[10px] font-semibold text-green data-number">+ $850.50</span>
+              <svg width="10" height="10" viewBox="0 0 16 16" fill="none" className="text-green">
+                <path d="M2 11L6 7L9 10L14 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                <path d="M10 4H14V8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
               </svg>
             </div>
-          </div>
-
-          <div className="relative -mr-2 -mt-2 h-[80px] w-[95px] shrink-0">
-            <MoneyIllustration />
           </div>
         </div>
 
         {/* Chart Section */}
-        <div className="relative mt-auto pt-4">
+        <div className="relative mt-auto pt-2">
           <svg
             ref={chartRef}
             viewBox={`0 0 ${chartWidth} ${chartHeight}`}
@@ -233,32 +217,13 @@ export function BalanceCard({ balance = 10000 }: { balance?: number }) {
                 x={getX(i)}
                 y={chartHeight - 8}
                 textAnchor="middle"
-                className="text-[12px] font-medium fill-muted-foreground"
+                className="text-[9px] font-medium fill-muted-foreground"
               >
                 {d.day}
               </text>
             ))}
           </svg>
 
-          {/* Floating tooltip */}
-          {hoveredIndex !== null && (
-            <div
-              className="pointer-events-none absolute transition-all duration-150 ease-out"
-              style={{
-                left: `${(getX(hoveredIndex) / chartWidth) * 100}%`,
-                top: `${(getY(weekData[hoveredIndex].value) / chartHeight) * 100}%`,
-                transform: "translate(-50%, -140%)",
-              }}
-            >
-              <div className="relative rounded-xl bg-foreground/90 px-4 py-2 shadow-[0_4px_16px_rgba(0,0,0,0.2)] dark:bg-background/90 backdrop-blur-sm">
-                <span className="text-[14px] font-semibold text-background dark:text-foreground data-number">
-                  ${weekData[hoveredIndex].value.toLocaleString()}
-                </span>
-                {/* Tooltip arrow */}
-                <div className="absolute left-1/2 -bottom-2 -translate-x-1/2 w-0 h-0 border-l-8 border-r-8 border-t-8 border-l-transparent border-r-transparent border-t-foreground/90 dark:border-t-background/90" />
-              </div>
-            </div>
-          )}
         </div>
       </div>
     </div>

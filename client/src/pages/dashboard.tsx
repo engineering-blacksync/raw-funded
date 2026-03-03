@@ -3,6 +3,7 @@ import { Link } from "wouter";
 import { LogOut, Activity, BarChart2, Shield, Settings, CreditCard, ChevronDown, Check } from "lucide-react";
 import Terminal from "@/components/dashboard/Terminal";
 import { BalanceCard } from "@/components/ui/analytics-bento";
+import { StatCard, CalendarGrid } from "@/components/ui/data-components";
 import { TIERS } from "@/lib/constants";
 
 export default function Dashboard() {
@@ -90,7 +91,7 @@ export default function Dashboard() {
           <nav className="flex-1 space-y-2 px-2">
             {[
               { id: 'terminal', icon: Activity, label: 'Terminal' },
-              { id: 'compass', icon: BarChart2, label: 'Compass' },
+              { id: 'data', icon: BarChart2, label: 'Your Data' },
               { id: 'leaderboard', icon: Shield, label: 'Leaderboard' },
               { id: 'verification', icon: Check, label: 'Verification' },
               { id: 'withdraw', icon: CreditCard, label: 'Withdraw' },
@@ -122,27 +123,94 @@ export default function Dashboard() {
         {/* Main Content Area */}
         <main className="flex-1 overflow-hidden flex flex-col bg-background">
           {activeTab === 'terminal' && <Terminal tier={currentTier} userTierName={user.tier} />}
-          {activeTab === 'compass' && (
+          {activeTab === 'data' && (
             <div className="flex-1 overflow-y-auto p-8">
-              <div className="max-w-5xl mx-auto space-y-8">
-                <div>
-                  <h2 className="text-3xl text-white font-heading mb-6">TRADING RESULTS</h2>
-                  <div className="flex justify-center md:justify-start">
-                    <BalanceCard />
+              <div className="max-w-6xl mx-auto space-y-6">
+                
+                <div className="flex flex-col xl:flex-row gap-6">
+                  {/* Balance Card - scaled down */}
+                  <div className="shrink-0 w-full xl:w-auto flex justify-center">
+                    <div className="transform scale-[0.75] origin-top-left xl:origin-top w-[420px] h-[300px]">
+                      <BalanceCard />
+                    </div>
+                  </div>
+                  
+                  {/* Stats Row */}
+                  <div className="flex-1 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                    <StatCard 
+                      title="Net P&L" 
+                      value={<span className="text-[#36B37E]">$1,340.00</span>}
+                      subtext="Track your daily change" 
+                    />
+                    <StatCard 
+                      title="Win Rate" 
+                      value={
+                        <div className="flex items-center justify-between w-full">
+                          <span>73.68%</span>
+                          <div className="w-12 h-12 rounded-full border-4 border-[#36B37E] border-l-[#EF4444] border-b-[#EF4444] rotate-45 relative ml-2 shrink-0">
+                            <div className="absolute -bottom-2 -right-4 bg-white text-black text-[10px] px-1 rounded -rotate-45 font-bold">73.68%</div>
+                          </div>
+                        </div>
+                      }
+                      subtext="Track your daily change" 
+                    />
+                    <StatCard 
+                      title="Profit Factor" 
+                      value={
+                        <div className="flex items-center justify-between w-full">
+                          <span>3.16</span>
+                          <div className="w-12 h-12 rounded-full border-4 border-[#36B37E] border-r-transparent border-t-[#EF4444] ml-2 shrink-0"></div>
+                        </div>
+                      }
+                      subtext="Track your daily change" 
+                    />
+                    <StatCard 
+                      title="Avg. Win/Loss Ratio" 
+                      value={<span>1.13</span>}
+                      subtext="Track your daily change" 
+                    />
                   </div>
                 </div>
                 
-                {/* Mock recent trades or other stats could go here */}
-                <div className="bg-s1 border border-b1 p-6 mt-8 rounded-sm">
-                  <h3 className="text-xl text-white font-heading mb-4">RECENT ACTIVITY</h3>
-                  <div className="text-center text-muted-foreground py-8">
-                    Trade history will populate here once you execute trades in the Terminal.
+                {/* Calendar View */}
+                <div>
+                  <CalendarGrid />
+                </div>
+                
+                {/* Bottom Stats */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="bg-s1 border border-b1 p-4 rounded-xl flex gap-8">
+                    <div>
+                      <div className="text-sm text-muted-foreground flex items-center gap-1 mb-1">Most Active <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg></div>
+                      <div className="text-xl font-medium text-white">Monday</div>
+                    </div>
+                    <div>
+                      <div className="text-sm text-muted-foreground flex items-center gap-1 mb-1">Most Profitable <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg></div>
+                      <div className="text-xl font-medium text-[#36B37E]">Friday<br/>$908.20</div>
+                    </div>
+                  </div>
+                  
+                  <div className="bg-s1 border border-b1 p-4 rounded-xl flex flex-col justify-between">
+                     <div className="text-sm text-muted-foreground flex items-center gap-1">Drawdown Curve <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg></div>
+                     <div className="h-10 border-b border-b2 flex items-end relative">
+                       <span className="text-[10px] text-muted-foreground absolute -left-2 -bottom-2">$0</span>
+                     </div>
+                  </div>
+                  
+                  <div className="bg-s1 border border-b1 p-4 rounded-xl flex flex-col justify-between">
+                    <div className="text-sm text-muted-foreground flex items-center gap-1 mb-2">Trade Duration <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg></div>
+                    <div className="flex justify-between text-sm mb-2">
+                      <div className="text-muted-foreground">Avg Win <span className="text-[#36B37E] font-medium ml-1">$74.72</span></div>
+                      <div className="text-muted-foreground">Avg Loss <span className="text-[#EF4444] font-medium ml-1">-$30.10</span></div>
+                    </div>
+                    <div className="text-sm text-muted-foreground">Avg Trade Duration <span className="text-white font-medium ml-1">4 mins 55 secs</span></div>
                   </div>
                 </div>
+
               </div>
             </div>
           )}
-          {activeTab !== 'terminal' && activeTab !== 'compass' && (
+          {activeTab !== 'terminal' && activeTab !== 'data' && (
             <div className="flex-1 flex items-center justify-center text-muted-foreground">
               <div className="text-center">
                 <h2 className="text-2xl text-white mb-2 uppercase font-heading">{activeTab}</h2>

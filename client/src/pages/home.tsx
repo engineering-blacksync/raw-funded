@@ -21,7 +21,7 @@ export default function Home() {
             Taking payouts on Future prop firms before? Trade one good set up, withdraw same day. No consistency rules, no minimum trading days, no pass challenge buffer, etc.
           </p>
 
-          <div className="flex flex-col items-center gap-4 pt-4">
+          <div className="flex flex-col items-center gap-4 pt-4 mb-16">
             <Link href="/apply">
               <a className="bg-gold text-black font-heading text-2xl px-12 py-4 rounded-sm hover:bg-white transition-all transform hover:scale-105 active:scale-95" data-testid="link-apply-hero">
                 SUBMIT YOUR PROOF →
@@ -32,6 +32,34 @@ export default function Home() {
                 Already verified? Login →
               </a>
             </Link>
+          </div>
+
+          <div className="w-full max-w-5xl relative pb-20 mx-auto mt-12 animate-in fade-in slide-in-from-bottom-8 duration-1000">
+            <div
+              className="absolute left-1/2 w-[120%] md:w-[100%] pointer-events-none z-0 opacity-50 mix-blend-screen"
+              style={{
+                top: "-30%",
+                transform: "translateX(-50%)"
+              }}
+              aria-hidden="true"
+            >
+              <img
+                src="https://i.postimg.cc/Ss6yShGy/glows.png"
+                alt=""
+                className="w-full h-auto"
+                loading="eager"
+              />
+            </div>
+            
+            <div className="relative z-10 rounded-xl overflow-hidden border border-b1 shadow-2xl shadow-gold/10">
+              <img
+                src="https://i.postimg.cc/SKcdVTr1/Dashboard2.png"
+                alt="Dashboard preview showing analytics and metrics interface"
+                className="w-full h-auto"
+                loading="eager"
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-background via-transparent to-transparent"></div>
+            </div>
           </div>
         </div>
       </section>

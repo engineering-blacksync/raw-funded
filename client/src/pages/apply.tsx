@@ -3,27 +3,73 @@ import { Link, useLocation } from "wouter";
 import { Navbar } from "@/components/layout/Navbar";
 import { Check, UploadCloud, Link as LinkIcon, Mail, FileText } from "lucide-react";
 import { TIERS } from "@/lib/constants";
+import { useAuth } from "@/lib/auth";
+import { useToast } from "@/hooks/use-toast";
+import { apiRequest } from "@/lib/queryClient";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 export default function Apply() {
   const [, setLocation] = useLocation();
+  const { register } = useAuth();
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
   const [step, setStep] = useState(1);
   const [payouts, setPayouts] = useState<number>(0);
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [proofMethod, setProofMethod] = useState("email");
+  const [propFirm, setPropFirm] = useState("");
+  const [notes, setNotes] = useState("");
 
-  // Derived tier preview: 0 = Verified (Certified), 1+ = Elite (Payouts)
+  const [email, setEmail] = useState("");
+  const [username, setUsername] = useState("");
+  const [password, setPassword] = useState("");
+
   const previewTier = payouts === 0 ? TIERS.verified : payouts === 1 ? TIERS.elite : TIERS.titan;
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const submitVerification = useMutation({
+    mutationFn: async () => {
+      const res = await apiRequest("POST", "/api/verifications", {
+        proofMethod,
+        propFirm,
+        payoutsReceived: payouts,
+        notes: notes || null,
+      });
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/auth/me"] });
+    },
+  });
+
+  const handleStep1 = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (step === 1) {
+    try {
+      await register.mutateAsync({ email, username, password });
       setStep(2);
-    } else {
-      setIsSubmitting(true);
-      setTimeout(() => {
-        setLocation("/dashboard");
-      }, 2000);
+    } catch (err: any) {
+      toast({
+        title: "Registration Failed",
+        description: err.message?.includes("409") ? "Email or username already taken" : "Something went wrong",
+        variant: "destructive",
+      });
     }
   };
+
+  const handleStep2 = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!propFirm) {
+      toast({ title: "Select a prop firm", variant: "destructive" });
+      return;
+    }
+    try {
+      await submitVerification.mutateAsync();
+      toast({ title: "Verification submitted!", description: "Our team will review within 24 hours." });
+      setTimeout(() => setLocation("/dashboard"), 2000);
+    } catch (err: any) {
+      toast({ title: "Submission Failed", description: err.message, variant: "destructive" });
+    }
+  };
+
+  const isSubmitting = submitVerification.isPending;
 
   return (
     <div className="min-h-screen bg-background">
@@ -50,86 +96,80 @@ export default function Apply() {
           </div>
         ) : (
           <div className="grid md:grid-cols-2 gap-12">
-            {/* Left Column - Form */}
             <div className="bg-s1 border border-b1 p-8">
-              <form onSubmit={handleSubmit} className="space-y-6">
-                {step === 1 ? (
-                  <>
-                    <div className="space-y-4">
-                      <div>
-                        <label className="block text-sm text-muted-foreground uppercase mb-2">Email</label>
-                        <input required type="email" placeholder="trader@example.com" className="w-full bg-s2 border border-b1 p-3 text-white focus:border-gold outline-none" data-testid="input-email" />
-                      </div>
-                      <div>
-                        <label className="block text-sm text-muted-foreground uppercase mb-2">Username</label>
-                        <input required type="text" placeholder="trader123" className="w-full bg-s2 border border-b1 p-3 text-white focus:border-gold outline-none" data-testid="input-username" />
-                      </div>
-                      <div>
-                        <label className="block text-sm text-muted-foreground uppercase mb-2">Password</label>
-                        <input required type="password" placeholder="••••••••" className="w-full bg-s2 border border-b1 p-3 text-white focus:border-gold outline-none" data-testid="input-password" />
-                      </div>
+              {step === 1 ? (
+                <form onSubmit={handleStep1} className="space-y-6">
+                  <div className="space-y-4">
+                    <div>
+                      <label className="block text-sm text-muted-foreground uppercase mb-2">Email</label>
+                      <input required type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="trader@example.com" className="w-full bg-s2 border border-b1 p-3 text-white focus:border-gold outline-none" data-testid="input-email" />
                     </div>
-                    <button type="submit" className="w-full bg-gold text-black font-heading text-xl py-3 mt-4 hover:bg-white transition-colors" data-testid="button-next-step">
-                      CONTINUE TO PROOF →
-                    </button>
-                    <p className="text-center text-sm text-muted-foreground mt-4">
-                      Already have an account? <Link href="/login" className="text-white hover:text-gold" data-testid="link-login">Login</Link>
+                    <div>
+                      <label className="block text-sm text-muted-foreground uppercase mb-2">Username</label>
+                      <input required type="text" value={username} onChange={e => setUsername(e.target.value)} placeholder="trader123" className="w-full bg-s2 border border-b1 p-3 text-white focus:border-gold outline-none" data-testid="input-username" />
+                    </div>
+                    <div>
+                      <label className="block text-sm text-muted-foreground uppercase mb-2">Password</label>
+                      <input required type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder="••••••••" minLength={6} className="w-full bg-s2 border border-b1 p-3 text-white focus:border-gold outline-none" data-testid="input-password" />
+                    </div>
+                  </div>
+                  <button type="submit" disabled={register.isPending} className="w-full bg-gold text-black font-heading text-xl py-3 mt-4 hover:bg-white transition-colors flex justify-center items-center h-14" data-testid="button-next-step">
+                    {register.isPending ? <div className="w-6 h-6 border-2 border-black border-t-transparent rounded-full animate-spin"></div> : "CONTINUE TO PROOF →"}
+                  </button>
+                  <p className="text-center text-sm text-muted-foreground mt-4">
+                    Already have an account? <Link href="/login" className="text-white hover:text-gold" data-testid="link-login">Login</Link>
+                  </p>
+                </form>
+              ) : (
+                <form onSubmit={handleStep2} className="space-y-6">
+                  <div>
+                    <label className="block text-sm text-muted-foreground uppercase mb-2">Select Prop Firm</label>
+                    <select required value={propFirm} onChange={e => setPropFirm(e.target.value)} className="w-full bg-s2 border border-b1 p-3 text-white focus:border-gold outline-none">
+                      <option value="">Select Firm...</option>
+                      <option>TopStep</option>
+                      <option>Apex</option>
+                      <option>Earn2Trade</option>
+                      <option>TradeDay</option>
+                      <option>MyFundedFutures</option>
+                      <option>Other</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm text-muted-foreground uppercase mb-2">Payouts Received</label>
+                    <div className="grid grid-cols-4 gap-2">
+                      {[0, 1, 2, 3].map(num => (
+                        <div 
+                          key={num}
+                          onClick={() => setPayouts(num)}
+                          className={`cursor-pointer border text-center py-2 font-bold data-number ${payouts === num ? 'border-gold text-gold bg-gold/10' : 'border-b1 text-muted-foreground hover:border-b2'}`}
+                        >
+                          {num}{num === 3 ? '+' : ''}
+                        </div>
+                      ))}
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-2">
+                      {payouts === 0 ? "You are applying for the Verified Tier (Certified)." : "You are applying for the Elite/Titan Tier (Payouts)."}
                     </p>
-                  </>
-                ) : (
-                  <>
-                    <div>
-                      <label className="block text-sm text-muted-foreground uppercase mb-2">Select Prop Firm</label>
-                      <select required className="w-full bg-s2 border border-b1 p-3 text-white focus:border-gold outline-none">
-                        <option value="">Select Firm...</option>
-                        <option>TopStep</option>
-                        <option>Apex</option>
-                        <option>Earn2Trade</option>
-                        <option>TradeDay</option>
-                        <option>MyFundedFutures</option>
-                        <option>Other</option>
-                      </select>
-                    </div>
+                  </div>
 
-                    <div>
-                      <label className="block text-sm text-muted-foreground uppercase mb-2">Payouts Received</label>
-                      <div className="grid grid-cols-4 gap-2">
-                        {[0, 1, 2, 3].map(num => (
-                          <div 
-                            key={num}
-                            onClick={() => setPayouts(num)}
-                            className={`cursor-pointer border text-center py-2 font-bold data-number ${payouts === num ? 'border-gold text-gold bg-gold/10' : 'border-b1 text-muted-foreground hover:border-b2'}`}
-                          >
-                            {num}{num === 3 ? '+' : ''}
-                          </div>
-                        ))}
-                      </div>
-                      <p className="text-xs text-muted-foreground mt-2">
-                        {payouts === 0 ? "You are applying for the Verified Tier (Certified)." : "You are applying for the Elite/Titan Tier (Payouts)."}
-                      </p>
+                  <div>
+                    <label className="block text-sm text-muted-foreground uppercase mb-2">Proof Method</label>
+                    <div className="grid grid-cols-2 gap-2 mb-4">
+                      {[
+                        { id: "certificate", icon: FileText, label: "Certificate PDF" },
+                        { id: "email", icon: Mail, label: "Wise/Stripe Email Forward" },
+                        { id: "screenshot", icon: UploadCloud, label: "Screenshot" },
+                        { id: "profile_url", icon: LinkIcon, label: "Profile URL" },
+                      ].map(m => (
+                        <div key={m.id} onClick={() => setProofMethod(m.id)} className={`border p-3 flex flex-col items-center justify-center gap-2 cursor-pointer ${proofMethod === m.id ? 'border-gold bg-gold/5' : 'border-b1 bg-s2 hover:border-b2'}`}>
+                          <m.icon className={`w-6 h-6 ${proofMethod === m.id ? 'text-gold' : 'text-muted-foreground'}`} />
+                          <span className={`text-[10px] uppercase font-bold text-center leading-tight ${proofMethod === m.id ? 'text-gold' : 'text-muted-foreground'}`}>{m.label}</span>
+                        </div>
+                      ))}
                     </div>
-
-                    <div>
-                      <label className="block text-sm text-muted-foreground uppercase mb-2">Proof Method</label>
-                      <div className="grid grid-cols-2 gap-2 mb-4">
-                        <div className="border border-b1 bg-s2 p-3 flex flex-col items-center justify-center gap-2 cursor-pointer hover:border-b2">
-                          <FileText className="w-6 h-6 text-muted-foreground" />
-                          <span className="text-[10px] uppercase font-bold text-muted-foreground text-center leading-tight">Certificate PDF</span>
-                        </div>
-                        <div className="border border-gold bg-gold/5 p-3 flex flex-col items-center justify-center gap-2 cursor-pointer">
-                          <Mail className="w-6 h-6 text-gold" />
-                          <span className="text-[10px] uppercase font-bold text-gold text-center leading-tight">Wise/Stripe Email Forward</span>
-                        </div>
-                        <div className="border border-b1 bg-s2 p-3 flex flex-col items-center justify-center gap-2 cursor-pointer hover:border-b2">
-                          <UploadCloud className="w-6 h-6 text-muted-foreground" />
-                          <span className="text-[10px] uppercase font-bold text-muted-foreground text-center leading-tight">Screenshot</span>
-                        </div>
-                        <div className="border border-b1 bg-s2 p-3 flex flex-col items-center justify-center gap-2 cursor-pointer hover:border-b2">
-                          <LinkIcon className="w-6 h-6 text-muted-foreground" />
-                          <span className="text-[10px] uppercase font-bold text-muted-foreground text-center leading-tight">Profile URL</span>
-                        </div>
-                      </div>
-                      
+                    
+                    {proofMethod === "email" && (
                       <div className="bg-s2/50 border border-gold/50 p-6 text-center rounded-sm">
                         <p className="text-sm text-white mb-3">Forward your payout confirmation email to:</p>
                         <div className="inline-block bg-background px-4 py-2 border border-b1 rounded text-gold font-mono mb-3 select-all">
@@ -139,22 +179,21 @@ export default function Apply() {
                           Include your Raw Funded username in the subject line.
                         </p>
                       </div>
-                    </div>
-                    
-                    <div>
-                      <label className="block text-sm text-muted-foreground uppercase mb-2">Additional Notes (Optional)</label>
-                      <textarea className="w-full bg-s2 border border-b1 p-3 text-white focus:border-gold outline-none h-24 resize-none" placeholder="Anything else we should know?"></textarea>
-                    </div>
+                    )}
+                  </div>
+                  
+                  <div>
+                    <label className="block text-sm text-muted-foreground uppercase mb-2">Additional Notes (Optional)</label>
+                    <textarea value={notes} onChange={e => setNotes(e.target.value)} className="w-full bg-s2 border border-b1 p-3 text-white focus:border-gold outline-none h-24 resize-none" placeholder="Anything else we should know?"></textarea>
+                  </div>
 
-                    <button type="submit" className="w-full bg-gold text-black font-heading text-xl py-3 mt-4 hover:bg-white transition-colors" data-testid="button-submit-proof">
-                      SUBMIT FOR VERIFICATION
-                    </button>
-                  </>
-                )}
-              </form>
+                  <button type="submit" className="w-full bg-gold text-black font-heading text-xl py-3 mt-4 hover:bg-white transition-colors" data-testid="button-submit-proof">
+                    SUBMIT FOR VERIFICATION
+                  </button>
+                </form>
+              )}
             </div>
 
-            {/* Right Column - Info */}
             <div>
               {step === 2 && (
                 <div className="bg-background border border-b1 p-6 relative overflow-hidden mb-8">

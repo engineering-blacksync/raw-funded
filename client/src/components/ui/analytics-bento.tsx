@@ -13,7 +13,7 @@ const weekData = [
   { day: "Sat", value: 10000 },
 ]
 
-export function BalanceCard() {
+export function BalanceCard({ balance = 10000 }: { balance?: number }) {
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(6)
   const chartRef = useRef<SVGSVGElement>(null)
 
@@ -109,7 +109,7 @@ export function BalanceCard() {
           <div className="flex-1">
             <p className="text-[13px] font-medium tracking-wide text-muted-foreground uppercase">Balance</p>
             <h2 className="mt-1 text-[32px] md:text-[38px] font-semibold leading-[1] tracking-[-0.02em] text-card-foreground data-number">
-              $10,000.00
+              ${balance.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
             </h2>
             <div className="mt-3 inline-flex items-center gap-1.5 rounded-full border border-border bg-background/40 px-3 py-1.5 shadow-[0_1px_3px_rgba(0,0,0,0.04),0_4px_12px_rgba(0,0,0,0.03)] dark:shadow-[0_1px_3px_rgba(0,0,0,0.2),0_1px_3px_rgba(255,255,255,0.05)]">
               <span className="text-[12px] font-semibold text-green data-number">+ $850.50</span>

@@ -1,17 +1,28 @@
 import { useState } from "react";
 import { Link, useLocation } from "wouter";
 import { Navbar } from "@/components/layout/Navbar";
+import { useAuth } from "@/lib/auth";
+import { useToast } from "@/hooks/use-toast";
 
 export default function Login() {
   const [, setLocation] = useLocation();
-  const [loading, setLoading] = useState(false);
+  const { login } = useAuth();
+  const { toast } = useToast();
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setLoading(true);
-    setTimeout(() => {
+    try {
+      await login.mutateAsync({ email, password });
       setLocation("/dashboard");
-    }, 1000);
+    } catch (err: any) {
+      toast({
+        title: "Login Failed",
+        description: err.message?.includes("401") ? "Invalid email or password" : "Something went wrong",
+        variant: "destructive",
+      });
+    }
   };
 
   return (
@@ -28,7 +39,7 @@ export default function Login() {
           <form onSubmit={handleSubmit} className="space-y-6">
             <div>
               <label className="block text-sm text-muted-foreground uppercase mb-2">Email</label>
-              <input required type="email" placeholder="trader@example.com" className="w-full bg-s2 border border-b1 p-3 text-white focus:border-gold outline-none" data-testid="input-login-email" />
+              <input required type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="trader@example.com" className="w-full bg-s2 border border-b1 p-3 text-white focus:border-gold outline-none" data-testid="input-login-email" />
             </div>
             
             <div>
@@ -36,11 +47,11 @@ export default function Login() {
                 <label className="block text-sm text-muted-foreground uppercase">Password</label>
                 <a href="#" className="text-xs text-gold hover:underline">Forgot?</a>
               </div>
-              <input required type="password" placeholder="••••••••" className="w-full bg-s2 border border-b1 p-3 text-white focus:border-gold outline-none" data-testid="input-login-password" />
+              <input required type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder="••••••••" className="w-full bg-s2 border border-b1 p-3 text-white focus:border-gold outline-none" data-testid="input-login-password" />
             </div>
 
-            <button disabled={loading} type="submit" className="w-full bg-gold text-black font-heading text-xl py-3 mt-2 hover:bg-white transition-colors flex justify-center items-center h-14" data-testid="button-login-submit">
-              {loading ? <div className="w-6 h-6 border-2 border-black border-t-transparent rounded-full animate-spin"></div> : "LOGIN"}
+            <button disabled={login.isPending} type="submit" className="w-full bg-gold text-black font-heading text-xl py-3 mt-2 hover:bg-white transition-colors flex justify-center items-center h-14" data-testid="button-login-submit">
+              {login.isPending ? <div className="w-6 h-6 border-2 border-black border-t-transparent rounded-full animate-spin"></div> : "LOGIN"}
             </button>
           </form>
 

@@ -1,37 +1,59 @@
 import { useState } from "react";
-import { Link } from "wouter";
-import { LogOut, Activity, BarChart2, Shield, Settings, CreditCard, ChevronDown, Check } from "lucide-react";
+import { Link, useLocation } from "wouter";
+import { useQuery } from "@tanstack/react-query";
+import { LogOut, Activity, BarChart2, Shield, Check, CreditCard, ChevronDown, Settings } from "lucide-react";
 import Terminal from "@/components/dashboard/Terminal";
 import { BalanceCard } from "@/components/ui/analytics-bento";
 import { StatCard, CalendarGrid } from "@/components/ui/data-components";
 import { TIERS } from "@/lib/constants";
+import { useAuth } from "@/lib/auth";
 
 export default function Dashboard() {
   const [activeTab, setActiveTab] = useState("terminal");
-  
-  // Mock User State
-  const user = {
-    username: "trader123",
-    tier: "unverified", // switch this to test other states
-    balance: 10000.00,
-    triesUsed: 1,
-    triesVisible: true
-  };
+  const [, setLocation] = useLocation();
+  const { user, isLoading, isAuthenticated, logout } = useAuth();
 
-  const currentTier = TIERS[user.tier as keyof typeof TIERS];
+  const { data: tradeStats } = useQuery({
+    queryKey: ["/api/trades/stats"],
+    enabled: isAuthenticated,
+  });
+
+  const { data: trades } = useQuery({
+    queryKey: ["/api/trades"],
+    enabled: isAuthenticated,
+  });
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="w-12 h-12 border-4 border-gold border-t-transparent rounded-full animate-spin"></div>
+      </div>
+    );
+  }
+
+  if (!isAuthenticated || !user) {
+    setLocation("/login");
+    return null;
+  }
+
+  const currentTier = TIERS[user.tier as keyof typeof TIERS] || TIERS.unverified;
+  const stats = tradeStats as any;
+
+  const handleLogout = async () => {
+    await logout.mutateAsync();
+    setLocation("/");
+  };
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
-      {/* Top Banner for Unverified if tries > 0 */}
-      {user.tier === "unverified" && user.triesVisible && (
+      {user.tier === "unverified" && (
         <div className="bg-gold text-black px-4 py-2 flex justify-center items-center gap-2 text-sm font-bold font-heading tracking-wide z-50">
           <span className="text-lg">⚠</span>
-          TRY {user.triesUsed + 1} OF 3 — PROVE YOUR FUNDED STATUS TO REMOVE THIS LIMIT ENTIRELY 
-          <Link href="/dashboard/verification" className="underline ml-2">VERIFY NOW →</Link>
+          TRY {(user.triesUsed || 0) + 1} OF 3 — PROVE YOUR FUNDED STATUS TO REMOVE THIS LIMIT ENTIRELY 
+          <button onClick={() => setActiveTab("verification")} className="underline ml-2">VERIFY NOW →</button>
         </div>
       )}
 
-      {/* Header */}
       <header className="h-16 border-b border-b1 bg-s1 flex items-center justify-between px-4 shrink-0">
         <div className="flex items-center gap-6">
           <Link href="/" className="flex items-center gap-2 mr-4">
@@ -39,7 +61,6 @@ export default function Dashboard() {
             <span className="font-heading text-xl text-gold tracking-wider">FUNDED</span>
           </Link>
 
-          {/* Ticker */}
           <div className="hidden lg:flex items-center gap-4 text-xs font-mono">
             <div className="flex items-center gap-2">
               <span className="text-muted-foreground">XAUUSD</span>
@@ -58,7 +79,7 @@ export default function Dashboard() {
         <div className="flex items-center gap-4">
           <div className="hidden md:flex flex-col items-end mr-4">
             <span className="text-xs text-muted-foreground uppercase tracking-widest">Balance</span>
-            <span className="data-number text-lg text-white font-bold">${user.balance.toFixed(2)}</span>
+            <span className="data-number text-lg text-white font-bold">${(user.balance || 10000).toFixed(2)}</span>
           </div>
 
           <div 
@@ -68,7 +89,7 @@ export default function Dashboard() {
             {currentTier.label}
           </div>
 
-          <button className="bg-gold text-black text-xs font-bold uppercase px-4 py-2 hover:bg-white transition-colors" data-testid="btn-withdraw">
+          <button onClick={() => setActiveTab("withdraw")} className="bg-gold text-black text-xs font-bold uppercase px-4 py-2 hover:bg-white transition-colors" data-testid="btn-withdraw">
             Withdraw
           </button>
 
@@ -84,7 +105,6 @@ export default function Dashboard() {
       </header>
 
       <div className="flex flex-1 overflow-hidden">
-        {/* Sidebar */}
         <aside className="w-16 md:w-56 border-r border-b1 bg-s1 flex flex-col py-4 shrink-0">
           <nav className="flex-1 space-y-2 px-2">
             {[
@@ -111,14 +131,13 @@ export default function Dashboard() {
               <Settings className="w-5 h-5 shrink-0" />
               <span className="hidden md:block font-medium text-sm">Settings</span>
             </button>
-            <button className="w-full flex items-center gap-3 p-3 rounded text-left text-red/70 hover:bg-red/10 hover:text-red transition-colors mt-2">
+            <button onClick={handleLogout} className="w-full flex items-center gap-3 p-3 rounded text-left text-red/70 hover:bg-red/10 hover:text-red transition-colors mt-2">
               <LogOut className="w-5 h-5 shrink-0" />
               <span className="hidden md:block font-medium text-sm">Logout</span>
             </button>
           </div>
         </aside>
 
-        {/* Main Content Area */}
         <main className="flex-1 overflow-hidden flex flex-col bg-background">
           {activeTab === 'terminal' && <Terminal tier={currentTier} userTierName={user.tier} />}
           {activeTab === 'data' && (
@@ -126,16 +145,14 @@ export default function Dashboard() {
               <div className="max-w-6xl mx-auto space-y-6">
                 
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-6">
-                  {/* Balance Card - spans 2 columns */}
                   <div className="col-span-1 md:col-span-2 lg:col-span-3 xl:col-span-2">
-                    <BalanceCard />
+                    <BalanceCard balance={user.balance} />
                   </div>
                   
-                  {/* Stats */}
                   <div className="col-span-1">
                     <StatCard 
                       title="Net P&L" 
-                      value={<span className="text-[#36B37E]">$1,340.00</span>}
+                      value={<span className={`${(stats?.totalPnl ?? 0) >= 0 ? 'text-[#36B37E]' : 'text-[#EF4444]'}`}>${(stats?.totalPnl ?? 0).toFixed(2)}</span>}
                       subtext="Track your daily change" 
                     />
                   </div>
@@ -144,9 +161,9 @@ export default function Dashboard() {
                       title="Win Rate" 
                       value={
                         <div className="flex items-center justify-between w-full gap-2">
-                          <span>73.68%</span>
+                          <span>{(stats?.winRate ?? 0).toFixed(2)}%</span>
                           <div className="w-10 h-10 lg:w-12 lg:h-12 rounded-full border-4 border-[#36B37E] border-l-[#EF4444] border-b-[#EF4444] rotate-45 relative shrink-0">
-                            <div className="absolute -bottom-2 -right-4 bg-white text-black text-[9px] px-1 rounded -rotate-45 font-bold">73.68%</div>
+                            <div className="absolute -bottom-2 -right-4 bg-white text-black text-[9px] px-1 rounded -rotate-45 font-bold">{(stats?.winRate ?? 0).toFixed(1)}%</div>
                           </div>
                         </div>
                       }
@@ -158,7 +175,7 @@ export default function Dashboard() {
                       title="Profit Factor" 
                       value={
                         <div className="flex items-center justify-between w-full gap-2">
-                          <span>3.16</span>
+                          <span>{(stats?.profitFactor ?? 0).toFixed(2)}</span>
                           <div className="w-10 h-10 lg:w-12 lg:h-12 rounded-full border-4 border-[#36B37E] border-r-transparent border-t-[#EF4444] shrink-0"></div>
                         </div>
                       }
@@ -168,18 +185,16 @@ export default function Dashboard() {
                   <div className="col-span-1">
                     <StatCard 
                       title="Avg. Win/Loss Ratio" 
-                      value={<span>1.13</span>}
+                      value={<span>{(stats?.avgWinLoss ?? 0).toFixed(2)}</span>}
                       subtext="Track your daily change" 
                     />
                   </div>
                 </div>
                 
-                {/* Calendar View */}
                 <div>
                   <CalendarGrid />
                 </div>
                 
-                {/* Bottom Stats */}
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div className="bg-s1 border border-b1 p-4 rounded-xl flex gap-8">
                     <div>

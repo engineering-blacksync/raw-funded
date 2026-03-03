@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link } from "wouter";
-import { LogOut, Activity, BarChart2, Shield, Settings, CreditCard, ChevronDown } from "lucide-react";
+import { LogOut, Activity, BarChart2, Shield, Settings, CreditCard, ChevronDown, Check } from "lucide-react";
 import Terminal from "@/components/dashboard/Terminal";
 import { TIERS } from "@/lib/constants";
 

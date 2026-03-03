@@ -176,5 +176,40 @@ export async function registerRoutes(
     }
   });
 
+  app.post("/api/supabase/trades", requireAuth, async (req: Request, res: Response) => {
+    const { instrument, side, size, status } = req.body;
+    if (!instrument || !side || !size) {
+      return res.status(400).json({ message: "Missing required fields" });
+    }
+
+    const supabaseUrl = process.env.SUPABASE_URL;
+    const supabaseKey = process.env.SUPABASE_ANON_KEY;
+    if (!supabaseUrl || !supabaseKey) {
+      return res.status(500).json({ message: "Supabase not configured" });
+    }
+
+    try {
+      const response = await fetch(`${supabaseUrl}/rest/v1/trades`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'apikey': supabaseKey,
+          'Authorization': `Bearer ${supabaseKey}`,
+          'Prefer': 'return=minimal',
+        },
+        body: JSON.stringify({ instrument, side, size, status: status || 'pending' }),
+      });
+
+      if (response.ok) {
+        return res.json({ success: true });
+      } else {
+        const err = await response.json().catch(() => ({}));
+        return res.status(response.status).json({ message: err.message || 'Supabase insert failed' });
+      }
+    } catch (err: any) {
+      return res.status(502).json({ message: "Connection to Supabase failed" });
+    }
+  });
+
   return httpServer;
 }

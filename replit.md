@@ -53,3 +53,5 @@ A prop trading platform for traders who've already won elsewhere. Users verify t
 - TradingView widget: loads `https://s3.tradingview.com/tv.js`, 11 instruments with Simple/Pro view modes
 - Per-instrument quantity config: Bitcoin/Gold/Silver use 0.01 step with decimal lots; all others use integer contracts (step 1, max 20)
 - Switching instrument tabs resets quantity to that instrument's default
+- BUY/SELL buttons insert trades to Supabase via `/api/supabase/trades` (server-side proxy, requires auth)
+- Supabase credentials stored in env vars: SUPABASE_URL, SUPABASE_ANON_KEY

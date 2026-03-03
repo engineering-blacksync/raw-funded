@@ -58,6 +58,8 @@ export default function Terminal({ tier, userTierName }: TerminalProps) {
   const [quantity, setQuantity] = useState<number>(INSTRUMENTS[0].default);
   const [positions, setPositions] = useState<any[]>([]);
   const [viewMode, setViewMode] = useState<'simple' | 'pro'>('simple');
+  const [tradeLoading, setTradeLoading] = useState<'BUY' | 'SELL' | null>(null);
+  const [tradeStatus, setTradeStatus] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
 
   const handleInstrumentChange = (inst: InstrumentConfig) => {
     setActiveInstrument(inst);
@@ -104,23 +106,49 @@ export default function Terminal({ tier, userTierName }: TerminalProps) {
     if (tvLoaded) createChart();
   }, [tvLoaded, createChart]);
 
-  const handleTrade = (side: 'BUY' | 'SELL') => {
+  const handleTrade = async (side: 'BUY' | 'SELL') => {
     if (quantity > tier.maxContractsVal) {
       alert(`Quantity exceeds your tier limit (${tier.maxContractsText}). Verify to unlock larger positions.`);
       return;
     }
 
-    const newPosition = {
-      id: Math.random().toString(36).substring(7),
-      instrument: activeInstrument.label,
-      side,
-      size: quantity,
-      entry: 0,
-      current: 0,
-      pnl: 0.00
-    };
-    
-    setPositions([...positions, newPosition]);
+    setTradeLoading(side);
+    setTradeStatus(null);
+
+    try {
+      const response = await fetch('/api/supabase/trades', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          instrument: activeInstrument.label,
+          side,
+          size: quantity,
+          status: 'pending',
+        }),
+      });
+
+      if (response.ok) {
+        const newPosition = {
+          id: Math.random().toString(36).substring(7),
+          instrument: activeInstrument.label,
+          side,
+          size: quantity,
+          pnl: 0.00,
+        };
+        setPositions([...positions, newPosition]);
+        setTradeStatus({ type: 'success', message: `${side} order placed` });
+        setTimeout(() => setTradeStatus(null), 3000);
+      } else {
+        const err = await response.json().catch(() => ({ message: 'Unknown error' }));
+        setTradeStatus({ type: 'error', message: err.message || 'Order failed' });
+        setTimeout(() => setTradeStatus(null), 5000);
+      }
+    } catch {
+      setTradeStatus({ type: 'error', message: 'Connection error' });
+      setTimeout(() => setTradeStatus(null), 5000);
+    } finally {
+      setTradeLoading(null);
+    }
   };
 
   const closePosition = (id: string) => {
@@ -206,21 +234,30 @@ export default function Terminal({ tier, userTierName }: TerminalProps) {
               </span>
             </div>
 
-            <div className="flex-1 flex gap-4 w-full">
-              <button 
-                onClick={() => handleTrade('SELL')}
-                className="flex-1 bg-red/10 text-red border border-red/30 hover:bg-red hover:text-white py-3 rounded transition-all font-heading text-xl flex items-center justify-center"
-                data-testid="btn-sell"
-              >
-                SELL
-              </button>
-              <button 
-                onClick={() => handleTrade('BUY')}
-                className="flex-1 bg-green/10 text-green border border-green/30 hover:bg-green hover:text-white py-3 rounded transition-all font-heading text-xl flex items-center justify-center"
-                data-testid="btn-buy"
-              >
-                BUY
-              </button>
+            <div className="flex-1 flex flex-col gap-2 w-full">
+              <div className="flex gap-4">
+                <button 
+                  onClick={() => handleTrade('SELL')}
+                  disabled={tradeLoading !== null}
+                  className="flex-1 bg-red/10 text-red border border-red/30 hover:bg-red hover:text-white py-3 rounded transition-all font-heading text-xl flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed"
+                  data-testid="btn-sell"
+                >
+                  {tradeLoading === 'SELL' ? 'Placing...' : 'SELL'}
+                </button>
+                <button 
+                  onClick={() => handleTrade('BUY')}
+                  disabled={tradeLoading !== null}
+                  className="flex-1 bg-green/10 text-green border border-green/30 hover:bg-green hover:text-white py-3 rounded transition-all font-heading text-xl flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed"
+                  data-testid="btn-buy"
+                >
+                  {tradeLoading === 'BUY' ? 'Placing...' : 'BUY'}
+                </button>
+              </div>
+              {tradeStatus && (
+                <div className={`text-center text-xs font-medium ${tradeStatus.type === 'success' ? 'text-green' : 'text-red'}`} data-testid="trade-status">
+                  {tradeStatus.message}
+                </div>
+              )}
             </div>
             
           </div>

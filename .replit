@@ -42,3 +42,9 @@ waitForPort = 5000
 [agent]
 stack = "MOCKUP_JS"
 mockupState = "FULLSTACK"
+
+[userenv]
+
+[userenv.shared]
+SUPABASE_URL = "https://bwcifxjkiufyshcsfvim.supabase.co"
+SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJ3Y2lmeGpraXVmeXNoY3NmdmltIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzI1MDIwOTcsImV4cCI6MjA4ODA3ODA5N30.5Co24Vib7gQhVRPxYD-0bVTduQ4PkC9FDiFGBXPZzok"

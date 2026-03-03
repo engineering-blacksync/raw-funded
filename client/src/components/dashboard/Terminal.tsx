@@ -143,6 +143,8 @@ export default function Terminal({ tier, userTierName }: TerminalProps) {
   const totalOpenPnl = positionsWithPnl.reduce((sum, p) => sum + p.livePnl, 0);
   const totalClosedPnl = closedTrades.reduce((sum, t) => sum + (t.pnl ?? 0), 0);
 
+  const activePositions = positionsWithPnl.filter(p => p.instrument === activeInstrument.label);
+
   useEffect(() => {
     if (openTrades.length === 0) return;
     for (const pos of positionsWithPnl) {
@@ -357,6 +359,81 @@ export default function Terminal({ tier, userTierName }: TerminalProps) {
           {!tvLoaded && (
             <div className="absolute inset-0 flex items-center justify-center">
               <div className="w-8 h-8 border-2 border-gold border-t-transparent rounded-full animate-spin"></div>
+            </div>
+          )}
+
+          {activePositions.length > 0 && (
+            <div className="absolute top-3 left-3 z-10 flex flex-col gap-2 pointer-events-none" data-testid="chart-overlay">
+              {activePositions.map(pos => (
+                <div
+                  key={pos.id}
+                  className="pointer-events-auto bg-[#09090B]/90 backdrop-blur-sm border border-b2 rounded-lg px-3 py-2.5 shadow-xl min-w-[220px]"
+                  data-testid={`chart-pos-${pos.id}`}
+                >
+                  <div className="flex items-center gap-2 mb-2">
+                    <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${pos.side === 'BUY' ? 'bg-green/20 text-green' : 'bg-red/20 text-red'}`}>
+                      {pos.side}
+                    </span>
+                    <span className="text-xs font-bold text-white">{pos.size} {pos.instrument}</span>
+                    <span className={`ml-auto data-number text-sm font-bold ${pos.livePnl >= 0 ? 'text-green' : 'text-red'}`}>
+                      {formatPnl(pos.livePnl)}
+                    </span>
+                  </div>
+                  <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-[11px]">
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Entry</span>
+                      <span className="data-number text-gold font-medium">{formatPrice(pos.entryPrice, pos.instrument)}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Current</span>
+                      <span className="data-number text-white font-medium">{pos.currentPrice ? formatPrice(pos.currentPrice, pos.instrument) : '---'}</span>
+                    </div>
+                    {pos.stopLoss && (
+                      <div className="flex justify-between">
+                        <span className="text-red font-bold">SL</span>
+                        <span className="data-number text-red font-medium">{formatPrice(pos.stopLoss, pos.instrument)}</span>
+                      </div>
+                    )}
+                    {pos.takeProfit && (
+                      <div className="flex justify-between">
+                        <span className="text-green font-bold">TP</span>
+                        <span className="data-number text-green font-medium">{formatPrice(pos.takeProfit, pos.instrument)}</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {activePositions.length > 0 && (
+            <div className="absolute right-[60px] top-0 bottom-0 z-10 flex flex-col justify-center pointer-events-none" data-testid="chart-price-lines">
+              {activePositions.map(pos => (
+                <div key={`lines-${pos.id}`} className="flex flex-col gap-1">
+                  <div className="flex items-center gap-0">
+                    <div className="w-16 h-[1px] bg-gold/60" style={{ borderTop: '1px dashed' }} />
+                    <span className="text-[9px] data-number bg-gold/90 text-black px-1.5 py-0.5 rounded-sm font-bold whitespace-nowrap">
+                      ENTRY {formatPrice(pos.entryPrice, pos.instrument)}
+                    </span>
+                  </div>
+                  {pos.stopLoss && (
+                    <div className="flex items-center gap-0">
+                      <div className="w-16 h-[1px] bg-red/60" style={{ borderTop: '1px dashed' }} />
+                      <span className="text-[9px] data-number bg-red/90 text-white px-1.5 py-0.5 rounded-sm font-bold whitespace-nowrap">
+                        SL {formatPrice(pos.stopLoss, pos.instrument)}
+                      </span>
+                    </div>
+                  )}
+                  {pos.takeProfit && (
+                    <div className="flex items-center gap-0">
+                      <div className="w-16 h-[1px] bg-green/60" style={{ borderTop: '1px dashed' }} />
+                      <span className="text-[9px] data-number bg-green/90 text-white px-1.5 py-0.5 rounded-sm font-bold whitespace-nowrap">
+                        TP {formatPrice(pos.takeProfit, pos.instrument)}
+                      </span>
+                    </div>
+                  )}
+                </div>
+              ))}
             </div>
           )}
         </div>

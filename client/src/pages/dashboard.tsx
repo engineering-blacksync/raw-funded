@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Link } from "wouter";
 import { LogOut, Activity, BarChart2, Shield, Settings, CreditCard, ChevronDown, Check } from "lucide-react";
 import Terminal from "@/components/dashboard/Terminal";
+import { BalanceCard } from "@/components/ui/analytics-bento";
 import { TIERS } from "@/lib/constants";
 
 export default function Dashboard() {
@@ -121,7 +122,27 @@ export default function Dashboard() {
         {/* Main Content Area */}
         <main className="flex-1 overflow-hidden flex flex-col bg-background">
           {activeTab === 'terminal' && <Terminal tier={currentTier} userTierName={user.tier} />}
-          {activeTab !== 'terminal' && (
+          {activeTab === 'compass' && (
+            <div className="flex-1 overflow-y-auto p-8">
+              <div className="max-w-5xl mx-auto space-y-8">
+                <div>
+                  <h2 className="text-3xl text-white font-heading mb-6">TRADING RESULTS</h2>
+                  <div className="flex justify-center md:justify-start">
+                    <BalanceCard />
+                  </div>
+                </div>
+                
+                {/* Mock recent trades or other stats could go here */}
+                <div className="bg-s1 border border-b1 p-6 mt-8 rounded-sm">
+                  <h3 className="text-xl text-white font-heading mb-4">RECENT ACTIVITY</h3>
+                  <div className="text-center text-muted-foreground py-8">
+                    Trade history will populate here once you execute trades in the Terminal.
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+          {activeTab !== 'terminal' && activeTab !== 'compass' && (
             <div className="flex-1 flex items-center justify-center text-muted-foreground">
               <div className="text-center">
                 <h2 className="text-2xl text-white mb-2 uppercase font-heading">{activeTab}</h2>

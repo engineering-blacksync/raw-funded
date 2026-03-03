@@ -10,7 +10,7 @@ export default function Apply() {
   const [payouts, setPayouts] = useState<number>(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Derived tier preview
+  // Derived tier preview: 0 = Verified (Certified), 1+ = Elite (Payouts)
   const previewTier = payouts === 0 ? TIERS.verified : payouts === 1 ? TIERS.elite : TIERS.titan;
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -82,12 +82,11 @@ export default function Apply() {
                       <label className="block text-sm text-muted-foreground uppercase mb-2">Select Prop Firm</label>
                       <select required className="w-full bg-s2 border border-b1 p-3 text-white focus:border-gold outline-none">
                         <option value="">Select Firm...</option>
-                        <option>FTMO</option>
                         <option>TopStep</option>
-                        <option>MyForexFunds</option>
-                        <option>Funded Next</option>
-                        <option>The Funded Trader</option>
                         <option>Apex</option>
+                        <option>Earn2Trade</option>
+                        <option>TradeDay</option>
+                        <option>MyFundedFutures</option>
                         <option>Other</option>
                       </select>
                     </div>
@@ -105,37 +104,43 @@ export default function Apply() {
                           </div>
                         ))}
                       </div>
+                      <p className="text-xs text-muted-foreground mt-2">
+                        {payouts === 0 ? "You are applying for the Verified Tier (Certified)." : "You are applying for the Elite/Titan Tier (Payouts)."}
+                      </p>
                     </div>
 
                     <div>
                       <label className="block text-sm text-muted-foreground uppercase mb-2">Proof Method</label>
                       <div className="grid grid-cols-2 gap-2 mb-4">
+                        <div className="border border-b1 bg-s2 p-3 flex flex-col items-center justify-center gap-2 cursor-pointer hover:border-b2">
+                          <FileText className="w-6 h-6 text-muted-foreground" />
+                          <span className="text-[10px] uppercase font-bold text-muted-foreground text-center leading-tight">Certificate PDF</span>
+                        </div>
                         <div className="border border-gold bg-gold/5 p-3 flex flex-col items-center justify-center gap-2 cursor-pointer">
-                          <UploadCloud className="w-6 h-6 text-gold" />
-                          <span className="text-xs uppercase font-bold text-gold">Screenshot</span>
+                          <Mail className="w-6 h-6 text-gold" />
+                          <span className="text-[10px] uppercase font-bold text-gold text-center leading-tight">Wise/Stripe Email Forward</span>
+                        </div>
+                        <div className="border border-b1 bg-s2 p-3 flex flex-col items-center justify-center gap-2 cursor-pointer hover:border-b2">
+                          <UploadCloud className="w-6 h-6 text-muted-foreground" />
+                          <span className="text-[10px] uppercase font-bold text-muted-foreground text-center leading-tight">Screenshot</span>
                         </div>
                         <div className="border border-b1 bg-s2 p-3 flex flex-col items-center justify-center gap-2 cursor-pointer hover:border-b2">
                           <LinkIcon className="w-6 h-6 text-muted-foreground" />
-                          <span className="text-xs uppercase font-bold text-muted-foreground">Profile URL</span>
-                        </div>
-                        <div className="border border-b1 bg-s2 p-3 flex flex-col items-center justify-center gap-2 cursor-pointer hover:border-b2">
-                          <Mail className="w-6 h-6 text-muted-foreground" />
-                          <span className="text-xs uppercase font-bold text-muted-foreground">Email Forward</span>
-                        </div>
-                        <div className="border border-b1 bg-s2 p-3 flex flex-col items-center justify-center gap-2 cursor-pointer hover:border-b2">
-                          <FileText className="w-6 h-6 text-muted-foreground" />
-                          <span className="text-xs uppercase font-bold text-muted-foreground">Certificate</span>
+                          <span className="text-[10px] uppercase font-bold text-muted-foreground text-center leading-tight">Profile URL</span>
                         </div>
                       </div>
                       
-                      <div className="border-2 border-dashed border-b1 bg-s2 p-8 text-center cursor-pointer hover:border-gold/50 transition-colors">
-                        <div className="w-12 h-12 bg-b1 rounded-full flex items-center justify-center mx-auto mb-4">
-                          <UploadCloud className="w-6 h-6 text-muted-foreground" />
+                      <div className="bg-s2/50 border border-gold/50 p-6 text-center rounded-sm">
+                        <p className="text-sm text-white mb-3">Forward your payout confirmation email to:</p>
+                        <div className="inline-block bg-background px-4 py-2 border border-b1 rounded text-gold font-mono mb-3 select-all">
+                          compliance@rawfunded.com
                         </div>
-                        <p className="text-sm text-muted-foreground">Drag and drop your screenshot here, or click to browse.</p>
+                        <p className="text-xs text-muted-foreground">
+                          Include your Raw Funded username in the subject line.
+                        </p>
                       </div>
                     </div>
-
+                    
                     <div>
                       <label className="block text-sm text-muted-foreground uppercase mb-2">Additional Notes (Optional)</label>
                       <textarea className="w-full bg-s2 border border-b1 p-3 text-white focus:border-gold outline-none h-24 resize-none" placeholder="Anything else we should know?"></textarea>
@@ -163,8 +168,8 @@ export default function Apply() {
                       <div className="data-number text-xl">1:{previewTier.leverage}</div>
                     </div>
                     <div>
-                      <div className="text-xs text-muted-foreground uppercase">Max Lot</div>
-                      <div className="data-number text-xl">{previewTier.maxLot}</div>
+                      <div className="text-xs text-muted-foreground uppercase">Max Position Size</div>
+                      <div className="data-number text-xl">{previewTier.maxContractsText}</div>
                     </div>
                   </div>
                 </div>
@@ -176,15 +181,15 @@ export default function Apply() {
                   <ul className="space-y-3">
                     <li className="flex gap-3 items-start">
                       <Check className="w-5 h-5 text-green shrink-0" />
-                      <span className="text-sm text-muted-foreground">Dashboard screenshots showing your name and funded status clearly.</span>
+                      <span className="text-sm text-muted-foreground"><strong className="text-white">Elite (Payouts):</strong> Forwarded Wise or Stripe verification emails of past prop firm payouts.</span>
                     </li>
                     <li className="flex gap-3 items-start">
                       <Check className="w-5 h-5 text-green shrink-0" />
-                      <span className="text-sm text-muted-foreground">Payout certificates or emails from recognized prop firms.</span>
+                      <span className="text-sm text-muted-foreground"><strong className="text-white">Verified (Certified):</strong> Certificate proofs or verification PDFs showing you passed an evaluation.</span>
                     </li>
                     <li className="flex gap-3 items-start">
                       <Check className="w-5 h-5 text-green shrink-0" />
-                      <span className="text-sm text-muted-foreground">Public profile URLs (e.g., TopStep public profile).</span>
+                      <span className="text-sm text-muted-foreground">Public profile URLs (e.g., TopStep public profile) demonstrating funded status.</span>
                     </li>
                   </ul>
                 </div>

@@ -8,8 +8,8 @@ interface TerminalProps {
 
 export default function Terminal({ tier, userTierName }: TerminalProps) {
   const chartContainerRef = useRef<HTMLDivElement>(null);
-  const [instrument, setInstrument] = useState(tier.instruments[0] || 'XAUUSD_m');
-  const [lotSize, setLotSize] = useState<number>(0.01);
+  const [instrument, setInstrument] = useState(tier.instruments[0] || 'MNQ');
+  const [contracts, setContracts] = useState<number>(1);
   const [positions, setPositions] = useState<any[]>([]);
 
   useEffect(() => {
@@ -46,13 +46,13 @@ export default function Terminal({ tier, userTierName }: TerminalProps) {
       wickDownColor: '#EF4444',
     });
 
-    // Generate some realistic looking dummy data for XAUUSD around 2640
+    // Generate some realistic looking dummy data for MNQ around 21000
     const data = [];
-    let currentPrice = 2640;
+    let currentPrice = 21000;
     const now = Math.floor(Date.now() / 1000);
     
     for (let i = 200; i > 0; i--) {
-      const volatility = 2;
+      const volatility = 5;
       const open = currentPrice + (Math.random() - 0.5) * volatility;
       const close = open + (Math.random() - 0.5) * volatility;
       const high = Math.max(open, close) + Math.random() * volatility;
@@ -79,8 +79,8 @@ export default function Terminal({ tier, userTierName }: TerminalProps) {
   }, [instrument]);
 
   const handleTrade = (side: 'BUY' | 'SELL') => {
-    if (lotSize > tier.maxLot) {
-      alert(`Lot size exceeds your tier limit (${tier.maxLot}). Verify to unlock larger positions.`);
+    if (contracts > tier.maxContractsVal) {
+      alert(`Contract size exceeds your tier limit (${tier.maxContractsText}). Verify to unlock larger positions.`);
       return;
     }
 
@@ -88,9 +88,9 @@ export default function Terminal({ tier, userTierName }: TerminalProps) {
       id: Math.random().toString(36).substring(7),
       instrument,
       side,
-      size: lotSize,
-      entry: side === 'BUY' ? 2641.80 : 2641.70, // mock current price
-      current: 2641.75,
+      size: contracts,
+      entry: side === 'BUY' ? 21005.50 : 21004.50, // mock current price for MNQ
+      current: 21005.00,
       pnl: 0.00
     };
     
@@ -139,24 +139,24 @@ export default function Terminal({ tier, userTierName }: TerminalProps) {
             <div className="flex flex-col items-center gap-2">
               <div className="flex items-center bg-s2 border border-b2 rounded overflow-hidden">
                 <button 
-                  onClick={() => setLotSize(Math.max(0.01, Number((lotSize - 0.01).toFixed(2))))}
+                  onClick={() => setContracts(Math.max(1, contracts - 1))}
                   className="px-4 py-3 text-muted-foreground hover:text-white hover:bg-s3 transition-colors"
                 >-</button>
                 <input 
                   type="number" 
-                  value={lotSize}
-                  onChange={(e) => setLotSize(Number(e.target.value))}
-                  step="0.01"
-                  min="0.01"
-                  max={tier.maxLot}
+                  value={contracts}
+                  onChange={(e) => setContracts(Number(e.target.value))}
+                  step="1"
+                  min="1"
+                  max={tier.maxContractsVal}
                   className="w-20 bg-transparent text-center text-white font-mono font-bold outline-none"
                 />
                 <button 
-                  onClick={() => setLotSize(Number((lotSize + 0.01).toFixed(2)))}
+                  onClick={() => setContracts(contracts + 1)}
                   className="px-4 py-3 text-muted-foreground hover:text-white hover:bg-s3 transition-colors"
                 >+</button>
               </div>
-              <span className="text-xs text-muted-foreground">Max: {tier.maxLot} lot ({tier.label})</span>
+              <span className="text-xs text-muted-foreground">Max: {tier.maxContractsText} ({tier.label})</span>
             </div>
 
             <div className="flex-1 flex gap-4 w-full">
@@ -165,14 +165,14 @@ export default function Terminal({ tier, userTierName }: TerminalProps) {
                 className="flex-1 bg-red/10 text-red border border-red/30 hover:bg-red hover:text-white py-3 rounded transition-all font-heading text-xl flex flex-col items-center justify-center leading-none"
               >
                 <span>SELL</span>
-                <span className="text-xs font-mono font-normal opacity-80 mt-1">2641.70</span>
+                <span className="text-xs font-mono font-normal opacity-80 mt-1">21004.50</span>
               </button>
               <button 
                 onClick={() => handleTrade('BUY')}
                 className="flex-1 bg-green/10 text-green border border-green/30 hover:bg-green hover:text-white py-3 rounded transition-all font-heading text-xl flex flex-col items-center justify-center leading-none"
               >
                 <span>BUY</span>
-                <span className="text-xs font-mono font-normal opacity-80 mt-1">2641.80</span>
+                <span className="text-xs font-mono font-normal opacity-80 mt-1">21005.50</span>
               </button>
             </div>
             
@@ -237,7 +237,7 @@ export default function Terminal({ tier, userTierName }: TerminalProps) {
                   <div className="flex justify-between items-end mt-3">
                     <div className="flex gap-4">
                       <div>
-                        <div className="text-[10px] text-muted-foreground uppercase">Size</div>
+                        <div className="text-[10px] text-muted-foreground uppercase">Contracts</div>
                         <div className="data-number text-sm text-white">{pos.size}</div>
                       </div>
                       <div>

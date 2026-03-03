@@ -17,8 +17,8 @@ export default function Home() {
             <span className="text-gold">JUST PROVE IT.</span>
           </h1>
           
-          <p className="text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto font-medium">
-            The only prop trading platform for traders who've already won. Verify your funded status. Unlock real leverage. Withdraw same day.
+          <p className="text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto font-medium leading-relaxed">
+            Taking payouts on Future prop firms before? Trade one good set up, withdraw same day. No consistency rules, no minimum trading days, no pass challenge buffer, etc.
           </p>
 
           <div className="flex flex-col items-center gap-4 pt-4">
@@ -71,19 +71,19 @@ export default function Home() {
           <div className="bg-s1 border border-b1 p-8 relative z-10 flex flex-col items-center text-center">
             <div className="w-16 h-16 bg-s2 border border-b2 flex items-center justify-center data-number text-2xl text-gold font-bold mb-6 rounded-full">1</div>
             <h3 className="text-2xl text-white mb-3">PROVE IT</h3>
-            <p className="text-muted-foreground">Submit your funded account proof from any prop firm. Takes 2 minutes.</p>
+            <p className="text-muted-foreground">Upload a Certificate PDF or forward your Wise/Stripe payout verification email.</p>
           </div>
 
           <div className="bg-s1 border border-b1 p-8 relative z-10 flex flex-col items-center text-center">
             <div className="w-16 h-16 bg-s2 border border-b2 flex items-center justify-center data-number text-2xl text-gold font-bold mb-6 rounded-full">2</div>
             <h3 className="text-2xl text-white mb-3">GET VERIFIED</h3>
-            <p className="text-muted-foreground">Our team reviews within 24 hours. Your tier unlocks automatically.</p>
+            <p className="text-muted-foreground">Our compliance team reviews within 24 hours. Your tier unlocks automatically.</p>
           </div>
 
           <div className="bg-s1 border border-b1 p-8 relative z-10 flex flex-col items-center text-center">
             <div className="w-16 h-16 bg-s2 border border-b2 flex items-center justify-center data-number text-2xl text-gold font-bold mb-6 rounded-full">3</div>
             <h3 className="text-2xl text-white mb-3">TRADE & WITHDRAW</h3>
-            <p className="text-muted-foreground">No rules, no limits, no waiting. Withdraw your profits same day.</p>
+            <p className="text-muted-foreground">Trade your edge and withdraw the same day. No restrictive consistency rules.</p>
           </div>
         </div>
       </section>
@@ -105,10 +105,10 @@ export default function Home() {
             { rule: "Daily Loss Limit", other: true, us: false },
             { rule: "Consistency Rule", other: true, us: false },
             { rule: "Min Trading Days", other: true, us: false },
+            { rule: "Pass Challenge Buffer", other: true, us: false },
             { rule: "Challenge Fee", other: "$100–$1,000", us: "$0" },
             { rule: "Withdrawal Wait", other: "14–30 days", us: "Same Day" },
             { rule: "News Trading Ban", other: true, us: false },
-            { rule: "Weekend Holding Ban", other: true, us: false },
           ].map((item, i) => (
             <div key={i} className="grid grid-cols-3 p-4 border-b border-b1 last:border-0 hover:bg-s2/50 transition-colors items-center">
               <div className="font-medium">{item.rule}</div>
@@ -135,7 +135,11 @@ export default function Home() {
             {Object.entries(TIERS).filter(([k]) => k !== 'banned').map(([key, tier]) => (
               <div key={key} className="bg-background border border-b1 p-6 relative overflow-hidden group hover:border-b2 transition-colors">
                 <div className="absolute top-0 left-0 w-full h-1" style={{ backgroundColor: tier.color }}></div>
-                <h3 className="text-2xl mb-2" style={{ color: tier.color }}>{tier.label}</h3>
+                <h3 className="text-2xl mb-1" style={{ color: tier.color }}>{tier.label}</h3>
+                
+                {key === 'verified' && <div className="text-xs text-muted-foreground mb-4">For Certified Traders</div>}
+                {key === 'elite' && <div className="text-xs text-muted-foreground mb-4">For Traders With Payouts</div>}
+                {(key === 'unverified' || key === 'titan') && <div className="text-xs text-transparent mb-4 select-none">Spacer</div>}
                 
                 <div className="my-6 space-y-4">
                   <div>
@@ -143,14 +147,15 @@ export default function Home() {
                     <div className="data-number text-2xl">1:{tier.leverage}</div>
                   </div>
                   <div>
-                    <div className="text-xs text-muted-foreground uppercase mb-1">Max Lot</div>
-                    <div className="data-number text-xl">{tier.maxLot}</div>
+                    <div className="text-xs text-muted-foreground uppercase mb-1">Max Position Size</div>
+                    <div className="data-number text-xl">{tier.maxContractsText}</div>
                   </div>
                   <div>
                     <div className="text-xs text-muted-foreground uppercase mb-1">Instruments</div>
-                    <div className="text-sm font-medium text-muted-foreground">
-                      {tier.instruments.length > 4 ? `${tier.instruments.length} Pairs (Majors + Metals)` : tier.instruments.join(', ')}
+                    <div className="text-sm font-medium text-muted-foreground leading-tight">
+                      {tier.instruments.length > 5 ? `Futures (Micros & Minis)` : `Micros Only`}
                     </div>
+                    <div className="text-[10px] text-muted-foreground mt-1">Nasdaq, S&P 500, Gold, Silver, Oil</div>
                   </div>
                 </div>
               </div>

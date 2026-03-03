@@ -176,60 +176,57 @@ export async function registerRoutes(
     }
   });
 
-  function validatePrices(bid: number, ask: number): { bid: number; ask: number } {
-    if (isNaN(bid) || isNaN(ask) || bid <= 0 || ask <= 0) {
-      throw new Error('Invalid price data received');
-    }
+  async function fetchCoinbaseBidAsk(pair: string): Promise<{ bid: number; ask: number }> {
+    const [buyRes, sellRes] = await Promise.all([
+      fetch(`https://api.coinbase.com/v2/prices/${pair}/buy`),
+      fetch(`https://api.coinbase.com/v2/prices/${pair}/sell`),
+    ]);
+    if (!buyRes.ok || !sellRes.ok) throw new Error('Coinbase API error');
+    const [buyData, sellData] = await Promise.all([buyRes.json(), sellRes.json()]);
+    const ask = parseFloat(buyData?.data?.amount);
+    const bid = parseFloat(sellData?.data?.amount);
+    if (isNaN(bid) || isNaN(ask) || bid <= 0 || ask <= 0) throw new Error('Invalid Coinbase prices');
     return { bid, ask };
   }
 
-  async function fetchBinanceUS(symbol: string): Promise<{ bid: number; ask: number }> {
-    const res = await fetch(`https://api.binance.us/api/v3/ticker/bookTicker?symbol=${symbol}`);
-    if (!res.ok) throw new Error(`Binance US returned ${res.status}`);
-    const data = await res.json();
-    return validatePrices(parseFloat(data.bidPrice), parseFloat(data.askPrice));
-  }
+  const YAHOO_SPREADS: Record<string, number> = {
+    'GC=F': 0.60, 'SI=F': 0.04, 'CL=F': 0.03,
+    '%5EGSPC': 0.50, 'NQ=F': 1.00,
+    'MNQ=F': 0.50, 'MES=F': 0.25,
+    'MGC=F': 0.60, 'SIL=F': 0.04, 'MCL=F': 0.03,
+  };
 
-  async function fetchCoinbaseSpot(pair: string, spreadPct: number = 0.0003): Promise<{ bid: number; ask: number }> {
-    const res = await fetch(`https://api.coinbase.com/v2/prices/${pair}/spot`);
-    if (!res.ok) throw new Error(`Coinbase returned ${res.status}`);
+  async function fetchYahooFinance(symbol: string): Promise<{ bid: number; ask: number }> {
+    const res = await fetch(
+      `https://query1.finance.yahoo.com/v8/finance/chart/${symbol}?interval=1m&range=1d`,
+      { headers: { 'User-Agent': 'Mozilla/5.0' } }
+    );
+    if (!res.ok) throw new Error(`Yahoo Finance returned ${res.status}`);
     const data = await res.json();
-    const mid = parseFloat(data?.data?.amount);
-    if (isNaN(mid) || mid <= 0) throw new Error('Invalid Coinbase price');
-    const half = mid * spreadPct;
-    return { bid: +(mid - half).toFixed(6), ask: +(mid + half).toFixed(6) };
-  }
-
-  async function fetchCoinGecko(id: string, spreadPct: number = 0.0003): Promise<{ bid: number; ask: number }> {
-    const res = await fetch(`https://api.coingecko.com/api/v3/simple/price?ids=${id}&vs_currencies=usd`);
-    if (!res.ok) throw new Error(`CoinGecko returned ${res.status}`);
-    const data = await res.json();
-    const mid = data?.[id]?.usd;
-    if (typeof mid !== 'number' || isNaN(mid) || mid <= 0) throw new Error('Invalid CoinGecko price');
-    const half = mid * spreadPct;
-    return { bid: +(mid - half).toFixed(6), ask: +(mid + half).toFixed(6) };
-  }
-
-  function derivedPrice(base: number, seed: number, range: number, spread: number): { bid: number; ask: number } {
-    const variance = (seed % range) - (range / 2);
-    const bid = +(base + variance).toFixed(2);
-    return { bid, ask: +(bid + spread).toFixed(2) };
+    const meta = data?.chart?.result?.[0]?.meta;
+    const price = meta?.regularMarketPrice;
+    if (typeof price !== 'number' || isNaN(price) || price <= 0) throw new Error('Invalid Yahoo price');
+    const halfSpread = (YAHOO_SPREADS[symbol] ?? price * 0.0002) / 2;
+    return {
+      bid: +(price - halfSpread).toFixed(4),
+      ask: +(price + halfSpread).toFixed(4),
+    };
   }
 
   const priceCache: Record<string, { bid: number; ask: number; ts: number }> = {};
 
   const PRICE_FETCHERS: Record<string, () => Promise<{ bid: number; ask: number }>> = {
-    'Bitcoin': () => fetchBinanceUS('BTCUSDT').catch(() => fetchCoinbaseSpot('BTC-USD')),
-    'Gold': () => fetchCoinGecko('tether-gold', 0.0005).catch(() => fetchCoinbaseSpot('BTC-USD').then(p => derivedPrice(2650, p.bid, 30, 0.30))),
-    'Silver': () => fetchCoinGecko('silver-token', 0.001).catch(() => fetchCoinbaseSpot('BTC-USD').then(p => derivedPrice(31.5, p.bid % 100, 3, 0.02))),
-    'Oil (WTI)': async () => { const btc = await fetchBinanceUS('BTCUSDT').catch(() => fetchCoinbaseSpot('BTC-USD')); return derivedPrice(68.5, btc.bid, 5, 0.03); },
-    'S&P 500': async () => { const btc = await fetchBinanceUS('BTCUSDT').catch(() => fetchCoinbaseSpot('BTC-USD')); return derivedPrice(5950, btc.bid, 50, 0.25); },
-    'Nasdaq': async () => { const btc = await fetchBinanceUS('BTCUSDT').catch(() => fetchCoinbaseSpot('BTC-USD')); return derivedPrice(21200, btc.bid, 100, 0.50); },
-    'MNQ': async () => { const btc = await fetchBinanceUS('BTCUSDT').catch(() => fetchCoinbaseSpot('BTC-USD')); return derivedPrice(21200, btc.bid, 100, 0.50); },
-    'MES': async () => { const btc = await fetchBinanceUS('BTCUSDT').catch(() => fetchCoinbaseSpot('BTC-USD')); return derivedPrice(5950, btc.bid, 50, 0.25); },
-    'MGC': async () => { const btc = await fetchBinanceUS('BTCUSDT').catch(() => fetchCoinbaseSpot('BTC-USD')); return derivedPrice(2650, btc.bid, 30, 0.30); },
-    'SIL': async () => { const btc = await fetchBinanceUS('BTCUSDT').catch(() => fetchCoinbaseSpot('BTC-USD')); return derivedPrice(31.5, btc.bid % 100, 3, 0.02); },
-    'MCL': async () => { const btc = await fetchBinanceUS('BTCUSDT').catch(() => fetchCoinbaseSpot('BTC-USD')); return derivedPrice(68.5, btc.bid, 5, 0.03); },
+    'Bitcoin': () => fetchCoinbaseBidAsk('BTC-USD'),
+    'Gold': () => fetchYahooFinance('GC=F'),
+    'Silver': () => fetchYahooFinance('SI=F'),
+    'Oil (WTI)': () => fetchYahooFinance('CL=F'),
+    'S&P 500': () => fetchYahooFinance('%5EGSPC'),
+    'Nasdaq': () => fetchYahooFinance('NQ=F'),
+    'MNQ': () => fetchYahooFinance('MNQ=F'),
+    'MES': () => fetchYahooFinance('MES=F'),
+    'MGC': () => fetchYahooFinance('MGC=F'),
+    'SIL': () => fetchYahooFinance('SIL=F'),
+    'MCL': () => fetchYahooFinance('MCL=F'),
   };
 
   app.get("/api/prices/:instrument", async (req: Request, res: Response) => {

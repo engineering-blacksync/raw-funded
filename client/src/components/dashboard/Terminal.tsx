@@ -20,9 +20,9 @@ const INSTRUMENTS = [
 ];
 
 const PRICE_DECIMALS: Record<string, number> = {
-  'Bitcoin': 2, 'Gold': 2, 'Silver': 4, 'Oil (WTI)': 2,
+  'Bitcoin': 2, 'Gold': 2, 'Silver': 3, 'Oil (WTI)': 2,
   'S&P 500': 2, 'Nasdaq': 2, 'MNQ': 2, 'MES': 2,
-  'MGC': 2, 'SIL': 4, 'MCL': 2,
+  'MGC': 2, 'SIL': 3, 'MCL': 2,
 };
 
 declare global {

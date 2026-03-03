@@ -5,25 +5,29 @@ interface TerminalProps {
   userTierName: string;
 }
 
-const INSTRUMENTS = [
-  { label: 'Bitcoin', symbol: 'COINBASE:BTCUSD' },
-  { label: 'Gold', symbol: 'OANDA:XAUUSD' },
-  { label: 'Silver', symbol: 'OANDA:XAGUSD' },
-  { label: 'Oil (WTI)', symbol: 'OANDA:WTICOUSD' },
-  { label: 'S&P 500', symbol: 'OANDA:SPX500USD' },
-  { label: 'Nasdaq', symbol: 'OANDA:NAS100USD' },
-  { label: 'MNQ', symbol: 'CME_MINI:MNQ1!' },
-  { label: 'MES', symbol: 'CME_MINI:MES1!' },
-  { label: 'MGC', symbol: 'COMEX:MGC1!' },
-  { label: 'SIL', symbol: 'COMEX:SIL1!' },
-  { label: 'MCL', symbol: 'NYMEX:MCL1!' },
-];
+interface InstrumentConfig {
+  label: string;
+  symbol: string;
+  default: number;
+  step: number;
+  min: number;
+  max: number;
+  decimals: number;
+}
 
-const PRICE_DECIMALS: Record<string, number> = {
-  'Bitcoin': 2, 'Gold': 2, 'Silver': 3, 'Oil (WTI)': 2,
-  'S&P 500': 2, 'Nasdaq': 2, 'MNQ': 2, 'MES': 2,
-  'MGC': 2, 'SIL': 3, 'MCL': 2,
-};
+const INSTRUMENTS: InstrumentConfig[] = [
+  { label: 'Bitcoin', symbol: 'COINBASE:BTCUSD', default: 0.01, step: 0.01, min: 0.01, max: 1.00, decimals: 2 },
+  { label: 'Gold', symbol: 'OANDA:XAUUSD', default: 0.01, step: 0.01, min: 0.01, max: 10.00, decimals: 2 },
+  { label: 'Silver', symbol: 'OANDA:XAGUSD', default: 0.01, step: 0.01, min: 0.01, max: 10.00, decimals: 2 },
+  { label: 'Oil (WTI)', symbol: 'OANDA:WTICOUSD', default: 1, step: 1, min: 1, max: 20, decimals: 0 },
+  { label: 'S&P 500', symbol: 'OANDA:SPX500USD', default: 1, step: 1, min: 1, max: 20, decimals: 0 },
+  { label: 'Nasdaq', symbol: 'OANDA:NAS100USD', default: 1, step: 1, min: 1, max: 20, decimals: 0 },
+  { label: 'MNQ', symbol: 'CME_MINI:MNQ1!', default: 1, step: 1, min: 1, max: 20, decimals: 0 },
+  { label: 'MES', symbol: 'CME_MINI:MES1!', default: 1, step: 1, min: 1, max: 20, decimals: 0 },
+  { label: 'MGC', symbol: 'COMEX:MGC1!', default: 1, step: 1, min: 1, max: 20, decimals: 0 },
+  { label: 'SIL', symbol: 'COMEX:SIL1!', default: 1, step: 1, min: 1, max: 20, decimals: 0 },
+  { label: 'MCL', symbol: 'NYMEX:MCL1!', default: 1, step: 1, min: 1, max: 20, decimals: 0 },
+];
 
 declare global {
   interface Window {
@@ -47,59 +51,26 @@ function useTradingViewScript() {
   return loaded;
 }
 
-function useLivePrices(instrumentLabel: string) {
-  const [prices, setPrices] = useState<{ bid: number | null; ask: number | null }>({ bid: null, ask: null });
-  const lastGoodRef = useRef<{ bid: number; ask: number } | null>(null);
-
-  useEffect(() => {
-    setPrices({ bid: null, ask: null });
-    lastGoodRef.current = null;
-    let active = true;
-
-    const fetchPrices = async () => {
-      try {
-        const res = await fetch(`/api/prices/${encodeURIComponent(instrumentLabel)}`);
-        if (!active) return;
-        if (res.ok) {
-          const data = await res.json();
-          if (data.bid > 0 && data.ask > 0) {
-            lastGoodRef.current = data;
-            setPrices(data);
-          } else if (lastGoodRef.current) {
-            setPrices(lastGoodRef.current);
-          }
-        } else if (lastGoodRef.current) {
-          setPrices(lastGoodRef.current);
-        }
-      } catch {
-        if (active && lastGoodRef.current) {
-          setPrices(lastGoodRef.current);
-        }
-      }
-    };
-
-    fetchPrices();
-    const interval = setInterval(fetchPrices, 1000);
-    return () => { active = false; clearInterval(interval); };
-  }, [instrumentLabel]);
-
-  return prices;
-}
-
-function formatPrice(price: number | null, instrument: string): string {
-  if (price === null) return '---';
-  const decimals = PRICE_DECIMALS[instrument] ?? 2;
-  return price.toLocaleString('en-US', { minimumFractionDigits: decimals, maximumFractionDigits: decimals });
-}
-
 export default function Terminal({ tier, userTierName }: TerminalProps) {
   const chartContainerRef = useRef<HTMLDivElement>(null);
   const tvLoaded = useTradingViewScript();
   const [activeInstrument, setActiveInstrument] = useState(INSTRUMENTS[0]);
-  const [contracts, setContracts] = useState<number>(1);
+  const [quantity, setQuantity] = useState<number>(INSTRUMENTS[0].default);
   const [positions, setPositions] = useState<any[]>([]);
   const [viewMode, setViewMode] = useState<'simple' | 'pro'>('simple');
-  const livePrices = useLivePrices(activeInstrument.label);
+
+  const handleInstrumentChange = (inst: InstrumentConfig) => {
+    setActiveInstrument(inst);
+    setQuantity(inst.default);
+  };
+
+  const clampQuantity = (val: number, inst: InstrumentConfig) => {
+    const rounded = +val.toFixed(inst.decimals);
+    return Math.min(inst.max, Math.max(inst.min, rounded));
+  };
+
+  const atMin = quantity <= activeInstrument.min;
+  const atMax = quantity >= activeInstrument.max;
 
   const createChart = useCallback(() => {
     if (!chartContainerRef.current || !window.TradingView) return;
@@ -134,21 +105,18 @@ export default function Terminal({ tier, userTierName }: TerminalProps) {
   }, [tvLoaded, createChart]);
 
   const handleTrade = (side: 'BUY' | 'SELL') => {
-    if (contracts > tier.maxContractsVal) {
-      alert(`Contract size exceeds your tier limit (${tier.maxContractsText}). Verify to unlock larger positions.`);
+    if (quantity > tier.maxContractsVal) {
+      alert(`Quantity exceeds your tier limit (${tier.maxContractsText}). Verify to unlock larger positions.`);
       return;
     }
-
-    const entryPrice = side === 'BUY' ? livePrices.ask : livePrices.bid;
-    if (!entryPrice) return;
 
     const newPosition = {
       id: Math.random().toString(36).substring(7),
       instrument: activeInstrument.label,
       side,
-      size: contracts,
-      entry: entryPrice,
-      current: entryPrice,
+      size: quantity,
+      entry: 0,
+      current: 0,
       pnl: 0.00
     };
     
@@ -159,6 +127,10 @@ export default function Terminal({ tier, userTierName }: TerminalProps) {
     setPositions(positions.filter(p => p.id !== id));
   };
 
+  const displayQty = activeInstrument.decimals > 0
+    ? quantity.toFixed(activeInstrument.decimals)
+    : String(quantity);
+
   return (
     <div className="flex flex-col lg:flex-row h-full">
       <div className="flex-1 flex flex-col border-r border-b1 min-w-0">
@@ -168,7 +140,7 @@ export default function Terminal({ tier, userTierName }: TerminalProps) {
             {INSTRUMENTS.map((inst) => (
               <button
                 key={inst.symbol}
-                onClick={() => setActiveInstrument(inst)}
+                onClick={() => handleInstrumentChange(inst)}
                 className={`px-4 py-3 text-xs font-medium whitespace-nowrap transition-colors border-b-2 ${activeInstrument.symbol === inst.symbol ? 'border-gold text-white bg-s2' : 'border-transparent text-muted-foreground hover:text-white hover:bg-s2/50'}`}
                 data-testid={`instrument-${inst.label}`}
               >
@@ -208,47 +180,46 @@ export default function Terminal({ tier, userTierName }: TerminalProps) {
               <div className="text-[10px] text-gold font-bold uppercase tracking-wider mb-1">{activeInstrument.label}</div>
               <div className="flex items-center bg-s2 border border-b2 rounded overflow-hidden">
                 <button 
-                  onClick={() => setContracts(Math.max(1, contracts - 1))}
-                  className="px-4 py-3 text-muted-foreground hover:text-white hover:bg-s3 transition-colors"
+                  onClick={() => setQuantity(clampQuantity(quantity - activeInstrument.step, activeInstrument))}
+                  disabled={atMin}
+                  className={`px-4 py-3 transition-colors ${atMin ? 'text-muted-foreground/30 cursor-not-allowed' : 'text-muted-foreground hover:text-white hover:bg-s3'}`}
                 >-</button>
                 <input 
-                  type="number" 
-                  value={contracts}
-                  onChange={(e) => setContracts(Number(e.target.value))}
-                  step="1"
-                  min="1"
-                  max={tier.maxContractsVal}
+                  type="text"
+                  inputMode="decimal"
+                  value={displayQty}
+                  onChange={(e) => {
+                    const val = parseFloat(e.target.value);
+                    if (!isNaN(val)) setQuantity(clampQuantity(val, activeInstrument));
+                  }}
                   className="w-20 bg-transparent text-center text-white font-mono font-bold outline-none"
                   data-testid="input-contracts"
                 />
                 <button 
-                  onClick={() => setContracts(contracts + 1)}
-                  className="px-4 py-3 text-muted-foreground hover:text-white hover:bg-s3 transition-colors"
+                  onClick={() => setQuantity(clampQuantity(quantity + activeInstrument.step, activeInstrument))}
+                  disabled={atMax}
+                  className={`px-4 py-3 transition-colors ${atMax ? 'text-muted-foreground/30 cursor-not-allowed' : 'text-muted-foreground hover:text-white hover:bg-s3'}`}
                 >+</button>
               </div>
-              <span className="text-[10px] text-muted-foreground">Max: {tier.maxContractsText} ({tier.label})</span>
+              <span className="text-[10px] text-muted-foreground">
+                Min: {activeInstrument.min} · Max: {activeInstrument.max} · Step: {activeInstrument.step}
+              </span>
             </div>
 
             <div className="flex-1 flex gap-4 w-full">
               <button 
                 onClick={() => handleTrade('SELL')}
-                className="flex-1 bg-red/10 text-red border border-red/30 hover:bg-red hover:text-white py-3 rounded transition-all font-heading text-xl flex flex-col items-center justify-center leading-none gap-1"
+                className="flex-1 bg-red/10 text-red border border-red/30 hover:bg-red hover:text-white py-3 rounded transition-all font-heading text-xl flex items-center justify-center"
                 data-testid="btn-sell"
               >
-                <span>SELL</span>
-                <span className="text-xs font-mono font-normal opacity-80">
-                  {livePrices.bid === null ? 'Loading...' : formatPrice(livePrices.bid, activeInstrument.label)}
-                </span>
+                SELL
               </button>
               <button 
                 onClick={() => handleTrade('BUY')}
-                className="flex-1 bg-green/10 text-green border border-green/30 hover:bg-green hover:text-white py-3 rounded transition-all font-heading text-xl flex flex-col items-center justify-center leading-none gap-1"
+                className="flex-1 bg-green/10 text-green border border-green/30 hover:bg-green hover:text-white py-3 rounded transition-all font-heading text-xl flex items-center justify-center"
                 data-testid="btn-buy"
               >
-                <span>BUY</span>
-                <span className="text-xs font-mono font-normal opacity-80">
-                  {livePrices.ask === null ? 'Loading...' : formatPrice(livePrices.ask, activeInstrument.label)}
-                </span>
+                BUY
               </button>
             </div>
             
@@ -309,12 +280,8 @@ export default function Terminal({ tier, userTierName }: TerminalProps) {
                   <div className="flex justify-between items-end mt-3">
                     <div className="flex gap-4">
                       <div>
-                        <div className="text-[10px] text-muted-foreground uppercase">Contracts</div>
+                        <div className="text-[10px] text-muted-foreground uppercase">Qty</div>
                         <div className="data-number text-sm text-white">{pos.size}</div>
-                      </div>
-                      <div>
-                        <div className="text-[10px] text-muted-foreground uppercase">Entry</div>
-                        <div className="data-number text-sm text-white">{pos.entry}</div>
                       </div>
                     </div>
                     <div className="text-right">

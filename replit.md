@@ -48,12 +48,8 @@ A prop trading platform for traders who've already won elsewhere. Users verify t
 - `POST /api/withdrawals` — Request withdrawal
 - `GET /api/withdrawals` — List withdrawals
 - `GET /api/leaderboard` — Public leaderboard
-- `GET /api/prices/:instrument` — Live bid/ask prices (Coinbase + Yahoo Finance)
 
-## Live Price Feed
-- Server-side proxy at `/api/prices/:instrument` — exchange-matched sources:
-  - Bitcoin: Coinbase API (buy/sell endpoints for real bid/ask spread)
-  - Gold, Silver, Oil, S&P 500, Nasdaq, MNQ, MES, MGC, SIL, MCL: Yahoo Finance chart API (same exchanges as TradingView — COMEX, NYMEX, CME)
-- 500ms server cache to prevent rate limiting; frontend polls every 1 second
-- `useLivePrices()` hook in Terminal.tsx with last-known-price fallback on errors
+## Trading Terminal
 - TradingView widget: loads `https://s3.tradingview.com/tv.js`, 11 instruments with Simple/Pro view modes
+- Per-instrument quantity config: Bitcoin/Gold/Silver use 0.01 step with decimal lots; all others use integer contracts (step 1, max 20)
+- Switching instrument tabs resets quantity to that instrument's default

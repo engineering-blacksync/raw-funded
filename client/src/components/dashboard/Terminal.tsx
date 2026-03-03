@@ -19,6 +19,12 @@ const INSTRUMENTS = [
   { label: 'MCL', symbol: 'NYMEX:MCL1!' },
 ];
 
+const PRICE_DECIMALS: Record<string, number> = {
+  'Bitcoin': 2, 'Gold': 2, 'Silver': 4, 'Oil (WTI)': 2,
+  'S&P 500': 2, 'Nasdaq': 2, 'MNQ': 2, 'MES': 2,
+  'MGC': 2, 'SIL': 4, 'MCL': 2,
+};
+
 declare global {
   interface Window {
     TradingView: any;
@@ -41,6 +47,51 @@ function useTradingViewScript() {
   return loaded;
 }
 
+function useLivePrices(instrumentLabel: string) {
+  const [prices, setPrices] = useState<{ bid: number | null; ask: number | null }>({ bid: null, ask: null });
+  const lastGoodRef = useRef<{ bid: number; ask: number } | null>(null);
+
+  useEffect(() => {
+    setPrices({ bid: null, ask: null });
+    lastGoodRef.current = null;
+    let active = true;
+
+    const fetchPrices = async () => {
+      try {
+        const res = await fetch(`/api/prices/${encodeURIComponent(instrumentLabel)}`);
+        if (!active) return;
+        if (res.ok) {
+          const data = await res.json();
+          if (data.bid > 0 && data.ask > 0) {
+            lastGoodRef.current = data;
+            setPrices(data);
+          } else if (lastGoodRef.current) {
+            setPrices(lastGoodRef.current);
+          }
+        } else if (lastGoodRef.current) {
+          setPrices(lastGoodRef.current);
+        }
+      } catch {
+        if (active && lastGoodRef.current) {
+          setPrices(lastGoodRef.current);
+        }
+      }
+    };
+
+    fetchPrices();
+    const interval = setInterval(fetchPrices, 1000);
+    return () => { active = false; clearInterval(interval); };
+  }, [instrumentLabel]);
+
+  return prices;
+}
+
+function formatPrice(price: number | null, instrument: string): string {
+  if (price === null) return '---';
+  const decimals = PRICE_DECIMALS[instrument] ?? 2;
+  return price.toLocaleString('en-US', { minimumFractionDigits: decimals, maximumFractionDigits: decimals });
+}
+
 export default function Terminal({ tier, userTierName }: TerminalProps) {
   const chartContainerRef = useRef<HTMLDivElement>(null);
   const tvLoaded = useTradingViewScript();
@@ -48,6 +99,7 @@ export default function Terminal({ tier, userTierName }: TerminalProps) {
   const [contracts, setContracts] = useState<number>(1);
   const [positions, setPositions] = useState<any[]>([]);
   const [viewMode, setViewMode] = useState<'simple' | 'pro'>('simple');
+  const livePrices = useLivePrices(activeInstrument.label);
 
   const createChart = useCallback(() => {
     if (!chartContainerRef.current || !window.TradingView) return;
@@ -87,13 +139,16 @@ export default function Terminal({ tier, userTierName }: TerminalProps) {
       return;
     }
 
+    const entryPrice = side === 'BUY' ? livePrices.ask : livePrices.bid;
+    if (!entryPrice) return;
+
     const newPosition = {
       id: Math.random().toString(36).substring(7),
       instrument: activeInstrument.label,
       side,
       size: contracts,
-      entry: side === 'BUY' ? 21005.50 : 21004.50,
-      current: 21005.00,
+      entry: entryPrice,
+      current: entryPrice,
       pnl: 0.00
     };
     
@@ -177,17 +232,23 @@ export default function Terminal({ tier, userTierName }: TerminalProps) {
             <div className="flex-1 flex gap-4 w-full">
               <button 
                 onClick={() => handleTrade('SELL')}
-                className="flex-1 bg-red/10 text-red border border-red/30 hover:bg-red hover:text-white py-3 rounded transition-all font-heading text-xl flex flex-col items-center justify-center leading-none"
+                className="flex-1 bg-red/10 text-red border border-red/30 hover:bg-red hover:text-white py-3 rounded transition-all font-heading text-xl flex flex-col items-center justify-center leading-none gap-1"
                 data-testid="btn-sell"
               >
                 <span>SELL</span>
+                <span className="text-xs font-mono font-normal opacity-80">
+                  {livePrices.bid === null ? 'Loading...' : formatPrice(livePrices.bid, activeInstrument.label)}
+                </span>
               </button>
               <button 
                 onClick={() => handleTrade('BUY')}
-                className="flex-1 bg-green/10 text-green border border-green/30 hover:bg-green hover:text-white py-3 rounded transition-all font-heading text-xl flex flex-col items-center justify-center leading-none"
+                className="flex-1 bg-green/10 text-green border border-green/30 hover:bg-green hover:text-white py-3 rounded transition-all font-heading text-xl flex flex-col items-center justify-center leading-none gap-1"
                 data-testid="btn-buy"
               >
                 <span>BUY</span>
+                <span className="text-xs font-mono font-normal opacity-80">
+                  {livePrices.ask === null ? 'Loading...' : formatPrice(livePrices.ask, activeInstrument.label)}
+                </span>
               </button>
             </div>
             

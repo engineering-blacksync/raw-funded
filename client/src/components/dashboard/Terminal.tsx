@@ -14,22 +14,22 @@ interface InstrumentConfig {
   step: number;
   min: number;
   max: number;
-  decimals: number;
+  lotSize: number;
   spread?: number;
 }
 
 const INSTRUMENTS: InstrumentConfig[] = [
-  { label: 'Bitcoin', symbol: 'COINBASE:BTCUSD', default: 0.01, step: 0.01, min: 0.01, max: 1.00, decimals: 2 },
-  { label: 'Gold (GC)', symbol: 'OANDA:XAUUSD', default: 1, step: 1, min: 1, max: 10, decimals: 0, spread: 0.03 },
-  { label: 'Silver', symbol: 'OANDA:XAGUSD', default: 0.01, step: 0.01, min: 0.01, max: 10.00, decimals: 2, spread: 0.008 },
-  { label: 'Oil (WTI)', symbol: 'OANDA:WTICOUSD', default: 1, step: 1, min: 1, max: 20, decimals: 0 },
-  { label: 'S&P 500', symbol: 'OANDA:SPX500USD', default: 1, step: 1, min: 1, max: 20, decimals: 0 },
-  { label: 'Nasdaq', symbol: 'OANDA:NAS100USD', default: 1, step: 1, min: 1, max: 20, decimals: 0 },
-  { label: 'MNQ', symbol: 'CME_MINI:MNQ1!', default: 1, step: 1, min: 1, max: 20, decimals: 0 },
-  { label: 'MES', symbol: 'CME_MINI:MES1!', default: 1, step: 1, min: 1, max: 20, decimals: 0 },
-  { label: 'MGC', symbol: 'OANDA:XAUUSD', default: 1, step: 1, min: 1, max: 20, decimals: 0, spread: 0.30 },
-  { label: 'SIL', symbol: 'COMEX:SIL1!', default: 1, step: 1, min: 1, max: 20, decimals: 0, spread: 0.08 },
-  { label: 'MCL', symbol: 'NYMEX:MCL1!', default: 1, step: 1, min: 1, max: 20, decimals: 0 },
+  { label: 'Bitcoin', symbol: 'COINBASE:BTCUSD', default: 1, step: 1, min: 1, max: 100, lotSize: 0.01 },
+  { label: 'Gold (GC)', symbol: 'OANDA:XAUUSD', default: 1, step: 1, min: 1, max: 10, lotSize: 1, spread: 0.03 },
+  { label: 'Silver', symbol: 'OANDA:XAGUSD', default: 1, step: 1, min: 1, max: 10, lotSize: 1, spread: 0.008 },
+  { label: 'Oil (WTI)', symbol: 'OANDA:WTICOUSD', default: 1, step: 1, min: 1, max: 20, lotSize: 1 },
+  { label: 'S&P 500', symbol: 'OANDA:SPX500USD', default: 1, step: 1, min: 1, max: 20, lotSize: 1 },
+  { label: 'Nasdaq', symbol: 'OANDA:NAS100USD', default: 1, step: 1, min: 1, max: 20, lotSize: 1 },
+  { label: 'MNQ', symbol: 'CME_MINI:MNQ1!', default: 1, step: 1, min: 1, max: 20, lotSize: 0.10 },
+  { label: 'MES', symbol: 'CME_MINI:MES1!', default: 1, step: 1, min: 1, max: 20, lotSize: 0.10 },
+  { label: 'MGC', symbol: 'OANDA:XAUUSD', default: 1, step: 1, min: 1, max: 20, lotSize: 0.10, spread: 0.03 },
+  { label: 'SIL', symbol: 'COMEX:SIL1!', default: 1, step: 1, min: 1, max: 20, lotSize: 0.10, spread: 0.008 },
+  { label: 'MCL', symbol: 'NYMEX:MCL1!', default: 1, step: 1, min: 1, max: 20, lotSize: 0.10 },
 ];
 
 const CONTRACT_SIZES: Record<string, number> = {
@@ -169,7 +169,7 @@ export default function Terminal({ tier, userTierName, onOpenPnlChange }: Termin
   };
 
   const clampQuantity = (val: number, inst: InstrumentConfig) => {
-    const rounded = +val.toFixed(inst.decimals);
+    const rounded = Math.round(val);
     return Math.min(inst.max, Math.max(inst.min, rounded));
   };
 
@@ -222,11 +222,12 @@ export default function Terminal({ tier, userTierName, onOpenPnlChange }: Termin
     setTradeStatus(null);
 
     try {
+      const size = quantity * activeInstrument.lotSize;
       const body: any = {
         instrument: activeInstrument.label,
         side,
-        contracts: activeInstrument.decimals > 0 ? 1 : Math.round(quantity),
-        size: quantity,
+        contracts: quantity,
+        size,
         entryPrice,
       };
       if (orderSl) body.stopLoss = parseFloat(orderSl);
@@ -242,6 +243,7 @@ export default function Terminal({ tier, userTierName, onOpenPnlChange }: Termin
         const trade: Trade = await response.json();
         setOpenTrades(prev => [...prev, trade]);
         setTradeStatus({ type: 'success', message: `${side} ${quantity} ${activeInstrument.label} @ ${entryPrice.toLocaleString()}` });
+
         setOrderSl('');
         setOrderTp('');
         setTimeout(() => setTradeStatus(null), 3000);
@@ -287,9 +289,7 @@ export default function Terminal({ tier, userTierName, onOpenPnlChange }: Termin
   };
 
 
-  const displayQty = activeInstrument.decimals > 0
-    ? quantity.toFixed(activeInstrument.decimals)
-    : String(quantity);
+  const displayQty = String(quantity);
 
   const formatPnl = (val: number) => `${val >= 0 ? '+' : ''}$${val.toFixed(2)}`;
 
@@ -452,7 +452,7 @@ export default function Terminal({ tier, userTierName, onOpenPnlChange }: Termin
                 {pos.side}
               </span>
 
-              <span className="text-white font-bold text-xs shrink-0">{pos.size} {pos.instrument}</span>
+              <span className="text-white font-bold text-xs shrink-0">{(() => { const inst = INSTRUMENTS.find(i => i.label === pos.instrument); return inst ? Math.round(pos.size / inst.lotSize) : pos.size; })()} {pos.instrument}</span>
 
               <span className="text-muted-foreground text-[11px] shrink-0">Entry <span className="text-gold data-number">{formatPrice(pos.entryPrice, pos.instrument)}</span></span>
               <span className="text-muted-foreground text-[11px] shrink-0">Now <span className="text-white data-number">{pos.currentPrice ? formatPrice(pos.currentPrice, pos.instrument) : '---'}</span></span>

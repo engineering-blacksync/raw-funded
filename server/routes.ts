@@ -417,7 +417,7 @@ export async function registerRoutes(
     if (!fetcher) return res.status(404).json({ message: "Unknown instrument" });
 
     const cached = priceCache[instrument];
-    if (cached && Date.now() - cached.ts < 800) {
+    if (cached && Date.now() - cached.ts < 400) {
       return res.json({ price: cached.price });
     }
 

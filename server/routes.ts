@@ -42,6 +42,7 @@ export async function registerRoutes(
   });
 
   app.post("/api/auth/register", async (req: Request, res: Response) => {
+    return res.status(403).json({ message: "Public registration is disabled. Accounts are assigned by admin." });
     try {
       const parsed = insertUserSchema.safeParse(req.body);
       if (!parsed.success) return res.status(400).json({ message: "Invalid input", errors: parsed.error.flatten() });
@@ -92,6 +93,87 @@ export async function registerRoutes(
     if (!req.isAuthenticated()) return res.status(401).json({ message: "Not authenticated" });
     const { password, ...safeUser } = req.user!;
     return res.json(safeUser);
+  });
+
+  const requireAdmin = (req: Request, res: Response, next: any) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ message: "Not authenticated" });
+    if (!req.user!.isAdmin) return res.status(403).json({ message: "Admin access required" });
+    next();
+  };
+
+  app.get("/api/admin/users", requireAdmin, async (_req: Request, res: Response) => {
+    const allUsers = await storage.getAllUsers();
+    const safeUsers = allUsers.map(({ password, ...u }) => u);
+    return res.json(safeUsers);
+  });
+
+  app.post("/api/admin/users", requireAdmin, async (req: Request, res: Response) => {
+    try {
+      const { username, email, password: rawPassword, tier, balance, leverage, maxContracts, propFirm } = req.body;
+      if (!username || !email || !rawPassword) return res.status(400).json({ message: "Username, email, and password are required" });
+
+      const existingEmail = await storage.getUserByEmail(email);
+      if (existingEmail) return res.status(409).json({ message: "Email already exists" });
+      const existingUsername = await storage.getUserByUsername(username);
+      if (existingUsername) return res.status(409).json({ message: "Username already exists" });
+
+      const hashedPw = await hashPassword(rawPassword);
+      const user = await storage.createUser({ username, email, password: hashedPw });
+
+      if (tier || balance || leverage || maxContracts || propFirm) {
+        const updates: any = {};
+        if (tier) updates.tier = tier;
+        if (balance !== undefined) updates.balance = balance;
+        if (leverage !== undefined) updates.leverage = leverage;
+        if (maxContracts !== undefined) updates.maxContracts = maxContracts;
+        if (propFirm) updates.propFirm = propFirm;
+        const updated = await storage.updateUser(user.id, updates);
+        if (updated) {
+          const { password, ...safeUser } = updated;
+          return res.status(201).json(safeUser);
+        }
+      }
+
+      const { password, ...safeUser } = user;
+      return res.status(201).json(safeUser);
+    } catch (err: any) {
+      return res.status(500).json({ message: err.message });
+    }
+  });
+
+  app.patch("/api/admin/users/:id", requireAdmin, async (req: Request, res: Response) => {
+    try {
+      const { tier, balance, leverage, maxContracts, isActive, propFirm, payoutsReceived } = req.body;
+      const updates: any = {};
+      if (tier !== undefined) updates.tier = tier;
+      if (balance !== undefined) updates.balance = balance;
+      if (leverage !== undefined) updates.leverage = leverage;
+      if (maxContracts !== undefined) updates.maxContracts = maxContracts;
+      if (isActive !== undefined) updates.isActive = isActive;
+      if (propFirm !== undefined) updates.propFirm = propFirm;
+      if (payoutsReceived !== undefined) updates.payoutsReceived = payoutsReceived;
+
+      const user = await storage.updateUser(req.params.id, updates);
+      if (!user) return res.status(404).json({ message: "User not found" });
+
+      const { password, ...safeUser } = user;
+      return res.json(safeUser);
+    } catch (err: any) {
+      return res.status(500).json({ message: err.message });
+    }
+  });
+
+  app.post("/api/admin/users/:id/reset-password", requireAdmin, async (req: Request, res: Response) => {
+    try {
+      const { newPassword } = req.body;
+      if (!newPassword || newPassword.length < 6) return res.status(400).json({ message: "Password must be at least 6 characters" });
+      const hashed = await hashPassword(newPassword);
+      const user = await storage.updateUserPassword(req.params.id, hashed);
+      if (!user) return res.status(404).json({ message: "User not found" });
+      return res.json({ message: "Password reset" });
+    } catch (err: any) {
+      return res.status(500).json({ message: err.message });
+    }
   });
 
   app.get("/api/trades", requireAuth, async (req: Request, res: Response) => {

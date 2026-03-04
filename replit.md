@@ -1,7 +1,7 @@
 # Raw Funded — Prop Trading Platform
 
 ## Overview
-A prop trading platform for traders who've already won elsewhere. Users verify their funded status (via Certificate PDF or Wise/Stripe payout email) to unlock futures trading tiers with no rules, no challenges, and same-day withdrawals.
+A private prop trading platform where admin assigns funded accounts. Users get assigned balance, leverage, tier, and settings by admin. Platform features futures trading with no rules, no challenges, and same-day withdrawals. Public registration is disabled — accounts are created by admin only.
 
 ## Architecture
 - **Frontend**: React + Vite + TailwindCSS + wouter (routing) + TanStack Query
@@ -14,17 +14,25 @@ A prop trading platform for traders who've already won elsewhere. Users verify t
 | `shared/schema.ts` | Database schema (users, trades, verifications, withdrawals) |
 | `server/db.ts` | Database connection pool |
 | `server/auth.ts` | Passport + session auth, password hashing |
-| `server/routes.ts` | All API routes (/api/auth/*, /api/trades/*, etc.) |
+| `server/routes.ts` | All API routes (/api/auth/*, /api/trades/*, /api/admin/*) |
 | `server/storage.ts` | Storage interface + DatabaseStorage implementation |
 | `client/src/lib/auth.ts` | useAuth() hook — login, register, logout, session check |
 | `client/src/lib/constants.ts` | Tier definitions, leaderboard mock data |
 | `client/src/pages/dashboard.tsx` | Main dashboard with tabs (Terminal, Data, etc.) |
+| `client/src/pages/admin.tsx` | Admin panel — create/edit accounts, manage users |
+
+## Admin System
+- `isAdmin` boolean on users table — only admin users can access `/admin` and `/api/admin/*` routes
+- `leverage`, `maxContracts`, `isActive` fields on users — admin-assigned per-account
+- Admin can: create accounts, edit tier/balance/leverage/maxContracts, toggle active/disabled, reset passwords
+- Public registration (`POST /api/auth/register`) is disabled — returns 403
+- Admin link appears in dashboard sidebar (gold lock icon) only for admin users
 
 ## Tier System
-- **Unverified**: 1:50 leverage, 1 Micro, 3 tries
-- **Verified**: 1:250, 10 Micros / 1 Mini (requires Certificate PDF)
-- **Elite**: 1:500, 50 Micros / 5 Minis (requires 1 payout proof)
-- **Titan**: 1:2000, Unlimited (requires 2+ payout proofs)
+- **Unverified**: Default tier for new accounts
+- **Verified**: Standard funded tier
+- **Elite**: Advanced tier
+- **Titan**: Top tier, unlimited
 - **Banned**: No trading
 
 ## Design System
@@ -34,14 +42,18 @@ A prop trading platform for traders who've already won elsewhere. Users verify t
 - wouter v3: `<Link>` renders `<a>` natively — never nest `<a>` inside `<Link>`
 
 ## API Routes
-- `POST /api/auth/register` — Create account
+- `POST /api/auth/register` — **DISABLED** (returns 403)
 - `POST /api/auth/login` — Login (email + password)
 - `POST /api/auth/logout` — Logout
 - `GET /api/auth/me` — Get current user
+- `GET /api/admin/users` — List all users (admin only)
+- `POST /api/admin/users` — Create user account (admin only)
+- `PATCH /api/admin/users/:id` — Update user settings (admin only)
+- `POST /api/admin/users/:id/reset-password` — Reset user password (admin only)
 - `GET /api/trades` — Trade history
 - `GET /api/trades/open` — Open positions
 - `GET /api/trades/stats` — P&L, win rate, profit factor
-- `GET /api/trades/analytics` — Detailed analytics (day stats, calendar data, equity curve, instrument breakdown, drawdown, durations)
+- `GET /api/trades/analytics` — Detailed analytics
 - `POST /api/trades` — Open a trade
 - `POST /api/trades/:id/close` — Close a trade
 - `POST /api/verifications` — Submit verification proof
@@ -51,20 +63,14 @@ A prop trading platform for traders who've already won elsewhere. Users verify t
 - `GET /api/leaderboard` — Public leaderboard
 
 ## Trading Terminal
-- TradingView widget: loads `https://s3.tradingview.com/tv.js`, 11 instruments with Simple/Pro view modes (defaults to Pro, no indicators)
-- Per-instrument quantity config: Bitcoin/Gold/Silver use 0.01 step with decimal lots; all others use integer contracts (step 1, max 20)
-- Switching instrument tabs resets quantity to that instrument's default
-- All trades persist in PostgreSQL `trades` table — survive page refresh
-- Trade fields: instrument, side (BUY/SELL), size (decimal lots), entryPrice, exitPrice, pnl, stopLoss, takeProfit, status (open/closed)
-- BUY/SELL → `POST /api/trades` saves to DB, returns full trade object
-- Close → `POST /api/trades/:id/close` computes P&L server-side using contract sizes, updates user balance
-- SL/TP → `PATCH /api/trades/:id/sltp` persists stop loss and take profit on open trades
-- Auto-close: client-side checks live price against SL/TP each tick, auto-closes when triggered (deduplicated via ref)
-- Trade history: right panel has Positions/History tabs; closed trades show entry, exit, P&L, date
-- Live P&L: `useLivePrices()` polls `/api/prices/:instrument` every 1s for all open position instruments
-- P&L formula: BUY = (current - entry) × size × contractSize; SELL = (entry - current) × size × contractSize
+- TradingView widget: loads `https://s3.tradingview.com/tv.js`, 11 instruments with Simple/Pro view modes
+- Per-instrument quantity config with lotSize system (MGC/MNQ/MES/SIL/MCL = 0.10 lotSize)
+- Spreads: Gold/GC/MGC = $0.03, Silver/SIL = $0.008 (applied at entry only)
+- All trades persist in PostgreSQL; live P&L via price polling
 - Contract sizes: BTC=1, Gold(GC)=100oz, MGC=10oz, Silver/SIL=5000, Oil/MCL=1000, S&P/MES=50/5, Nasdaq/MNQ=20/2
-- Gold (GC) and MGC share same TradingView chart (COMEX:GC1!) and same GC=F price feed
-- GC trades in full lots (1,2,3... × 100oz), MGC trades in micro units (1,2,3... × 10oz = 0.1 GC lot each)
 - Price sources: Coinbase (BTC), Yahoo Finance (all others)
-- Supabase proxy still available at `/api/supabase/trades` (env: SUPABASE_URL, SUPABASE_ANON_KEY)
+
+## File Uploads
+- multer handles file uploads to `/uploads/` directory
+- Served at `/uploads/` static route
+- Used for verification proof documents (PDF/screenshots)

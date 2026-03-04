@@ -11,6 +11,9 @@ export interface IStorage {
   getUserByUsername(username: string): Promise<User | undefined>;
   getUserByEmail(email: string): Promise<User | undefined>;
   createUser(user: InsertUser & { password: string }): Promise<User>;
+  getAllUsers(): Promise<User[]>;
+  updateUser(id: string, data: Partial<Pick<User, 'tier' | 'balance' | 'leverage' | 'maxContracts' | 'isActive' | 'propFirm' | 'payoutsReceived'>>): Promise<User | undefined>;
+  updateUserPassword(id: string, hashedPassword: string): Promise<User | undefined>;
   updateUserTier(id: string, tier: string): Promise<User | undefined>;
   updateUserBalance(id: string, balance: number): Promise<User | undefined>;
   incrementTriesUsed(id: string): Promise<void>;
@@ -51,6 +54,20 @@ export class DatabaseStorage implements IStorage {
 
   async createUser(insertUser: InsertUser & { password: string }): Promise<User> {
     const [user] = await db.insert(users).values(insertUser).returning();
+    return user;
+  }
+
+  async getAllUsers(): Promise<User[]> {
+    return db.select().from(users);
+  }
+
+  async updateUser(id: string, data: Partial<Pick<User, 'tier' | 'balance' | 'leverage' | 'maxContracts' | 'isActive' | 'propFirm' | 'payoutsReceived'>>): Promise<User | undefined> {
+    const [user] = await db.update(users).set(data).where(eq(users.id, id)).returning();
+    return user;
+  }
+
+  async updateUserPassword(id: string, hashedPassword: string): Promise<User | undefined> {
+    const [user] = await db.update(users).set({ password: hashedPassword }).where(eq(users.id, id)).returning();
     return user;
   }
 

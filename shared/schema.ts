@@ -10,9 +10,13 @@ export const users = pgTable("users", {
   password: text("password").notNull(),
   tier: text("tier").notNull().default("unverified"),
   balance: real("balance").notNull().default(10000),
+  leverage: integer("leverage").notNull().default(50),
+  maxContracts: integer("max_contracts").notNull().default(1),
   propFirm: text("prop_firm"),
   payoutsReceived: integer("payouts_received").default(0),
   triesUsed: integer("tries_used").notNull().default(0),
+  isAdmin: boolean("is_admin").notNull().default(false),
+  isActive: boolean("is_active").notNull().default(true),
   createdAt: timestamp("created_at").defaultNow(),
 });
 

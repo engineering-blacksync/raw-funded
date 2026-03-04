@@ -9,6 +9,7 @@ import Apply from "@/pages/apply";
 import Login from "@/pages/login";
 import Dashboard from "@/pages/dashboard";
 import Leaderboard from "@/pages/leaderboard";
+import Admin from "@/pages/admin";
 import NotFound from "@/pages/not-found";
 
 function Router() {
@@ -19,6 +20,7 @@ function Router() {
       <Route path="/login" component={Login}/>
       <Route path="/dashboard" component={Dashboard}/>
       <Route path="/leaderboard" component={Leaderboard}/>
+      <Route path="/admin" component={Admin}/>
       <Route component={NotFound} />
     </Switch>
   );

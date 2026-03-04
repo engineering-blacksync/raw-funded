@@ -143,7 +143,12 @@ export default function Terminal({ tier, userTierName }: TerminalProps) {
   const totalOpenPnl = positionsWithPnl.reduce((sum, p) => sum + p.livePnl, 0);
   const totalClosedPnl = closedTrades.reduce((sum, t) => sum + (t.pnl ?? 0), 0);
 
-  const activePositions = positionsWithPnl.filter(p => p.instrument === activeInstrument.label);
+  const SHARED_CHARTS: Record<string, string[]> = {
+    'Gold (GC)': ['Gold (GC)', 'MGC'],
+    'MGC': ['Gold (GC)', 'MGC'],
+  };
+  const chartGroup = SHARED_CHARTS[activeInstrument.label] ?? [activeInstrument.label];
+  const activePositions = positionsWithPnl.filter(p => chartGroup.includes(p.instrument));
 
   useEffect(() => {
     if (openTrades.length === 0) return;

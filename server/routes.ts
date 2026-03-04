@@ -321,8 +321,8 @@ export async function registerRoutes(
   });
 
   app.post("/api/supabase/trades", requireAuth, async (req: Request, res: Response) => {
-    const { instrument, side, size, status } = req.body;
-    if (!instrument || !side || !size) {
+    const { instrument, side, size, status, entryPrice, stopLoss, takeProfit, ticket } = req.body;
+    if (!instrument || !side || !size || !entryPrice) {
       return res.status(400).json({ message: "Missing required fields" });
     }
 
@@ -332,6 +332,22 @@ export async function registerRoutes(
       return res.status(500).json({ message: "Supabase not configured" });
     }
 
+    const payload = {
+      trader_username: req.user!.username,
+      instrument,
+      side,
+      size,
+      open_price: entryPrice,
+      close_price: null,
+      stop_loss: stopLoss || null,
+      take_profit: takeProfit || null,
+      pnl: 0,
+      status: status || "open",
+      ticket: ticket || null,
+      close_time: null,
+      updated_at: new Date().toISOString(),
+    };
+
     try {
       const response = await fetch(`${supabaseUrl}/rest/v1/trades`, {
         method: 'POST',
@@ -339,13 +355,14 @@ export async function registerRoutes(
           'Content-Type': 'application/json',
           'apikey': supabaseKey,
           'Authorization': `Bearer ${supabaseKey}`,
-          'Prefer': 'return=minimal',
+          'Prefer': 'return=representation',
         },
-        body: JSON.stringify({ instrument, side, size, status: status || 'pending' }),
+        body: JSON.stringify(payload),
       });
 
       if (response.ok) {
-        return res.json({ success: true });
+        const data = await response.json();
+        return res.json({ success: true, trade: data[0] });
       } else {
         const err = await response.json().catch(() => ({}));
         return res.status(response.status).json({ message: err.message || 'Supabase insert failed' });

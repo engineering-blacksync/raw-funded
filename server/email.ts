@@ -41,7 +41,8 @@ async function getUncachableResendClient() {
 export async function sendApprovalEmail(to: string, username: string, tier: string, balance: number) {
   try {
     const { client, fromEmail } = await getUncachableResendClient();
-    await client.emails.send({
+    console.log(`[email] Sending approval to ${to}, from: ${fromEmail}`);
+    const result = await client.emails.send({
       from: fromEmail || 'Raw Funded <noreply@rawfunded.com>',
       to,
       subject: 'Your Raw Funded Account Has Been Approved',
@@ -78,16 +79,17 @@ export async function sendApprovalEmail(to: string, username: string, tier: stri
         </div>
       `
     });
-    console.log(`[email] Approval email sent to ${to}`);
+    console.log(`[email] Approval email result:`, JSON.stringify(result));
   } catch (err: any) {
-    console.error(`[email] Failed to send approval email to ${to}:`, err.message);
+    console.error(`[email] Failed to send approval email to ${to}:`, err.message, err);
   }
 }
 
 export async function sendRejectionEmail(to: string, username: string, reason?: string) {
   try {
     const { client, fromEmail } = await getUncachableResendClient();
-    await client.emails.send({
+    console.log(`[email] Sending rejection to ${to}, from: ${fromEmail}`);
+    const result = await client.emails.send({
       from: fromEmail || 'Raw Funded <noreply@rawfunded.com>',
       to,
       subject: 'Raw Funded — Verification Update',
@@ -118,8 +120,8 @@ export async function sendRejectionEmail(to: string, username: string, reason?: 
         </div>
       `
     });
-    console.log(`[email] Rejection email sent to ${to}`);
+    console.log(`[email] Rejection email result:`, JSON.stringify(result));
   } catch (err: any) {
-    console.error(`[email] Failed to send rejection email to ${to}:`, err.message);
+    console.error(`[email] Failed to send rejection email to ${to}:`, err.message, err);
   }
 }

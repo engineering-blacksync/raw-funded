@@ -121,9 +121,18 @@ export default function Dashboard() {
         </div>
 
         <div className="flex items-center gap-4">
-          <div className="hidden md:flex flex-col items-end mr-4">
-            <span className="text-xs text-muted-foreground uppercase tracking-widest">Balance</span>
-            <span className="data-number text-lg text-white font-bold">${(user.balance || 10000).toFixed(2)}</span>
+          <div className="hidden md:flex items-center gap-6 mr-4">
+            <div className="flex flex-col items-end">
+              <span className="text-[10px] text-muted-foreground uppercase tracking-widest">Balance</span>
+              <span className="data-number text-lg text-white font-bold">${(user.balance || 10000).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+            </div>
+            <div className="w-px h-8 bg-b1"></div>
+            <div className="flex flex-col items-end">
+              <span className="text-[10px] text-muted-foreground uppercase tracking-widest">P&L</span>
+              <span className={`data-number text-lg font-bold ${(stats?.totalPnl ?? 0) >= 0 ? 'text-[#22C55E]' : 'text-[#EF4444]'}`}>
+                {(stats?.totalPnl ?? 0) >= 0 ? '+' : ''}${(stats?.totalPnl ?? 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              </span>
+            </div>
           </div>
 
           <div 

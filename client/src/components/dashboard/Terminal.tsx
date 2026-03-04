@@ -334,111 +334,107 @@ export default function Terminal({ tier, userTierName, onOpenPnlChange }: Termin
           </div>
         </div>
 
-        <div className="flex-1 relative bg-background">
-          <div ref={chartContainerRef} id="tradingview-chart" className="absolute inset-0" />
-          {!tvLoaded && (
-            <div className="absolute inset-0 flex items-center justify-center">
-              <div className="w-8 h-8 border-2 border-gold border-t-transparent rounded-full animate-spin"></div>
-            </div>
-          )}
-        </div>
-
-        <div className="border-t border-b1 bg-s1 shrink-0 px-3 py-2">
-          {showSltp && (
-            <div className="flex gap-3 mb-2">
-              <div className="flex-1 flex items-center gap-1.5">
-                <label className="text-[9px] text-red font-bold uppercase shrink-0">SL</label>
-                <input
-                  type="text"
-                  inputMode="decimal"
-                  placeholder="None"
-                  value={orderSl}
-                  onChange={(e) => setOrderSl(e.target.value)}
-                  className="w-full bg-s2 border border-b2 rounded px-2 py-1 text-xs text-white font-mono outline-none focus:border-red/50"
-                  data-testid="input-order-sl"
-                />
+        <div className="flex-1 flex relative">
+          <div className="flex-1 relative bg-background">
+            <div ref={chartContainerRef} id="tradingview-chart" className="absolute inset-0" />
+            {!tvLoaded && (
+              <div className="absolute inset-0 flex items-center justify-center">
+                <div className="w-8 h-8 border-2 border-gold border-t-transparent rounded-full animate-spin"></div>
               </div>
-              <div className="flex-1 flex items-center gap-1.5">
-                <label className="text-[9px] text-green font-bold uppercase shrink-0">TP</label>
-                <input
-                  type="text"
-                  inputMode="decimal"
-                  placeholder="None"
-                  value={orderTp}
-                  onChange={(e) => setOrderTp(e.target.value)}
-                  className="w-full bg-s2 border border-b2 rounded px-2 py-1 text-xs text-white font-mono outline-none focus:border-green/50"
-                  data-testid="input-order-tp"
-                />
-              </div>
-            </div>
-          )}
+            )}
+          </div>
 
-          <div className="flex items-stretch gap-2">
-            <button className="flex items-center gap-1 text-[10px] text-white font-medium bg-s2 border border-b2 rounded px-2 py-1 hover:bg-s3 transition-colors shrink-0" data-testid="btn-market-order">
-              Market
-            </button>
-
+          <div className="w-14 shrink-0 border-l border-b1 bg-s1 flex flex-col items-center justify-center gap-1.5 py-2">
             <button
               onClick={() => handleTrade('BUY')}
               disabled={tradeLoading !== null}
-              className="flex-1 bg-[#22C55E] hover:bg-[#16A34A] text-white py-2 rounded font-heading text-base font-bold flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              className="w-11 py-2.5 bg-[#22C55E] hover:bg-[#16A34A] text-white rounded font-heading text-[11px] font-bold disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
               data-testid="btn-buy"
             >
               {tradeLoading === 'BUY' ? '...' : 'Buy'}
             </button>
 
-            <div className="flex items-center bg-s2 border border-b2 rounded shrink-0">
-              <button
-                onClick={() => setQuantity(clampQuantity(quantity - activeInstrument.step, activeInstrument))}
-                disabled={atMin}
-                className={`px-2.5 py-1 text-sm font-bold transition-colors ${atMin ? 'text-muted-foreground/30 cursor-not-allowed' : 'text-muted-foreground hover:text-white hover:bg-s3'}`}
-                data-testid="btn-qty-minus"
-              >-</button>
-              <div className="flex items-center gap-1 px-0.5">
-                <input
-                  type="text"
-                  inputMode="decimal"
-                  value={displayQty}
-                  onChange={(e) => {
-                    const val = parseFloat(e.target.value);
-                    if (!isNaN(val)) setQuantity(clampQuantity(val, activeInstrument));
-                  }}
-                  className="w-8 bg-transparent text-center text-white font-mono font-bold text-sm outline-none"
-                  data-testid="input-contracts"
-                />
-                <span className="text-[10px] text-muted-foreground font-medium">Lot</span>
-              </div>
+            <div className="flex flex-col items-center gap-0.5">
               <button
                 onClick={() => setQuantity(clampQuantity(quantity + activeInstrument.step, activeInstrument))}
                 disabled={atMax}
-                className={`px-2.5 py-1 text-sm font-bold transition-colors ${atMax ? 'text-muted-foreground/30 cursor-not-allowed' : 'text-muted-foreground hover:text-white hover:bg-s3'}`}
+                className={`w-7 h-5 flex items-center justify-center text-[10px] font-bold rounded transition-colors ${atMax ? 'text-muted-foreground/30 cursor-not-allowed' : 'text-muted-foreground hover:text-white hover:bg-s3'}`}
                 data-testid="btn-qty-plus"
               >+</button>
+              <input
+                type="text"
+                inputMode="decimal"
+                value={displayQty}
+                onChange={(e) => {
+                  const val = parseFloat(e.target.value);
+                  if (!isNaN(val)) setQuantity(clampQuantity(val, activeInstrument));
+                }}
+                className="w-10 bg-s2 border border-b2 rounded text-center text-white font-mono font-bold text-[10px] py-1 outline-none"
+                data-testid="input-contracts"
+              />
+              <button
+                onClick={() => setQuantity(clampQuantity(quantity - activeInstrument.step, activeInstrument))}
+                disabled={atMin}
+                className={`w-7 h-5 flex items-center justify-center text-[10px] font-bold rounded transition-colors ${atMin ? 'text-muted-foreground/30 cursor-not-allowed' : 'text-muted-foreground hover:text-white hover:bg-s3'}`}
+                data-testid="btn-qty-minus"
+              >-</button>
             </div>
 
             <button
               onClick={() => handleTrade('SELL')}
               disabled={tradeLoading !== null}
-              className="flex-1 bg-[#EF4444] hover:bg-[#DC2626] text-white py-2 rounded font-heading text-base font-bold flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              className="w-11 py-2.5 bg-[#EF4444] hover:bg-[#DC2626] text-white rounded font-heading text-[11px] font-bold disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
               data-testid="btn-sell"
             >
               {tradeLoading === 'SELL' ? '...' : 'Sell'}
             </button>
 
+            <div className="w-full border-t border-b1 my-0.5"></div>
+
             <button
               onClick={() => setShowSltp(!showSltp)}
-              className={`flex items-center gap-1 text-[10px] font-medium border rounded px-2 py-1 transition-colors shrink-0 ${showSltp ? 'text-gold border-gold/50 bg-gold/10' : 'text-white bg-s2 border-b2 hover:bg-s3'}`}
+              className={`text-[8px] font-bold uppercase transition-colors ${showSltp ? 'text-gold' : 'text-muted-foreground hover:text-white'}`}
               data-testid="btn-toggle-sltp"
             >
               SL/TP
             </button>
+
+            {tradeStatus && (
+              <div className={`text-[7px] font-medium text-center px-0.5 ${tradeStatus.type === 'success' ? 'text-green' : 'text-red'}`} data-testid="trade-status">
+                {tradeStatus.type === 'success' ? '✓' : '✗'}
+              </div>
+            )}
           </div>
-          {tradeStatus && (
-            <div className={`text-center text-xs font-medium mt-1 ${tradeStatus.type === 'success' ? 'text-green' : 'text-red'}`} data-testid="trade-status">
-              {tradeStatus.message}
-            </div>
-          )}
         </div>
+
+        {showSltp && (
+          <div className="shrink-0 border-t border-b1 bg-s1 px-3 py-2 flex gap-3">
+            <div className="flex-1 flex items-center gap-1.5">
+              <label className="text-[9px] text-red font-bold uppercase shrink-0">SL</label>
+              <input
+                type="text"
+                inputMode="decimal"
+                placeholder="None"
+                value={orderSl}
+                onChange={(e) => setOrderSl(e.target.value)}
+                className="w-full bg-s2 border border-b2 rounded px-2 py-1 text-xs text-white font-mono outline-none focus:border-red/50"
+                data-testid="input-order-sl"
+              />
+            </div>
+            <div className="flex-1 flex items-center gap-1.5">
+              <label className="text-[9px] text-green font-bold uppercase shrink-0">TP</label>
+              <input
+                type="text"
+                inputMode="decimal"
+                placeholder="None"
+                value={orderTp}
+                onChange={(e) => setOrderTp(e.target.value)}
+                className="w-full bg-s2 border border-b2 rounded px-2 py-1 text-xs text-white font-mono outline-none focus:border-green/50"
+                data-testid="input-order-tp"
+              />
+            </div>
+          </div>
+        )}
       </div>
 
       {positionsWithPnl.length > 0 && (

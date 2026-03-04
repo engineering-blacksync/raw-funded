@@ -411,36 +411,6 @@ export default function Terminal({ tier, userTierName }: TerminalProps) {
             </div>
           )}
 
-          {activePositions.length > 0 && (
-            <div className="absolute right-[60px] top-0 bottom-0 z-10 flex flex-col justify-center pointer-events-none" data-testid="chart-price-lines">
-              {activePositions.map(pos => (
-                <div key={`lines-${pos.id}`} className="flex flex-col gap-1">
-                  <div className="flex items-center gap-0">
-                    <div className="w-16 h-[1px] bg-gold/60" style={{ borderTop: '1px dashed' }} />
-                    <span className="text-[9px] data-number bg-gold/90 text-black px-1.5 py-0.5 rounded-sm font-bold whitespace-nowrap">
-                      ENTRY {formatPrice(pos.entryPrice, pos.instrument)}
-                    </span>
-                  </div>
-                  {pos.stopLoss && (
-                    <div className="flex items-center gap-0">
-                      <div className="w-16 h-[1px] bg-red/60" style={{ borderTop: '1px dashed' }} />
-                      <span className="text-[9px] data-number bg-red/90 text-white px-1.5 py-0.5 rounded-sm font-bold whitespace-nowrap">
-                        SL {formatPrice(pos.stopLoss, pos.instrument)}
-                      </span>
-                    </div>
-                  )}
-                  {pos.takeProfit && (
-                    <div className="flex items-center gap-0">
-                      <div className="w-16 h-[1px] bg-green/60" style={{ borderTop: '1px dashed' }} />
-                      <span className="text-[9px] data-number bg-green/90 text-white px-1.5 py-0.5 rounded-sm font-bold whitespace-nowrap">
-                        TP {formatPrice(pos.takeProfit, pos.instrument)}
-                      </span>
-                    </div>
-                  )}
-                </div>
-              ))}
-            </div>
-          )}
         </div>
 
         <div className="border-t border-b1 bg-s1 p-4 shrink-0">

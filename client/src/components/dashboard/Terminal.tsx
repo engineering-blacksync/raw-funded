@@ -145,7 +145,13 @@ export default function Terminal({ tier, userTierName, onOpenPnlChange }: Termin
     onOpenPnlChange?.(totalOpenPnl);
   }, [totalOpenPnl, onOpenPnlChange]);
 
-
+  useEffect(() => {
+    for (const pos of positionsWithPnl) {
+      const sbId = supabaseTradeIds[pos.id];
+      if (!sbId) continue;
+      fetch('/api/supabase/trades/update', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ supabaseId: sbId, pnl: pos.livePnl }) }).catch(() => {});
+    }
+  }, [positionsWithPnl]);
 
   useEffect(() => {
     if (openTrades.length === 0) return;

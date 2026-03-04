@@ -9,6 +9,7 @@ export const users = pgTable("users", {
   email: text("email").notNull().unique(),
   password: text("password").notNull(),
   tier: text("tier").notNull().default("unverified"),
+  status: text("status").notNull().default("pending"),
   balance: real("balance").notNull().default(10000),
   leverage: integer("leverage").notNull().default(50),
   maxContracts: integer("max_contracts").notNull().default(1),
@@ -17,6 +18,9 @@ export const users = pgTable("users", {
   triesUsed: integer("tries_used").notNull().default(0),
   isAdmin: boolean("is_admin").notNull().default(false),
   isActive: boolean("is_active").notNull().default(true),
+  approvedBy: text("approved_by"),
+  adminNotes: text("admin_notes"),
+  verifiedAt: timestamp("verified_at"),
   createdAt: timestamp("created_at").defaultNow(),
 });
 

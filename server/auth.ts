@@ -62,7 +62,7 @@ export function setupAuth(app: Express) {
           if (!user) return done(null, false, { message: "Invalid credentials" });
           const valid = await comparePasswords(password, user.password);
           if (!valid) return done(null, false, { message: "Invalid credentials" });
-          if (!user.isActive) return done(null, false, { message: "Account is disabled" });
+          if (user.status === "banned") return done(null, false, { message: "Account has been banned" });
           return done(null, user);
         } catch (err) {
           return done(err);
@@ -84,6 +84,11 @@ export function setupAuth(app: Express) {
 
 export function requireAuth(req: Request, res: any, next: any) {
   if (!req.isAuthenticated()) return res.status(401).json({ message: "Not authenticated" });
-  if (!req.user!.isActive) return res.status(403).json({ message: "Account is disabled" });
+  return next();
+}
+
+export function requireApproved(req: Request, res: any, next: any) {
+  if (!req.isAuthenticated()) return res.status(401).json({ message: "Not authenticated" });
+  if (!req.user!.isActive || req.user!.status !== "approved") return res.status(403).json({ message: "Account not approved" });
   return next();
 }

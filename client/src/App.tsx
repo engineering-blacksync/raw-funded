@@ -10,6 +10,7 @@ import Login from "@/pages/login";
 import Dashboard from "@/pages/dashboard";
 import Leaderboard from "@/pages/leaderboard";
 import Admin from "@/pages/admin";
+import Pending from "@/pages/pending";
 import NotFound from "@/pages/not-found";
 
 function Router() {
@@ -21,6 +22,7 @@ function Router() {
       <Route path="/dashboard" component={Dashboard}/>
       <Route path="/leaderboard" component={Leaderboard}/>
       <Route path="/admin" component={Admin}/>
+      <Route path="/pending" component={Pending}/>
       <Route component={NotFound} />
     </Switch>
   );

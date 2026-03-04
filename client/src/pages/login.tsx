@@ -14,8 +14,14 @@ export default function Login() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      await login.mutateAsync({ email, password });
-      setLocation("/dashboard");
+      const userData = await login.mutateAsync({ email, password });
+      if (userData.isAdmin) {
+        setLocation("/admin");
+      } else if (userData.status === "approved") {
+        setLocation("/dashboard");
+      } else {
+        setLocation("/pending");
+      }
     } catch (err: any) {
       toast({
         title: "Login Failed",

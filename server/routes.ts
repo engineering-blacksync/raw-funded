@@ -4,7 +4,7 @@ import passport from "passport";
 import multer from "multer";
 import path from "path";
 import { storage } from "./storage";
-import { setupAuth, requireAuth, hashPassword } from "./auth";
+import { setupAuth, requireAuth, requireApproved, hashPassword } from "./auth";
 import {
   insertUserSchema, loginSchema, insertTradeSchema,
   insertVerificationSchema, insertWithdrawalSchema,
@@ -42,7 +42,6 @@ export async function registerRoutes(
   });
 
   app.post("/api/auth/register", async (req: Request, res: Response) => {
-    return res.status(403).json({ message: "Public registration is disabled. Accounts are assigned by admin." });
     try {
       const parsed = insertUserSchema.safeParse(req.body);
       if (!parsed.success) return res.status(400).json({ message: "Invalid input", errors: parsed.error.flatten() });
@@ -120,8 +119,8 @@ export async function registerRoutes(
       const hashedPw = await hashPassword(rawPassword);
       const user = await storage.createUser({ username, email, password: hashedPw });
 
-      if (tier || balance || leverage || maxContracts || propFirm) {
-        const updates: any = {};
+      {
+        const updates: any = { status: "approved", isActive: true, approvedBy: req.user!.email, verifiedAt: new Date() };
         if (tier) updates.tier = tier;
         if (balance !== undefined) updates.balance = balance;
         if (leverage !== undefined) updates.leverage = leverage;
@@ -143,7 +142,7 @@ export async function registerRoutes(
 
   app.patch("/api/admin/users/:id", requireAdmin, async (req: Request, res: Response) => {
     try {
-      const { tier, balance, leverage, maxContracts, isActive, propFirm, payoutsReceived } = req.body;
+      const { tier, balance, leverage, maxContracts, isActive, propFirm, payoutsReceived, status, adminNotes } = req.body;
       const updates: any = {};
       if (tier !== undefined) updates.tier = tier;
       if (balance !== undefined) updates.balance = balance;
@@ -152,12 +151,100 @@ export async function registerRoutes(
       if (isActive !== undefined) updates.isActive = isActive;
       if (propFirm !== undefined) updates.propFirm = propFirm;
       if (payoutsReceived !== undefined) updates.payoutsReceived = payoutsReceived;
+      if (status !== undefined) updates.status = status;
+      if (adminNotes !== undefined) updates.adminNotes = adminNotes;
 
       const user = await storage.updateUser(req.params.id, updates);
       if (!user) return res.status(404).json({ message: "User not found" });
 
       const { password, ...safeUser } = user;
       return res.json(safeUser);
+    } catch (err: any) {
+      return res.status(500).json({ message: err.message });
+    }
+  });
+
+  app.get("/api/admin/verifications", requireAdmin, async (_req: Request, res: Response) => {
+    try {
+      const vers = await storage.getAllVerifications();
+      return res.json(vers);
+    } catch (err: any) {
+      return res.status(500).json({ message: err.message });
+    }
+  });
+
+  app.post("/api/admin/verifications/:id/approve", requireAdmin, async (req: Request, res: Response) => {
+    try {
+      const { tier, balance, leverage, maxContracts } = req.body;
+      const ver = await storage.updateVerificationStatus(req.params.id, "approved");
+      if (!ver) return res.status(404).json({ message: "Verification not found" });
+
+      const tierLeverage: Record<string, number> = { verified: 250, elite: 500, titan: 2000 };
+      const tierContracts: Record<string, number> = { verified: 10, elite: 50, titan: 999 };
+      const selectedTier = tier || "verified";
+
+      await storage.updateUser(ver.userId, {
+        tier: selectedTier,
+        status: "approved",
+        balance: balance || 10000,
+        leverage: leverage || tierLeverage[selectedTier] || 250,
+        maxContracts: maxContracts || tierContracts[selectedTier] || 10,
+        isActive: true,
+        approvedBy: req.user!.email,
+        verifiedAt: new Date(),
+      });
+
+      return res.json({ message: "Approved", verification: ver });
+    } catch (err: any) {
+      return res.status(500).json({ message: err.message });
+    }
+  });
+
+  app.post("/api/admin/verifications/:id/reject", requireAdmin, async (req: Request, res: Response) => {
+    try {
+      const { reason } = req.body;
+      const ver = await storage.updateVerificationStatus(req.params.id, "rejected");
+      if (!ver) return res.status(404).json({ message: "Verification not found" });
+
+      await storage.updateUser(ver.userId, {
+        status: "rejected",
+        adminNotes: reason || "Verification rejected",
+      });
+
+      return res.json({ message: "Rejected", verification: ver });
+    } catch (err: any) {
+      return res.status(500).json({ message: err.message });
+    }
+  });
+
+  app.get("/api/admin/stats", requireAdmin, async (_req: Request, res: Response) => {
+    try {
+      const allUsers = await storage.getAllUsers();
+      const allVers = await storage.getAllVerifications();
+      const pendingCount = allVers.filter(v => v.status === "pending").length;
+      const tierCounts: Record<string, number> = { unverified: 0, verified: 0, elite: 0, titan: 0 };
+      let totalOpenPositions = 0;
+      for (const u of allUsers) {
+        if (tierCounts[u.tier] !== undefined) tierCounts[u.tier]++;
+        const open = await storage.getOpenTrades(u.id);
+        totalOpenPositions += open.length;
+      }
+      return res.json({
+        totalUsers: allUsers.length,
+        pendingVerifications: pendingCount,
+        tierCounts,
+        totalOpenPositions,
+      });
+    } catch (err: any) {
+      return res.status(500).json({ message: err.message });
+    }
+  });
+
+  app.get("/api/admin/users/:id/trades", requireAdmin, async (req: Request, res: Response) => {
+    try {
+      const open = await storage.getOpenTrades(req.params.id);
+      const history = await storage.getTradeHistory(req.params.id, 100);
+      return res.json({ open, history });
     } catch (err: any) {
       return res.status(500).json({ message: err.message });
     }
@@ -176,27 +263,27 @@ export async function registerRoutes(
     }
   });
 
-  app.get("/api/trades", requireAuth, async (req: Request, res: Response) => {
+  app.get("/api/trades", requireApproved, async (req: Request, res: Response) => {
     const history = await storage.getTradeHistory(req.user!.id);
     return res.json(history);
   });
 
-  app.get("/api/trades/open", requireAuth, async (req: Request, res: Response) => {
+  app.get("/api/trades/open", requireApproved, async (req: Request, res: Response) => {
     const open = await storage.getOpenTrades(req.user!.id);
     return res.json(open);
   });
 
-  app.get("/api/trades/stats", requireAuth, async (req: Request, res: Response) => {
+  app.get("/api/trades/stats", requireApproved, async (req: Request, res: Response) => {
     const stats = await storage.getTradeStats(req.user!.id);
     return res.json(stats);
   });
 
-  app.get("/api/trades/analytics", requireAuth, async (req: Request, res: Response) => {
+  app.get("/api/trades/analytics", requireApproved, async (req: Request, res: Response) => {
     const analytics = await storage.getDetailedAnalytics(req.user!.id);
     return res.json(analytics);
   });
 
-  app.post("/api/trades", requireAuth, async (req: Request, res: Response) => {
+  app.post("/api/trades", requireApproved, async (req: Request, res: Response) => {
     try {
       const parsed = insertTradeSchema.safeParse(req.body);
       if (!parsed.success) return res.status(400).json({ message: "Invalid trade data" });
@@ -227,7 +314,7 @@ export async function registerRoutes(
     'MCL': 1000,
   };
 
-  app.post("/api/trades/:id/close", requireAuth, async (req: Request, res: Response) => {
+  app.post("/api/trades/:id/close", requireApproved, async (req: Request, res: Response) => {
     try {
       const { exitPrice } = req.body;
       if (typeof exitPrice !== "number") return res.status(400).json({ message: "exitPrice required" });
@@ -253,7 +340,7 @@ export async function registerRoutes(
     }
   });
 
-  app.patch("/api/trades/:id/sltp", requireAuth, async (req: Request, res: Response) => {
+  app.patch("/api/trades/:id/sltp", requireApproved, async (req: Request, res: Response) => {
     try {
       const { stopLoss, takeProfit } = req.body;
       const openTrades = await storage.getOpenTrades(req.user!.id);
@@ -286,7 +373,7 @@ export async function registerRoutes(
     return res.json(vers);
   });
 
-  app.post("/api/withdrawals", requireAuth, async (req: Request, res: Response) => {
+  app.post("/api/withdrawals", requireApproved, async (req: Request, res: Response) => {
     try {
       const parsed = insertWithdrawalSchema.safeParse(req.body);
       if (!parsed.success) return res.status(400).json({ message: "Invalid withdrawal data" });
@@ -305,7 +392,7 @@ export async function registerRoutes(
     }
   });
 
-  app.get("/api/withdrawals", requireAuth, async (req: Request, res: Response) => {
+  app.get("/api/withdrawals", requireApproved, async (req: Request, res: Response) => {
     const wds = await storage.getWithdrawals(req.user!.id);
     return res.json(wds);
   });
@@ -320,7 +407,7 @@ export async function registerRoutes(
     }
   });
 
-  app.post("/api/supabase/trades", requireAuth, async (req: Request, res: Response) => {
+  app.post("/api/supabase/trades", requireApproved, async (req: Request, res: Response) => {
     const { instrument, side, size, status, entryPrice, stopLoss, takeProfit, ticket } = req.body;
     if (!instrument || !side || !size || !entryPrice) {
       return res.status(400).json({ message: "Missing required fields" });
@@ -372,9 +459,9 @@ export async function registerRoutes(
     }
   });
 
-  app.post("/api/supabase/trades/close", requireAuth, async (req, res) => { const { supabaseId, close_price, pnl, close_time, status } = req.body; const supabaseUrl = process.env.SUPABASE_URL; const supabaseKey = process.env.SUPABASE_ANON_KEY; if (!supabaseUrl || !supabaseKey) return res.status(500).json({ message: "Supabase not configured" }); try { const response = await fetch(supabaseUrl + "/rest/v1/trades?id=eq." + supabaseId, { method: "PATCH", headers: { "Content-Type": "application/json", "apikey": supabaseKey, "Authorization": "Bearer " + supabaseKey, "Prefer": "return=representation" }, body: JSON.stringify({ close_price, pnl, close_time, status, updated_at: new Date().toISOString() }) }); if (response.ok) return res.json({ success: true }); return res.status(500).json({ message: "Supabase update failed" }); } catch { return res.status(502).json({ message: "Connection failed" }); } });
+  app.post("/api/supabase/trades/close", requireApproved, async (req, res) => { const { supabaseId, close_price, pnl, close_time, status } = req.body; const supabaseUrl = process.env.SUPABASE_URL; const supabaseKey = process.env.SUPABASE_ANON_KEY; if (!supabaseUrl || !supabaseKey) return res.status(500).json({ message: "Supabase not configured" }); try { const response = await fetch(supabaseUrl + "/rest/v1/trades?id=eq." + supabaseId, { method: "PATCH", headers: { "Content-Type": "application/json", "apikey": supabaseKey, "Authorization": "Bearer " + supabaseKey, "Prefer": "return=representation" }, body: JSON.stringify({ close_price, pnl, close_time, status, updated_at: new Date().toISOString() }) }); if (response.ok) return res.json({ success: true }); return res.status(500).json({ message: "Supabase update failed" }); } catch { return res.status(502).json({ message: "Connection failed" }); } });
 
-  app.post("/api/supabase/trades/update", requireAuth, async (req, res) => { const { supabaseId, pnl } = req.body; const supabaseUrl = process.env.SUPABASE_URL; const supabaseKey = process.env.SUPABASE_ANON_KEY; if (!supabaseUrl || !supabaseKey) return res.status(500).json({ message: "Supabase not configured" }); try { const response = await fetch(supabaseUrl + "/rest/v1/trades?id=eq." + supabaseId, { method: "PATCH", headers: { "Content-Type": "application/json", "apikey": supabaseKey, "Authorization": "Bearer " + supabaseKey, "Prefer": "return=minimal" }, body: JSON.stringify({ pnl, updated_at: new Date().toISOString() }) }); if (response.ok) return res.json({ success: true }); return res.status(500).json({ message: "Supabase update failed" }); } catch { return res.status(502).json({ message: "Connection failed" }); } });
+  app.post("/api/supabase/trades/update", requireApproved, async (req, res) => { const { supabaseId, pnl } = req.body; const supabaseUrl = process.env.SUPABASE_URL; const supabaseKey = process.env.SUPABASE_ANON_KEY; if (!supabaseUrl || !supabaseKey) return res.status(500).json({ message: "Supabase not configured" }); try { const response = await fetch(supabaseUrl + "/rest/v1/trades?id=eq." + supabaseId, { method: "PATCH", headers: { "Content-Type": "application/json", "apikey": supabaseKey, "Authorization": "Bearer " + supabaseKey, "Prefer": "return=minimal" }, body: JSON.stringify({ pnl, updated_at: new Date().toISOString() }) }); if (response.ok) return res.json({ success: true }); return res.status(500).json({ message: "Supabase update failed" }); } catch { return res.status(502).json({ message: "Connection failed" }); } });
 
   const priceCache: Record<string, { price: number; ts: number }> = {};
 

@@ -1,0 +1,80 @@
+Implement a complete access control and admin system. Here is exactly what needs to happen:
+1. DASHBOARD ACCESS GATE
+Right now anyone can click Dashboard and access the platform. Fix this immediately.
+After a user creates an account they should land on a "Pending Review" page that says:
+
+"Your verification is under review. Our team reviews submissions within 24 hours. You'll receive an email when approved."
+Show their submitted proof details
+Show a status indicator: Pending / Approved / Rejected
+They cannot access /dashboard or /terminal at all until their account is manually approved by admin
+
+If someone tries to navigate directly to /dashboard without approval, redirect them to the pending review page.
+The only exception is @rawfunded.com emails which bypass this and go straight to /admin.
+2. LOGIN ROUTING LOGIC
+Same login page for everyone. After login check the user's profile in Supabase:
+
+Email ends in @rawfunded.com → redirect to /admin
+Profile status is "approved" → redirect to /dashboard
+Profile status is "pending" or "rejected" → redirect to /pending page
+No profile exists yet → redirect to /apply to create account and submit proof
+
+3. ADMIN PANEL at /admin
+Only accessible to @rawfunded.com emails. If anyone else hits this URL redirect to /dashboard.
+Build the admin panel with the same black and gold styling as the rest of the platform. Sections:
+Verification Queue tab:
+
+List every pending submission with: username, email, prop firm selected, payout count claimed, proof method, date submitted, any notes they wrote
+Two buttons per row: APPROVE and REJECT
+On APPROVE: show a modal with tier selector (Verified / Elite / Titan), balance field defaulting to $10,000, leverage shown automatically based on tier. Confirm button writes to Supabase: set status to "approved", set tier, set balance, set verified_at timestamp. This instantly unlocks their dashboard access.
+On REJECT: show a modal with optional rejection reason. Set status to "rejected". They stay locked out.
+
+All Traders tab:
+
+Table of all approved traders with columns: username, email, tier badge, balance, equity, open positions, joined date
+Click any row to open a side panel with full controls:
+
+Edit balance (text field + Save)
+Change tier (dropdown + Save)
+View all open positions with a Force Close button per position
+View full trade history
+Suspend Account button (locks them out immediately)
+Unsuspend button
+Reset Balance to $10,000 button
+Internal notes field (saves to Supabase, only visible in admin)
+
+
+
+Create Account tab:
+
+Form to manually create a trader account from admin side
+Fields: email, username, password, tier, starting balance
+Submit creates the account in Supabase with status "approved" immediately, no verification needed
+Use this for beta testers, friends, internal accounts
+
+Stats bar at top of admin:
+
+Total registered users
+Pending verifications count (highlighted gold if greater than 0)
+Approved traders by tier: Unverified / Verified / Elite / Titan counts
+Total open positions platform-wide right now
+Total platform volume today
+
+4. SUPABASE PROFILE TABLE UPDATES
+Make sure the profiles table has these columns and update them correctly:
+
+status: "pending" / "approved" / "rejected" / "suspended"
+tier: "unverified" / "verified" / "elite" / "titan"
+balance: decimal
+verified_at: timestamp
+approved_by: email of admin who approved
+admin_notes: text
+
+5. EMAIL NOTIFICATIONS
+When admin approves an account, send an email to the trader at their registered email saying:
+"You're approved. Your Raw Funded account is ready. Log in at rawfunded.com. Your tier is [TIER]. Your starting balance is $[BALANCE]."
+When admin rejects, send:
+"Your verification was not approved. Reason: [REASON]. You can resubmit with additional proof."
+Use the existing email setup or Resend/Nodemailer if not already configured.
+6. THE BANNER
+The "TRY 1 OF 3 — PROVE YOUR FUNDED STATUS" banner on the terminal should only show for Unverified tier traders who got manually approved with unverified status. It should not show for Verified, Elite or Titan traders.
+Do not change any existing UI styling. Do not touch the TradingView chart integration. Do not touch the landing page. Only implement the access control logic, admin panel, and email notifications described above.

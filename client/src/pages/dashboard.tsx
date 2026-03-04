@@ -64,7 +64,8 @@ export default function Dashboard() {
   });
 
   useEffect(() => {
-    if (!isLoading && (!isAuthenticated || !user)) setLocation("/login");
+    if (!isLoading && (!isAuthenticated || !user)) { setLocation("/login"); return; }
+    if (!isLoading && user && user.status !== "approved") { setLocation("/pending"); return; }
   }, [isLoading, isAuthenticated, user, setLocation]);
 
   if (isLoading) {

@@ -12,7 +12,7 @@ export interface IStorage {
   getUserByEmail(email: string): Promise<User | undefined>;
   createUser(user: InsertUser & { password: string }): Promise<User>;
   getAllUsers(): Promise<User[]>;
-  updateUser(id: string, data: Partial<Pick<User, 'tier' | 'balance' | 'leverage' | 'maxContracts' | 'isActive' | 'propFirm' | 'payoutsReceived'>>): Promise<User | undefined>;
+  updateUser(id: string, data: Partial<Pick<User, 'tier' | 'status' | 'balance' | 'leverage' | 'maxContracts' | 'isActive' | 'propFirm' | 'payoutsReceived' | 'approvedBy' | 'adminNotes' | 'verifiedAt'>>): Promise<User | undefined>;
   updateUserPassword(id: string, hashedPassword: string): Promise<User | undefined>;
   updateUserTier(id: string, tier: string): Promise<User | undefined>;
   updateUserBalance(id: string, balance: number): Promise<User | undefined>;
@@ -28,6 +28,7 @@ export interface IStorage {
 
   createVerification(userId: string, v: InsertVerification): Promise<Verification>;
   getVerifications(userId: string): Promise<Verification[]>;
+  getAllVerifications(): Promise<Array<Verification & { username: string; email: string }>>;
   updateVerificationStatus(id: string, status: string): Promise<Verification | undefined>;
 
   createWithdrawal(userId: string, w: InsertWithdrawal): Promise<Withdrawal>;
@@ -61,7 +62,7 @@ export class DatabaseStorage implements IStorage {
     return db.select().from(users);
   }
 
-  async updateUser(id: string, data: Partial<Pick<User, 'tier' | 'balance' | 'leverage' | 'maxContracts' | 'isActive' | 'propFirm' | 'payoutsReceived'>>): Promise<User | undefined> {
+  async updateUser(id: string, data: Partial<Pick<User, 'tier' | 'status' | 'balance' | 'leverage' | 'maxContracts' | 'isActive' | 'propFirm' | 'payoutsReceived' | 'approvedBy' | 'adminNotes' | 'verifiedAt'>>): Promise<User | undefined> {
     const [user] = await db.update(users).set(data).where(eq(users.id, id)).returning();
     return user;
   }
@@ -247,6 +248,16 @@ export class DatabaseStorage implements IStorage {
 
   async getVerifications(userId: string): Promise<Verification[]> {
     return db.select().from(verifications).where(eq(verifications.userId, userId)).orderBy(desc(verifications.submittedAt));
+  }
+
+  async getAllVerifications(): Promise<Array<Verification & { username: string; email: string }>> {
+    const allVers = await db.select().from(verifications).orderBy(desc(verifications.submittedAt));
+    const results = [];
+    for (const v of allVers) {
+      const [user] = await db.select().from(users).where(eq(users.id, v.userId));
+      results.push({ ...v, username: user?.username || 'Unknown', email: user?.email || '' });
+    }
+    return results;
   }
 
   async updateVerificationStatus(id: string, status: string): Promise<Verification | undefined> {

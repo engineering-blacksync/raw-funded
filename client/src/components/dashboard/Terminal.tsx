@@ -79,10 +79,10 @@ function useLivePrices(instruments: string[]) {
         }
       }
       pricesRef.current = updated;
-      setPrices({ ...updated });
+      setPrices(prev => ({ ...prev, ...updated }));
     };
     fetchAll();
-    const interval = setInterval(fetchAll, 1000);
+    const interval = setInterval(fetchAll, 800);
     return () => { active = false; clearInterval(interval); };
   }, [instruments.join(',')]);
 

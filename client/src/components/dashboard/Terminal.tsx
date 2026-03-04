@@ -105,13 +105,9 @@ export default function Terminal({ tier, userTierName }: TerminalProps) {
   const [tradeStatus, setTradeStatus] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
   const [closingId, setClosingId] = useState<string | null>(null);
   const closingIdsRef = useRef<Set<string>>(new Set());
-  const [sltpEditing, setSltpEditing] = useState<string | null>(null);
-  const [slInput, setSlInput] = useState('');
-  const [tpInput, setTpInput] = useState('');
   const [orderSl, setOrderSl] = useState('');
   const [orderTp, setOrderTp] = useState('');
   const [showSltp, setShowSltp] = useState(false);
-  const [activeTab, setActiveTab] = useState<'positions' | 'history'>('positions');
 
   const openInstruments = openTrades.map(t => t.instrument);
   const allInstruments = [...new Set([activeInstrument.label, ...openInstruments])];
@@ -141,15 +137,7 @@ export default function Terminal({ tier, userTierName }: TerminalProps) {
     return { ...trade, livePnl: pnl, currentPrice };
   });
 
-  const totalOpenPnl = positionsWithPnl.reduce((sum, p) => sum + p.livePnl, 0);
-  const totalClosedPnl = closedTrades.reduce((sum, t) => sum + (t.pnl ?? 0), 0);
 
-  const SHARED_CHARTS: Record<string, string[]> = {
-    'Gold (GC)': ['Gold (GC)', 'MGC'],
-    'MGC': ['Gold (GC)', 'MGC'],
-  };
-  const chartGroup = SHARED_CHARTS[activeInstrument.label] ?? [activeInstrument.label];
-  const activePositions = positionsWithPnl.filter(p => chartGroup.includes(p.instrument));
 
   useEffect(() => {
     if (openTrades.length === 0) return;
@@ -288,29 +276,6 @@ export default function Terminal({ tier, userTierName }: TerminalProps) {
     }
   };
 
-  const handleSaveSLTP = async (tradeId: string) => {
-    const sl = slInput ? parseFloat(slInput) : null;
-    const tp = tpInput ? parseFloat(tpInput) : null;
-
-    try {
-      const res = await fetch(`/api/trades/${tradeId}/sltp`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ stopLoss: sl, takeProfit: tp }),
-      });
-      if (res.ok) {
-        const updated: Trade = await res.json();
-        setOpenTrades(prev => prev.map(t => t.id === tradeId ? updated : t));
-      }
-    } catch {}
-    setSltpEditing(null);
-  };
-
-  const startEditSLTP = (trade: Trade) => {
-    setSltpEditing(trade.id);
-    setSlInput(trade.stopLoss?.toString() ?? '');
-    setTpInput(trade.takeProfit?.toString() ?? '');
-  };
 
   const displayQty = activeInstrument.decimals > 0
     ? quantity.toFixed(activeInstrument.decimals)
@@ -326,8 +291,8 @@ export default function Terminal({ tier, userTierName }: TerminalProps) {
   };
 
   return (
-    <div className="flex flex-col lg:flex-row h-full">
-      <div className="flex-1 flex flex-col border-r border-b1 min-w-0">
+    <div className="flex flex-col h-full">
+      <div className="flex-1 flex flex-col min-w-0">
 
         <div className="flex items-center border-b border-b1 bg-s1 shrink-0">
           <div className="flex overflow-x-auto no-scrollbar flex-1">
@@ -368,29 +333,6 @@ export default function Terminal({ tier, userTierName }: TerminalProps) {
             </div>
           )}
 
-          {activePositions.length > 0 && (
-            <div className="absolute top-2 left-2 z-10 flex flex-col gap-1 pointer-events-none" data-testid="chart-overlay">
-              {activePositions.map(pos => (
-                <div
-                  key={pos.id}
-                  className="pointer-events-auto bg-[#09090B]/85 backdrop-blur-sm border border-b2 rounded px-2.5 py-1.5 shadow-lg flex items-center gap-3 text-[11px]"
-                  data-testid={`chart-pos-${pos.id}`}
-                >
-                  <span className={`text-[9px] font-bold px-1 py-0.5 rounded ${pos.side === 'BUY' ? 'bg-green/20 text-green' : 'bg-red/20 text-red'}`}>
-                    {pos.side}
-                  </span>
-                  <span className="font-bold text-white">{pos.size} {pos.instrument}</span>
-                  <span className="text-muted-foreground">Entry <span className="data-number text-gold">{formatPrice(pos.entryPrice, pos.instrument)}</span></span>
-                  <span className="text-muted-foreground">Now <span className="data-number text-white">{pos.currentPrice ? formatPrice(pos.currentPrice, pos.instrument) : '---'}</span></span>
-                  {pos.stopLoss && <span className="data-number text-red">SL {formatPrice(pos.stopLoss, pos.instrument)}</span>}
-                  {pos.takeProfit && <span className="data-number text-green">TP {formatPrice(pos.takeProfit, pos.instrument)}</span>}
-                  <span className={`data-number font-bold ${pos.livePnl >= 0 ? 'text-green' : 'text-red'}`}>
-                    {formatPnl(pos.livePnl)}
-                  </span>
-                </div>
-              ))}
-            </div>
-          )}
 
         </div>
 
@@ -497,216 +439,50 @@ export default function Terminal({ tier, userTierName }: TerminalProps) {
           </div>
         </div>
 
-      </div>
+        {positionsWithPnl.length > 0 && (
+          <div className="border-t border-b1 bg-[#0A0A0C] shrink-0 overflow-y-auto max-h-[40vh]">
+            {positionsWithPnl.map(pos => (
+              <div
+                key={pos.id}
+                className="flex items-center gap-4 px-4 py-3 border-b border-b1 hover:bg-s2/50 transition-colors group"
+                data-testid={`position-row-${pos.id}`}
+              >
+                <span className={`text-[10px] font-bold px-2 py-1 rounded shrink-0 ${pos.side === 'BUY' ? 'bg-[#22C55E] text-white' : 'bg-[#EF4444] text-white'}`}>
+                  {pos.side}
+                </span>
 
-      <div className="w-full lg:w-80 bg-s1 flex flex-col shrink-0">
+                <div className="flex items-baseline gap-1.5 shrink-0">
+                  <span className="text-white font-bold text-sm data-number">{pos.size}</span>
+                  <span className="text-white font-bold text-sm">{pos.instrument}</span>
+                </div>
 
-        <div className="p-4 border-b border-b1 bg-s2 grid grid-cols-2 gap-4 shrink-0">
-          <div>
-            <div className="text-xs text-muted-foreground uppercase mb-1">Open PnL</div>
-            <div className={`data-number font-bold ${totalOpenPnl >= 0 ? 'text-green' : 'text-red'}`} data-testid="text-open-pnl">
-              {formatPnl(totalOpenPnl)}
-            </div>
-          </div>
-          <div>
-            <div className="text-xs text-muted-foreground uppercase mb-1">Closed PnL</div>
-            <div className={`data-number font-bold ${totalClosedPnl >= 0 ? 'text-green' : 'text-red'}`} data-testid="text-closed-pnl">
-              {formatPnl(totalClosedPnl)}
-            </div>
-          </div>
-          <div>
-            <div className="text-xs text-muted-foreground uppercase mb-1">Open</div>
-            <div className="data-number text-white font-bold" data-testid="text-open-count">{openTrades.length}</div>
-          </div>
-          <div>
-            <div className="text-xs text-muted-foreground uppercase mb-1">Closed</div>
-            <div className="data-number text-white font-bold" data-testid="text-closed-count">{closedTrades.length}</div>
-          </div>
-        </div>
+                <div className="flex items-baseline gap-1 shrink-0">
+                  <span className="text-muted-foreground text-xs">Entry</span>
+                  <span className="text-gold font-semibold text-sm data-number">{formatPrice(pos.entryPrice, pos.instrument)}</span>
+                </div>
 
-        <div className="flex border-b border-b1 shrink-0">
-          <button
-            onClick={() => setActiveTab('positions')}
-            className={`flex-1 py-2.5 text-xs font-bold uppercase tracking-wider transition-colors ${activeTab === 'positions' ? 'text-gold border-b-2 border-gold bg-s2' : 'text-muted-foreground hover:text-white'}`}
-            data-testid="tab-positions"
-          >
-            Positions ({openTrades.length})
-          </button>
-          <button
-            onClick={() => setActiveTab('history')}
-            className={`flex-1 py-2.5 text-xs font-bold uppercase tracking-wider transition-colors ${activeTab === 'history' ? 'text-gold border-b-2 border-gold bg-s2' : 'text-muted-foreground hover:text-white'}`}
-            data-testid="tab-history"
-          >
-            History ({closedTrades.length})
-          </button>
-        </div>
+                <div className="flex items-baseline gap-1 shrink-0">
+                  <span className="text-muted-foreground text-xs">Now</span>
+                  <span className="text-white font-semibold text-sm data-number">{pos.currentPrice ? formatPrice(pos.currentPrice, pos.instrument) : '---'}</span>
+                </div>
 
-        <div className="flex-1 overflow-y-auto">
-          {activeTab === 'positions' && (
-            openTrades.length === 0 ? (
-              <div className="h-full flex items-center justify-center text-muted-foreground text-sm p-4 text-center">
-                No open positions. Select an instrument and execute a trade.
+                <div className="ml-auto flex items-center gap-3">
+                  <span className={`data-number font-bold text-lg ${pos.livePnl >= 0 ? 'text-[#22C55E]' : 'text-[#EF4444]'}`}>
+                    {formatPnl(pos.livePnl)}
+                  </span>
+                  <button
+                    onClick={() => handleClose(pos.id)}
+                    disabled={closingId === pos.id}
+                    className="opacity-0 group-hover:opacity-100 text-[10px] text-muted-foreground hover:text-white bg-b1 border border-b2 px-2 py-1 rounded transition-all disabled:opacity-50"
+                    data-testid={`btn-close-${pos.id}`}
+                  >
+                    {closingId === pos.id ? '...' : 'Close'}
+                  </button>
+                </div>
               </div>
-            ) : (
-              <div className="divide-y divide-b2">
-                {positionsWithPnl.map(pos => (
-                  <div key={pos.id} className="p-4 hover:bg-s2 transition-colors" data-testid={`position-card-${pos.id}`}>
-                    <div className="flex justify-between items-start mb-2">
-                      <div className="flex items-center gap-2">
-                        <span className={`text-xs font-bold px-1.5 py-0.5 rounded ${pos.side === 'BUY' ? 'bg-green/20 text-green' : 'bg-red/20 text-red'}`}>
-                          {pos.side}
-                        </span>
-                        <span className="font-bold text-white text-sm">{pos.instrument}</span>
-                      </div>
-                      <button
-                        onClick={() => handleClose(pos.id)}
-                        disabled={closingId === pos.id}
-                        className="text-xs text-muted-foreground hover:text-white bg-b1 px-2 py-1 rounded transition-colors disabled:opacity-50"
-                        data-testid={`btn-close-${pos.id}`}
-                      >
-                        {closingId === pos.id ? '...' : 'Close'}
-                      </button>
-                    </div>
-
-                    <div className="grid grid-cols-3 gap-2 mt-2">
-                      <div>
-                        <div className="text-[10px] text-muted-foreground uppercase">Size</div>
-                        <div className="data-number text-sm text-white">{pos.size}</div>
-                      </div>
-                      <div>
-                        <div className="text-[10px] text-muted-foreground uppercase">Entry</div>
-                        <div className="data-number text-sm text-white">{formatPrice(pos.entryPrice, pos.instrument)}</div>
-                      </div>
-                      <div>
-                        <div className="text-[10px] text-muted-foreground uppercase">Current</div>
-                        <div className="data-number text-sm text-white">
-                          {pos.currentPrice ? formatPrice(pos.currentPrice, pos.instrument) : '---'}
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="flex justify-between items-end mt-2">
-                      <div className="flex gap-3">
-                        <div>
-                          <div className="text-[10px] text-red uppercase font-bold">SL</div>
-                          <div className="data-number text-xs text-muted-foreground">
-                            {pos.stopLoss ? formatPrice(pos.stopLoss, pos.instrument) : '---'}
-                          </div>
-                        </div>
-                        <div>
-                          <div className="text-[10px] text-green uppercase font-bold">TP</div>
-                          <div className="data-number text-xs text-muted-foreground">
-                            {pos.takeProfit ? formatPrice(pos.takeProfit, pos.instrument) : '---'}
-                          </div>
-                        </div>
-                      </div>
-                      <div className="text-right">
-                        <div className="text-[10px] text-muted-foreground uppercase">P&L</div>
-                        <div className={`data-number text-sm font-bold ${pos.livePnl >= 0 ? 'text-green' : 'text-red'}`}>
-                          {formatPnl(pos.livePnl)}
-                        </div>
-                      </div>
-                    </div>
-
-                    {sltpEditing === pos.id ? (
-                      <div className="mt-3 pt-3 border-t border-b2 flex gap-2 items-end">
-                        <div className="flex-1">
-                          <label className="text-[9px] text-red font-bold uppercase">SL</label>
-                          <input
-                            type="text"
-                            inputMode="decimal"
-                            value={slInput}
-                            onChange={(e) => setSlInput(e.target.value)}
-                            placeholder="None"
-                            className="w-full bg-s3 border border-b2 rounded px-2 py-1 text-xs text-white font-mono outline-none"
-                            data-testid={`input-sl-${pos.id}`}
-                          />
-                        </div>
-                        <div className="flex-1">
-                          <label className="text-[9px] text-green font-bold uppercase">TP</label>
-                          <input
-                            type="text"
-                            inputMode="decimal"
-                            value={tpInput}
-                            onChange={(e) => setTpInput(e.target.value)}
-                            placeholder="None"
-                            className="w-full bg-s3 border border-b2 rounded px-2 py-1 text-xs text-white font-mono outline-none"
-                            data-testid={`input-tp-${pos.id}`}
-                          />
-                        </div>
-                        <button
-                          onClick={() => handleSaveSLTP(pos.id)}
-                          className="text-xs text-gold hover:text-white bg-gold/10 border border-gold/30 px-2 py-1 rounded"
-                          data-testid={`btn-save-sltp-${pos.id}`}
-                        >
-                          Save
-                        </button>
-                        <button
-                          onClick={() => setSltpEditing(null)}
-                          className="text-xs text-muted-foreground hover:text-white px-1 py-1"
-                        >
-                          X
-                        </button>
-                      </div>
-                    ) : (
-                      <button
-                        onClick={() => startEditSLTP(pos)}
-                        className="mt-2 w-full text-[10px] text-muted-foreground hover:text-gold uppercase tracking-wider py-1 border border-b2 rounded hover:border-gold/30 transition-colors"
-                        data-testid={`btn-edit-sltp-${pos.id}`}
-                      >
-                        Edit SL / TP
-                      </button>
-                    )}
-                  </div>
-                ))}
-              </div>
-            )
-          )}
-
-          {activeTab === 'history' && (
-            closedTrades.length === 0 ? (
-              <div className="h-full flex items-center justify-center text-muted-foreground text-sm p-4 text-center">
-                No closed trades yet.
-              </div>
-            ) : (
-              <div className="divide-y divide-b2">
-                {closedTrades.map(trade => (
-                  <div key={trade.id} className="p-4 hover:bg-s2 transition-colors" data-testid={`history-card-${trade.id}`}>
-                    <div className="flex items-center gap-2 mb-2">
-                      <span className={`text-xs font-bold px-1.5 py-0.5 rounded ${trade.side === 'BUY' ? 'bg-green/20 text-green' : 'bg-red/20 text-red'}`}>
-                        {trade.side}
-                      </span>
-                      <span className="font-bold text-white text-sm">{trade.instrument}</span>
-                      <span className={`ml-auto data-number text-sm font-bold ${(trade.pnl ?? 0) >= 0 ? 'text-green' : 'text-red'}`}>
-                        {formatPnl(trade.pnl ?? 0)}
-                      </span>
-                    </div>
-                    <div className="grid grid-cols-4 gap-2 text-xs">
-                      <div>
-                        <div className="text-[10px] text-muted-foreground uppercase">Size</div>
-                        <div className="data-number text-white">{trade.size}</div>
-                      </div>
-                      <div>
-                        <div className="text-[10px] text-muted-foreground uppercase">Entry</div>
-                        <div className="data-number text-white">{formatPrice(trade.entryPrice, trade.instrument)}</div>
-                      </div>
-                      <div>
-                        <div className="text-[10px] text-muted-foreground uppercase">Exit</div>
-                        <div className="data-number text-white">{trade.exitPrice ? formatPrice(trade.exitPrice, trade.instrument) : '---'}</div>
-                      </div>
-                      <div>
-                        <div className="text-[10px] text-muted-foreground uppercase">Date</div>
-                        <div className="data-number text-muted-foreground">
-                          {trade.closedAt ? new Date(trade.closedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '---'}
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )
-          )}
-        </div>
+            ))}
+          </div>
+        )}
 
       </div>
     </div>

@@ -39,6 +39,7 @@ export const verifications = pgTable("verifications", {
   proofMethod: text("proof_method").notNull(),
   propFirm: text("prop_firm").notNull(),
   payoutsReceived: integer("payouts_received").notNull().default(0),
+  proofFileUrl: text("proof_file_url"),
   notes: text("notes"),
   status: text("status").notNull().default("pending"),
   submittedAt: timestamp("submitted_at").defaultNow(),
@@ -79,6 +80,7 @@ export const insertVerificationSchema = createInsertSchema(verifications).pick({
   proofMethod: true,
   propFirm: true,
   payoutsReceived: true,
+  proofFileUrl: true,
   notes: true,
 });
 

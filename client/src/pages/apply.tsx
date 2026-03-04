@@ -18,10 +18,37 @@ export default function Apply() {
   const [proofMethod, setProofMethod] = useState("email");
   const [propFirm, setPropFirm] = useState("");
   const [notes, setNotes] = useState("");
+  const [proofFile, setProofFile] = useState<File | null>(null);
+  const [proofFileUrl, setProofFileUrl] = useState<string | null>(null);
+  const [uploading, setUploading] = useState(false);
 
   const [email, setEmail] = useState("");
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
+
+  const handleFileUpload = async (file: File) => {
+    setProofFile(file);
+    setUploading(true);
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      const res = await fetch("/api/upload", { method: "POST", body: formData });
+      if (res.ok) {
+        const data = await res.json();
+        setProofFileUrl(data.url);
+        toast({ title: "File uploaded", description: file.name });
+      } else {
+        const err = await res.json().catch(() => ({ message: "Upload failed" }));
+        toast({ title: "Upload failed", description: err.message, variant: "destructive" });
+        setProofFile(null);
+      }
+    } catch {
+      toast({ title: "Upload failed", variant: "destructive" });
+      setProofFile(null);
+    } finally {
+      setUploading(false);
+    }
+  };
 
   const previewTier = payouts === 0 ? TIERS.verified : payouts === 1 ? TIERS.elite : TIERS.titan;
 
@@ -31,6 +58,7 @@ export default function Apply() {
         proofMethod,
         propFirm,
         payoutsReceived: payouts,
+        proofFileUrl: proofFileUrl || null,
         notes: notes || null,
       });
       return res.json();
@@ -58,6 +86,10 @@ export default function Apply() {
     e.preventDefault();
     if (!propFirm) {
       toast({ title: "Select a prop firm", variant: "destructive" });
+      return;
+    }
+    if ((proofMethod === "certificate" || proofMethod === "screenshot") && !proofFileUrl) {
+      toast({ title: "Please upload your proof file", variant: "destructive" });
       return;
     }
     try {
@@ -178,6 +210,59 @@ export default function Apply() {
                         <p className="text-xs text-muted-foreground">
                           Include your Raw Funded username in the subject line.
                         </p>
+                      </div>
+                    )}
+
+                    {(proofMethod === "certificate" || proofMethod === "screenshot") && (
+                      <div className="bg-s2/50 border border-b1 rounded-sm">
+                        {proofFile ? (
+                          <div className="p-4 flex items-center gap-3">
+                            <div className="w-10 h-10 rounded bg-gold/10 border border-gold/30 flex items-center justify-center shrink-0">
+                              {proofFile.name.endsWith('.pdf') ? (
+                                <FileText className="w-5 h-5 text-gold" />
+                              ) : (
+                                <UploadCloud className="w-5 h-5 text-gold" />
+                              )}
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm text-white truncate">{proofFile.name}</p>
+                              <p className="text-xs text-muted-foreground">
+                                {uploading ? 'Uploading...' : 'Uploaded successfully'}
+                              </p>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => { setProofFile(null); setProofFileUrl(null); }}
+                              className="text-xs text-muted-foreground hover:text-red transition-colors"
+                            >
+                              Remove
+                            </button>
+                          </div>
+                        ) : (
+                          <label className="flex flex-col items-center gap-3 p-8 cursor-pointer hover:bg-s2 transition-colors" data-testid="upload-area">
+                            <div className="w-14 h-14 rounded-full bg-gold/10 border border-gold/30 flex items-center justify-center">
+                              <UploadCloud className="w-7 h-7 text-gold" />
+                            </div>
+                            <div className="text-center">
+                              <p className="text-sm text-white font-medium mb-1">
+                                {proofMethod === "certificate" ? "Upload Certificate PDF" : "Upload Screenshot"}
+                              </p>
+                              <p className="text-xs text-muted-foreground">
+                                {proofMethod === "certificate" ? "PDF files up to 10MB" : "PNG, JPG, or WebP up to 10MB"}
+                              </p>
+                            </div>
+                            <input
+                              type="file"
+                              className="hidden"
+                              accept={proofMethod === "certificate" ? ".pdf" : ".png,.jpg,.jpeg,.webp"}
+                              onChange={(e) => {
+                                const file = e.target.files?.[0];
+                                if (file) handleFileUpload(file);
+                              }}
+                              data-testid="input-proof-file"
+                            />
+                          </label>
+                        )}
                       </div>
                     )}
                   </div>

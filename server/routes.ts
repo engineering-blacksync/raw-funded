@@ -1,6 +1,8 @@
 import type { Express, Request, Response } from "express";
 import { createServer, type Server } from "http";
 import passport from "passport";
+import multer from "multer";
+import path from "path";
 import { storage } from "./storage";
 import { setupAuth, requireAuth, hashPassword } from "./auth";
 import {
@@ -8,11 +10,36 @@ import {
   insertVerificationSchema, insertWithdrawalSchema,
 } from "@shared/schema";
 
+const upload = multer({
+  storage: multer.diskStorage({
+    destination: "uploads/",
+    filename: (_req, file, cb) => {
+      const ext = path.extname(file.originalname);
+      cb(null, `${Date.now()}-${Math.random().toString(36).slice(2)}${ext}`);
+    },
+  }),
+  limits: { fileSize: 10 * 1024 * 1024 },
+  fileFilter: (_req, file, cb) => {
+    const allowed = ['.pdf', '.png', '.jpg', '.jpeg', '.webp'];
+    const ext = path.extname(file.originalname).toLowerCase();
+    cb(null, allowed.includes(ext));
+  },
+});
+
 export async function registerRoutes(
   httpServer: Server,
   app: Express
 ): Promise<Server> {
   setupAuth(app);
+
+  const express = await import("express");
+  app.use("/uploads", express.default.static("uploads"));
+
+  app.post("/api/upload", requireAuth, upload.single("file"), (req: Request, res: Response) => {
+    if (!req.file) return res.status(400).json({ message: "No file uploaded or invalid file type" });
+    const fileUrl = `/uploads/${req.file.filename}`;
+    return res.json({ url: fileUrl, filename: req.file.originalname });
+  });
 
   app.post("/api/auth/register", async (req: Request, res: Response) => {
     try {

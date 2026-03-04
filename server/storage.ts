@@ -186,8 +186,11 @@ export class DatabaseStorage implements IStorage {
       if (dd > maxDrawdown) maxDrawdown = dd;
     }
 
+    const totalLotsTraded = allTrades.reduce((sum, t) => sum + (Number(t.size) || 0), 0);
+
     return {
       totalTrades: closedTrades.length,
+      totalLotsTraded,
       openPositions: openTrades.length,
       totalPnl,
       winRate,

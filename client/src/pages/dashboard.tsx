@@ -186,7 +186,7 @@ export default function Dashboard() {
             <div className="flex-1 overflow-y-auto p-8">
               <div className="max-w-6xl mx-auto space-y-6">
                 
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
                   <div>
                     <BalanceCard balance={user.balance} equityCurve={analytics?.equityCurve} totalPnl={analytics?.totalPnl} />
                   </div>
@@ -195,6 +195,13 @@ export default function Dashboard() {
                       title="Net P&L" 
                       value={<span className={`${(stats?.totalPnl ?? 0) >= 0 ? 'text-[#36B37E]' : 'text-[#EF4444]'}`}>${(stats?.totalPnl ?? 0).toFixed(2)}</span>}
                       subtext={`${analytics?.totalTrades ?? 0} closed trades`} 
+                    />
+                  </div>
+                  <div>
+                    <StatCard 
+                      title="Lots Traded" 
+                      value={<span>{(analytics?.totalLotsTraded ?? 0).toFixed(2)}</span>}
+                      subtext={`${analytics?.totalTrades ?? 0} total trades`} 
                     />
                   </div>
                   <div>

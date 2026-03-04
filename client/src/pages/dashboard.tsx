@@ -132,8 +132,8 @@ export default function Dashboard() {
       </header>
 
       <div className="flex flex-1 overflow-hidden">
-        <aside className="w-16 md:w-56 border-r border-b1 bg-s1 flex flex-col py-4 shrink-0">
-          <nav className="flex-1 space-y-2 px-2">
+        <aside className="w-14 border-r border-b1 bg-s1 flex flex-col py-3 shrink-0">
+          <nav className="flex-1 flex flex-col items-center gap-1">
             {[
               { id: 'terminal', icon: Activity, label: 'Terminal' },
               { id: 'data', icon: BarChart2, label: 'Your Data' },
@@ -144,23 +144,21 @@ export default function Dashboard() {
               <button
                 key={item.id}
                 onClick={() => setActiveTab(item.id)}
-                className={`w-full flex items-center gap-3 p-3 rounded text-left transition-colors ${activeTab === item.id ? 'bg-s2 text-white border border-b2' : 'text-muted-foreground hover:bg-s2/50 hover:text-white'}`}
+                title={item.label}
+                className={`w-10 h-10 flex items-center justify-center rounded transition-colors ${activeTab === item.id ? 'bg-s2 text-white border border-b2' : 'text-muted-foreground hover:bg-s2/50 hover:text-white'}`}
                 data-testid={`tab-${item.id}`}
               >
-                <item.icon className="w-5 h-5 shrink-0" />
-                <span className="hidden md:block font-medium text-sm">{item.label}</span>
+                <item.icon className="w-5 h-5" />
               </button>
             ))}
           </nav>
           
-          <div className="px-2 mt-auto pt-4 border-t border-b1">
-            <button className="w-full flex items-center gap-3 p-3 rounded text-left text-muted-foreground hover:bg-s2/50 hover:text-white transition-colors">
-              <Settings className="w-5 h-5 shrink-0" />
-              <span className="hidden md:block font-medium text-sm">Settings</span>
+          <div className="flex flex-col items-center gap-1 mt-auto pt-3 border-t border-b1">
+            <button title="Settings" className="w-10 h-10 flex items-center justify-center rounded text-muted-foreground hover:bg-s2/50 hover:text-white transition-colors">
+              <Settings className="w-5 h-5" />
             </button>
-            <button onClick={handleLogout} className="w-full flex items-center gap-3 p-3 rounded text-left text-red/70 hover:bg-red/10 hover:text-red transition-colors mt-2">
-              <LogOut className="w-5 h-5 shrink-0" />
-              <span className="hidden md:block font-medium text-sm">Logout</span>
+            <button onClick={handleLogout} title="Logout" className="w-10 h-10 flex items-center justify-center rounded text-red/70 hover:bg-red/10 hover:text-red transition-colors">
+              <LogOut className="w-5 h-5" />
             </button>
           </div>
         </aside>

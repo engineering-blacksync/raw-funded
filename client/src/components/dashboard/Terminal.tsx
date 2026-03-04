@@ -368,44 +368,24 @@ export default function Terminal({ tier, userTierName }: TerminalProps) {
           )}
 
           {activePositions.length > 0 && (
-            <div className="absolute top-3 left-3 z-10 flex flex-col gap-2 pointer-events-none" data-testid="chart-overlay">
+            <div className="absolute top-2 left-2 z-10 flex flex-col gap-1 pointer-events-none" data-testid="chart-overlay">
               {activePositions.map(pos => (
                 <div
                   key={pos.id}
-                  className="pointer-events-auto bg-[#09090B]/90 backdrop-blur-sm border border-b2 rounded-lg px-3 py-2.5 shadow-xl min-w-[220px]"
+                  className="pointer-events-auto bg-[#09090B]/85 backdrop-blur-sm border border-b2 rounded px-2.5 py-1.5 shadow-lg flex items-center gap-3 text-[11px]"
                   data-testid={`chart-pos-${pos.id}`}
                 >
-                  <div className="flex items-center gap-2 mb-2">
-                    <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${pos.side === 'BUY' ? 'bg-green/20 text-green' : 'bg-red/20 text-red'}`}>
-                      {pos.side}
-                    </span>
-                    <span className="text-xs font-bold text-white">{pos.size} {pos.instrument}</span>
-                    <span className={`ml-auto data-number text-sm font-bold ${pos.livePnl >= 0 ? 'text-green' : 'text-red'}`}>
-                      {formatPnl(pos.livePnl)}
-                    </span>
-                  </div>
-                  <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-[11px]">
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">Entry</span>
-                      <span className="data-number text-gold font-medium">{formatPrice(pos.entryPrice, pos.instrument)}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">Current</span>
-                      <span className="data-number text-white font-medium">{pos.currentPrice ? formatPrice(pos.currentPrice, pos.instrument) : '---'}</span>
-                    </div>
-                    {pos.stopLoss && (
-                      <div className="flex justify-between">
-                        <span className="text-red font-bold">SL</span>
-                        <span className="data-number text-red font-medium">{formatPrice(pos.stopLoss, pos.instrument)}</span>
-                      </div>
-                    )}
-                    {pos.takeProfit && (
-                      <div className="flex justify-between">
-                        <span className="text-green font-bold">TP</span>
-                        <span className="data-number text-green font-medium">{formatPrice(pos.takeProfit, pos.instrument)}</span>
-                      </div>
-                    )}
-                  </div>
+                  <span className={`text-[9px] font-bold px-1 py-0.5 rounded ${pos.side === 'BUY' ? 'bg-green/20 text-green' : 'bg-red/20 text-red'}`}>
+                    {pos.side}
+                  </span>
+                  <span className="font-bold text-white">{pos.size} {pos.instrument}</span>
+                  <span className="text-muted-foreground">Entry <span className="data-number text-gold">{formatPrice(pos.entryPrice, pos.instrument)}</span></span>
+                  <span className="text-muted-foreground">Now <span className="data-number text-white">{pos.currentPrice ? formatPrice(pos.currentPrice, pos.instrument) : '---'}</span></span>
+                  {pos.stopLoss && <span className="data-number text-red">SL {formatPrice(pos.stopLoss, pos.instrument)}</span>}
+                  {pos.takeProfit && <span className="data-number text-green">TP {formatPrice(pos.takeProfit, pos.instrument)}</span>}
+                  <span className={`data-number font-bold ${pos.livePnl >= 0 ? 'text-green' : 'text-red'}`}>
+                    {formatPnl(pos.livePnl)}
+                  </span>
                 </div>
               ))}
             </div>

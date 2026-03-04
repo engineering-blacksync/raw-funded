@@ -15,19 +15,20 @@ interface InstrumentConfig {
   min: number;
   max: number;
   decimals: number;
+  spread?: number;
 }
 
 const INSTRUMENTS: InstrumentConfig[] = [
   { label: 'Bitcoin', symbol: 'COINBASE:BTCUSD', default: 0.01, step: 0.01, min: 0.01, max: 1.00, decimals: 2 },
-  { label: 'Gold (GC)', symbol: 'OANDA:XAUUSD', default: 1, step: 1, min: 1, max: 10, decimals: 0 },
-  { label: 'Silver', symbol: 'OANDA:XAGUSD', default: 0.01, step: 0.01, min: 0.01, max: 10.00, decimals: 2 },
+  { label: 'Gold (GC)', symbol: 'OANDA:XAUUSD', default: 1, step: 1, min: 1, max: 10, decimals: 0, spread: 0.30 },
+  { label: 'Silver', symbol: 'OANDA:XAGUSD', default: 0.01, step: 0.01, min: 0.01, max: 10.00, decimals: 2, spread: 0.08 },
   { label: 'Oil (WTI)', symbol: 'OANDA:WTICOUSD', default: 1, step: 1, min: 1, max: 20, decimals: 0 },
   { label: 'S&P 500', symbol: 'OANDA:SPX500USD', default: 1, step: 1, min: 1, max: 20, decimals: 0 },
   { label: 'Nasdaq', symbol: 'OANDA:NAS100USD', default: 1, step: 1, min: 1, max: 20, decimals: 0 },
   { label: 'MNQ', symbol: 'CME_MINI:MNQ1!', default: 1, step: 1, min: 1, max: 20, decimals: 0 },
   { label: 'MES', symbol: 'CME_MINI:MES1!', default: 1, step: 1, min: 1, max: 20, decimals: 0 },
-  { label: 'MGC', symbol: 'OANDA:XAUUSD', default: 1, step: 1, min: 1, max: 20, decimals: 0 },
-  { label: 'SIL', symbol: 'COMEX:SIL1!', default: 1, step: 1, min: 1, max: 20, decimals: 0 },
+  { label: 'MGC', symbol: 'OANDA:XAUUSD', default: 1, step: 1, min: 1, max: 20, decimals: 0, spread: 0.30 },
+  { label: 'SIL', symbol: 'COMEX:SIL1!', default: 1, step: 1, min: 1, max: 20, decimals: 0, spread: 0.08 },
   { label: 'MCL', symbol: 'NYMEX:MCL1!', default: 1, step: 1, min: 1, max: 20, decimals: 0 },
 ];
 
@@ -133,9 +134,12 @@ export default function Terminal({ tier, userTierName, onOpenPnlChange }: Termin
   };
 
   const positionsWithPnl = openTrades.map(trade => {
-    const currentPrice = livePrices[trade.instrument];
-    const pnl = currentPrice ? calcPnl(trade.side, trade.entryPrice, currentPrice, trade.size, trade.instrument) : 0;
-    return { ...trade, livePnl: pnl, currentPrice };
+    const midPrice = livePrices[trade.instrument];
+    const inst = INSTRUMENTS.find(i => i.label === trade.instrument);
+    const halfSpread = ((inst?.spread) || 0) / 2;
+    const exitPrice = midPrice ? (trade.side === 'BUY' ? midPrice - halfSpread : midPrice + halfSpread) : undefined;
+    const pnl = exitPrice ? calcPnl(trade.side, trade.entryPrice, exitPrice, trade.size, trade.instrument) : 0;
+    return { ...trade, livePnl: pnl, currentPrice: exitPrice };
   });
 
   const totalOpenPnl = positionsWithPnl.reduce((sum, p) => sum + p.livePnl, 0);
@@ -207,12 +211,15 @@ export default function Terminal({ tier, userTierName, onOpenPnlChange }: Termin
   }, [tvLoaded, createChart]);
 
   const handleTrade = async (side: 'BUY' | 'SELL') => {
-    const entryPrice = livePrices[activeInstrument.label];
-    if (!entryPrice) {
+    const midPrice = livePrices[activeInstrument.label];
+    if (!midPrice) {
       setTradeStatus({ type: 'error', message: 'Waiting for price data...' });
       setTimeout(() => setTradeStatus(null), 3000);
       return;
     }
+
+    const halfSpread = (activeInstrument.spread || 0) / 2;
+    const entryPrice = side === 'BUY' ? midPrice + halfSpread : midPrice - halfSpread;
 
     setTradeLoading(side);
     setTradeStatus(null);
@@ -262,8 +269,13 @@ export default function Terminal({ tier, userTierName, onOpenPnlChange }: Termin
     const trade = openTrades.find(t => t.id === tradeId);
     if (!trade) { setClosingId(null); return; }
 
-    const exitPrice = exitPriceOverride ?? livePrices[trade.instrument];
+    let exitPrice = exitPriceOverride ?? livePrices[trade.instrument];
     if (!exitPrice) { setClosingId(null); return; }
+    if (!exitPriceOverride) {
+      const inst = INSTRUMENTS.find(i => i.label === trade.instrument);
+      const halfSpread = ((inst?.spread) || 0) / 2;
+      exitPrice = trade.side === 'BUY' ? exitPrice - halfSpread : exitPrice + halfSpread;
+    }
 
     try {
       const res = await fetch(`/api/trades/${tradeId}/close`, {

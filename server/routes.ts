@@ -5,6 +5,7 @@ import multer from "multer";
 import path from "path";
 import { storage } from "./storage";
 import { setupAuth, requireAuth, requireApproved, hashPassword } from "./auth";
+import { sendApprovalEmail, sendRejectionEmail } from "./email";
 import {
   insertUserSchema, loginSchema, insertTradeSchema,
   insertVerificationSchema, insertWithdrawalSchema,
@@ -183,16 +184,22 @@ export async function registerRoutes(
       const tierContracts: Record<string, number> = { verified: 10, elite: 50, titan: 999 };
       const selectedTier = tier || "verified";
 
+      const finalBalance = balance || 10000;
       await storage.updateUser(ver.userId, {
         tier: selectedTier,
         status: "approved",
-        balance: balance || 10000,
+        balance: finalBalance,
         leverage: leverage || tierLeverage[selectedTier] || 250,
         maxContracts: maxContracts || tierContracts[selectedTier] || 10,
         isActive: true,
         approvedBy: req.user!.email,
         verifiedAt: new Date(),
       });
+
+      const approvedUser = await storage.getUser(ver.userId);
+      if (approvedUser) {
+        sendApprovalEmail(approvedUser.email, approvedUser.username, selectedTier, finalBalance);
+      }
 
       return res.json({ message: "Approved", verification: ver });
     } catch (err: any) {
@@ -210,6 +217,11 @@ export async function registerRoutes(
         status: "rejected",
         adminNotes: reason || "Verification rejected",
       });
+
+      const rejectedUser = await storage.getUser(ver.userId);
+      if (rejectedUser) {
+        sendRejectionEmail(rejectedUser.email, rejectedUser.username, reason);
+      }
 
       return res.json({ message: "Rejected", verification: ver });
     } catch (err: any) {

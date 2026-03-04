@@ -2,7 +2,6 @@ import { Navbar } from "@/components/layout/Navbar";
 import { Link, useLocation } from "wouter";
 import { Check, X, ArrowRight } from "lucide-react";
 import { TIERS } from "@/lib/constants";
-import RawFundedDashboard from "@/components/dashboard/RawFundedDashboard";
 import { useState } from "react";
 
 export default function Home() {
@@ -74,27 +73,6 @@ export default function Home() {
             </Link>
           </div>
 
-          <div className="w-full relative pb-20 mt-4">
-            <div
-              className="absolute left-1/2 w-[110%] md:w-[90%] pointer-events-none z-0 opacity-70"
-              style={{
-                top: "-23%",
-                transform: "translateX(-50%)"
-              }}
-              aria-hidden="true"
-            >
-              <img
-                src="https://i.postimg.cc/Ss6yShGy/glows.png"
-                alt=""
-                className="w-full h-auto mix-blend-screen"
-                loading="eager"
-              />
-            </div>
-            
-            <div className="relative z-10 max-w-5xl mx-auto shadow-2xl shadow-gold/5 rounded-xl">
-              <RawFundedDashboard />
-            </div>
-          </div>
         </div>
       </section>
 

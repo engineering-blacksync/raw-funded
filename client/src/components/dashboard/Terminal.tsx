@@ -314,6 +314,22 @@ export default function Terminal({ tier, userTierName, onOpenPnlChange }: Termin
           const closed: Trade = await res.json();
           setOpenTrades(prev => prev.filter(t => t.id !== trade.id));
           setClosedTrades(prev => [closed, ...prev]);
+          try {
+            const sbId = supabaseTradeIds[trade.id];
+            if (sbId) {
+              await fetch('/api/supabase/trades/close', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  supabaseId: sbId,
+                  close_price: closed.exitPrice,
+                  pnl: closed.pnl,
+                  close_time: new Date().toISOString(),
+                  status: 'closed'
+                })
+              });
+            }
+          } catch {}
         }
       } catch {}
     }

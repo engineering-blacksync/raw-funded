@@ -1,10 +1,19 @@
 import { Navbar } from "@/components/layout/Navbar";
-import { Link } from "wouter";
+import { Link, useLocation } from "wouter";
 import { Check, X, ArrowRight } from "lucide-react";
 import { TIERS } from "@/lib/constants";
 import RawFundedDashboard from "@/components/dashboard/RawFundedDashboard";
+import { useState } from "react";
 
 export default function Home() {
+  const [showModal, setShowModal] = useState(false);
+  const [, setLocation] = useLocation();
+
+  const handleApplyClick = (e: React.MouseEvent) => {
+    e.preventDefault();
+    setShowModal(true);
+  };
+
   return (
     <div className="min-h-screen bg-background text-foreground bg-grid">
       <Navbar />
@@ -57,9 +66,9 @@ export default function Home() {
           </p>
 
           <div className="flex items-center gap-4 relative z-10 mb-16">
-            <Link href="/apply" className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-lg font-bold transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 h-12 px-8 text-base bg-gradient-to-b from-[#E8C547] via-[#E8C547]/95 to-[#E8C547]/70 text-black hover:scale-105 active:scale-95 shadow-lg shadow-gold/20" data-testid="link-apply-hero">
+            <button onClick={handleApplyClick} className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-lg font-bold transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 h-12 px-8 text-base bg-gradient-to-b from-[#E8C547] via-[#E8C547]/95 to-[#E8C547]/70 text-black hover:scale-105 active:scale-95 shadow-lg shadow-gold/20 cursor-pointer" data-testid="link-apply-hero">
               Get started
-            </Link>
+            </button>
             <Link href="/login" className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-lg font-medium transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 h-12 px-8 text-base hover:bg-white/5 text-white" data-testid="link-login-hero">
               Log in
             </Link>
@@ -222,6 +231,42 @@ export default function Home() {
         <div className="font-heading text-2xl tracking-widest text-white/50 mb-4">RAW FUNDED</div>
         <p>© 2026 Raw Funded. All rights reserved.</p>
       </footer>
+
+      {showModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm" onClick={() => setShowModal(false)}>
+          <div
+            className="bg-card border border-b1 rounded-xl p-8 max-w-md w-full mx-4 text-center"
+            onClick={(e) => e.stopPropagation()}
+            style={{ animation: "fadeIn 0.2s ease-out" }}
+          >
+            <div className="w-16 h-16 mx-auto mb-6 rounded-full bg-gold/10 border border-gold/30 flex items-center justify-center">
+              <span className="text-2xl">⚡</span>
+            </div>
+            <h2 className="font-heading text-2xl font-bold text-white mb-3 uppercase tracking-wide">
+              Have you ever passed a prop firm?
+            </h2>
+            <p className="text-sm text-muted-foreground mb-8">
+              Raw Funded is exclusively for traders who have already proven themselves at other prop firms.
+            </p>
+            <div className="flex flex-col gap-3">
+              <button
+                onClick={() => { setShowModal(false); setLocation('/apply'); }}
+                className="w-full py-3 rounded-lg font-bold text-base bg-gradient-to-b from-[#E8C547] via-[#E8C547]/95 to-[#E8C547]/70 text-black hover:scale-[1.02] active:scale-95 transition-all shadow-lg shadow-gold/20"
+                data-testid="btn-modal-yes"
+              >
+                Yes, I have
+              </button>
+              <button
+                onClick={() => setShowModal(false)}
+                className="w-full py-3 rounded-lg font-medium text-sm text-muted-foreground hover:text-white border border-b2 hover:border-b1 hover:bg-s2 transition-all"
+                data-testid="btn-modal-no"
+              >
+                Not yet
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

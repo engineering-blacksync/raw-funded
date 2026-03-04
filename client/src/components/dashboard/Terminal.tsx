@@ -288,6 +288,28 @@ export default function Terminal({ tier, userTierName, onOpenPnlChange }: Termin
     }
   };
 
+  const [closingAll, setClosingAll] = useState(false);
+  const handleCloseAll = async () => {
+    if (closingAll || openTrades.length === 0) return;
+    setClosingAll(true);
+    for (const trade of openTrades) {
+      const exitPrice = livePrices[trade.instrument];
+      if (!exitPrice) continue;
+      try {
+        const res = await fetch(`/api/trades/${trade.id}/close`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ exitPrice }),
+        });
+        if (res.ok) {
+          const closed: Trade = await res.json();
+          setOpenTrades(prev => prev.filter(t => t.id !== trade.id));
+          setClosedTrades(prev => [closed, ...prev]);
+        }
+      } catch {}
+    }
+    setClosingAll(false);
+  };
 
   const displayQty = String(quantity);
 
@@ -439,8 +461,16 @@ export default function Terminal({ tier, userTierName, onOpenPnlChange }: Termin
 
       {positionsWithPnl.length > 0 && (
         <div className="bg-[#0A0A0C]">
-          <div className="px-3 py-2 border-b border-b1">
+          <div className="px-3 py-2 border-b border-b1 flex items-center justify-between">
             <span className="text-[10px] text-muted-foreground uppercase tracking-wider font-bold">Open Positions</span>
+            <button
+              onClick={handleCloseAll}
+              disabled={closingAll}
+              className="text-[9px] font-bold uppercase text-red hover:text-white bg-red/10 border border-red/30 hover:bg-red/20 px-2 py-0.5 rounded transition-colors disabled:opacity-50"
+              data-testid="btn-close-all"
+            >
+              {closingAll ? 'Closing...' : 'Close All'}
+            </button>
           </div>
           {positionsWithPnl.map(pos => (
             <div

@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Link, useLocation } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import { LogOut, Activity, BarChart2, Shield, Check, CreditCard, ChevronDown, Settings, Clock } from "lucide-react";
@@ -44,6 +44,8 @@ export default function Dashboard() {
   const [, setLocation] = useLocation();
   const { user, isLoading, isAuthenticated, logout } = useAuth();
   const nyTime = useNYTime();
+  const [liveOpenPnl, setLiveOpenPnl] = useState(0);
+  const handleOpenPnlChange = useCallback((pnl: number) => setLiveOpenPnl(pnl), []);
 
   const { data: tradeStats } = useQuery({
     queryKey: ["/api/trades/stats"],
@@ -128,9 +130,9 @@ export default function Dashboard() {
             </div>
             <div className="w-px h-8 bg-b1"></div>
             <div className="flex flex-col items-end">
-              <span className="text-[10px] text-muted-foreground uppercase tracking-widest">P&L</span>
-              <span className={`data-number text-lg font-bold ${(stats?.totalPnl ?? 0) >= 0 ? 'text-[#22C55E]' : 'text-[#EF4444]'}`}>
-                {(stats?.totalPnl ?? 0) >= 0 ? '+' : ''}${(stats?.totalPnl ?? 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              <span className="text-[10px] text-muted-foreground uppercase tracking-widest">Open P&L</span>
+              <span className={`data-number text-lg font-bold ${liveOpenPnl >= 0 ? 'text-[#22C55E]' : 'text-[#EF4444]'}`}>
+                {liveOpenPnl >= 0 ? '+' : ''}${liveOpenPnl.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
               </span>
             </div>
           </div>
@@ -190,7 +192,7 @@ export default function Dashboard() {
         </aside>
 
         <main className="flex-1 overflow-hidden flex flex-col bg-background">
-          {activeTab === 'terminal' && <Terminal tier={currentTier} userTierName={user.tier} />}
+          {activeTab === 'terminal' && <Terminal tier={currentTier} userTierName={user.tier} onOpenPnlChange={handleOpenPnlChange} />}
           {activeTab === 'data' && (
             <div className="flex-1 overflow-y-auto p-8">
               <div className="max-w-6xl mx-auto space-y-6">

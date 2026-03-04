@@ -4,6 +4,7 @@ import type { Trade } from '@shared/schema';
 interface TerminalProps {
   tier: any;
   userTierName: string;
+  onOpenPnlChange?: (pnl: number) => void;
 }
 
 interface InstrumentConfig {
@@ -93,7 +94,7 @@ function calcPnl(side: string, entry: number, current: number, size: number, ins
   return (current - entry) * direction * size * contractSize;
 }
 
-export default function Terminal({ tier, userTierName }: TerminalProps) {
+export default function Terminal({ tier, userTierName, onOpenPnlChange }: TerminalProps) {
   const chartContainerRef = useRef<HTMLDivElement>(null);
   const tvLoaded = useTradingViewScript();
   const [activeInstrument, setActiveInstrument] = useState(INSTRUMENTS[0]);
@@ -136,6 +137,11 @@ export default function Terminal({ tier, userTierName }: TerminalProps) {
     const pnl = currentPrice ? calcPnl(trade.side, trade.entryPrice, currentPrice, trade.size, trade.instrument) : 0;
     return { ...trade, livePnl: pnl, currentPrice };
   });
+
+  const totalOpenPnl = positionsWithPnl.reduce((sum, p) => sum + p.livePnl, 0);
+  useEffect(() => {
+    onOpenPnlChange?.(totalOpenPnl);
+  }, [totalOpenPnl, onOpenPnlChange]);
 
 
 

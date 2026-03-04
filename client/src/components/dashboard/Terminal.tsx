@@ -242,7 +242,7 @@ export default function Terminal({ tier, userTierName, onOpenPnlChange }: Termin
 
       if (response.ok) {
         const trade: Trade = await response.json();
-        try { const sbRes = await fetch('/api/supabase/trades', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ instrument: activeInstrument.label, side, size, entryPrice, status: 'open', stopLoss: orderSl ? parseFloat(orderSl) : null, takeProfit: orderTp ? parseFloat(orderTp) : null, ticket: null }), }); if (sbRes.ok) { const sbData = await sbRes.json(); if (sbData?.trade?.id) { setSupabaseTradeIds(prev => ({ ...prev, [trade.id]: sbData.trade.id })); } } } catch { }
+        try { const sbRes = await fetch('/api/supabase/trades', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ instrument: activeInstrument.label, side, size, entryPrice, status: 'open', stopLoss: orderSl ? parseFloat(orderSl) : null, takeProfit: orderTp ? parseFloat(orderTp) : null, ticket: null }), }); if (sbRes.ok) { const sbData = await sbRes.json(); if (sbData?.trade?.id) { setSupabaseTradeIds(prev => ({ ...prev, [trade.id]: sbData.trade.id })); console.log('Supabase trade ID mapped:', trade.id, '->', sbData.trade.id); } } } catch { }
         setOpenTrades(prev => [...prev, trade]);
         setTradeStatus({ type: 'success', message: `${side} ${quantity} ${activeInstrument.label} @ ${entryPrice.toLocaleString()}` });
 

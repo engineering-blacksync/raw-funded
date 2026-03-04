@@ -301,9 +301,8 @@ export default function Terminal({ tier, userTierName, onOpenPnlChange }: Termin
   };
 
   return (
-    <div className="flex flex-col h-full">
-      <div className="flex-1 flex flex-col min-w-0">
-
+    <div className="overflow-y-auto h-full">
+      <div className="flex flex-col" style={{ height: '100vh' }}>
         <div className="flex items-center border-b border-b1 bg-s1 shrink-0">
           <div className="flex overflow-x-auto no-scrollbar flex-1">
             {INSTRUMENTS.map((inst) => (
@@ -342,8 +341,6 @@ export default function Terminal({ tier, userTierName, onOpenPnlChange }: Termin
               <div className="w-8 h-8 border-2 border-gold border-t-transparent rounded-full animate-spin"></div>
             </div>
           )}
-
-
         </div>
 
         <div className="border-t border-b1 bg-s1 shrink-0 px-3 py-2">
@@ -442,43 +439,45 @@ export default function Terminal({ tier, userTierName, onOpenPnlChange }: Termin
             </div>
           )}
         </div>
-
-        {positionsWithPnl.length > 0 && (
-          <div className="border-t border-b1 bg-[#0A0A0C] shrink-0 overflow-y-auto max-h-[35vh]">
-            {positionsWithPnl.map(pos => (
-              <div
-                key={pos.id}
-                className="flex items-center gap-3 px-3 py-2 border-b border-b1 hover:bg-s2/50 transition-colors group"
-                data-testid={`position-row-${pos.id}`}
-              >
-                <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded shrink-0 ${pos.side === 'BUY' ? 'bg-[#22C55E] text-white' : 'bg-[#EF4444] text-white'}`}>
-                  {pos.side}
-                </span>
-
-                <span className="text-white font-bold text-xs shrink-0">{pos.size} {pos.instrument}</span>
-
-                <span className="text-muted-foreground text-[11px] shrink-0">Entry <span className="text-gold data-number">{formatPrice(pos.entryPrice, pos.instrument)}</span></span>
-                <span className="text-muted-foreground text-[11px] shrink-0">Now <span className="text-white data-number">{pos.currentPrice ? formatPrice(pos.currentPrice, pos.instrument) : '---'}</span></span>
-
-                <div className="ml-auto flex items-center gap-2">
-                  <span className={`data-number font-bold text-sm ${pos.livePnl >= 0 ? 'text-[#22C55E]' : 'text-[#EF4444]'}`}>
-                    {formatPnl(pos.livePnl)}
-                  </span>
-                  <button
-                    onClick={() => handleClose(pos.id)}
-                    disabled={closingId === pos.id}
-                    className="opacity-0 group-hover:opacity-100 text-[9px] text-muted-foreground hover:text-white bg-b1 border border-b2 px-1.5 py-0.5 rounded transition-all disabled:opacity-50"
-                    data-testid={`btn-close-${pos.id}`}
-                  >
-                    {closingId === pos.id ? '...' : 'Close'}
-                  </button>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-
       </div>
+
+      {positionsWithPnl.length > 0 && (
+        <div className="bg-[#0A0A0C]">
+          <div className="px-3 py-2 border-b border-b1">
+            <span className="text-[10px] text-muted-foreground uppercase tracking-wider font-bold">Open Positions</span>
+          </div>
+          {positionsWithPnl.map(pos => (
+            <div
+              key={pos.id}
+              className="flex items-center gap-3 px-3 py-2 border-b border-b1 hover:bg-s2/50 transition-colors group"
+              data-testid={`position-row-${pos.id}`}
+            >
+              <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded shrink-0 ${pos.side === 'BUY' ? 'bg-[#22C55E] text-white' : 'bg-[#EF4444] text-white'}`}>
+                {pos.side}
+              </span>
+
+              <span className="text-white font-bold text-xs shrink-0">{pos.size} {pos.instrument}</span>
+
+              <span className="text-muted-foreground text-[11px] shrink-0">Entry <span className="text-gold data-number">{formatPrice(pos.entryPrice, pos.instrument)}</span></span>
+              <span className="text-muted-foreground text-[11px] shrink-0">Now <span className="text-white data-number">{pos.currentPrice ? formatPrice(pos.currentPrice, pos.instrument) : '---'}</span></span>
+
+              <div className="ml-auto flex items-center gap-2">
+                <span className={`data-number font-bold text-sm ${pos.livePnl >= 0 ? 'text-[#22C55E]' : 'text-[#EF4444]'}`}>
+                  {formatPnl(pos.livePnl)}
+                </span>
+                <button
+                  onClick={() => handleClose(pos.id)}
+                  disabled={closingId === pos.id}
+                  className="opacity-0 group-hover:opacity-100 text-[9px] text-muted-foreground hover:text-white bg-b1 border border-b2 px-1.5 py-0.5 rounded transition-all disabled:opacity-50"
+                  data-testid={`btn-close-${pos.id}`}
+                >
+                  {closingId === pos.id ? '...' : 'Close'}
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

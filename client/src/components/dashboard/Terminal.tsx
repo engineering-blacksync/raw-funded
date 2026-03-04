@@ -306,7 +306,7 @@ export default function Terminal({ tier, userTierName, onOpenPnlChange }: Termin
               <button
                 key={inst.symbol}
                 onClick={() => handleInstrumentChange(inst)}
-                className={`px-4 py-3 text-xs font-medium whitespace-nowrap transition-colors border-b-2 ${activeInstrument.symbol === inst.symbol ? 'border-gold text-white bg-s2' : 'border-transparent text-muted-foreground hover:text-white hover:bg-s2/50'}`}
+                className={`px-3 py-2 text-[11px] font-medium whitespace-nowrap transition-colors border-b-2 ${activeInstrument.symbol === inst.symbol ? 'border-gold text-white bg-s2' : 'border-transparent text-muted-foreground hover:text-white hover:bg-s2/50'}`}
                 data-testid={`instrument-${inst.label}`}
               >
                 {inst.label}
@@ -331,7 +331,7 @@ export default function Terminal({ tier, userTierName, onOpenPnlChange }: Termin
           </div>
         </div>
 
-        <div className="flex-1 relative bg-background min-h-[400px]">
+        <div className="flex-1 relative bg-background">
           <div ref={chartContainerRef} id="tradingview-chart" className="absolute inset-0" />
           {!tvLoaded && (
             <div className="absolute inset-0 flex items-center justify-center">
@@ -342,144 +342,128 @@ export default function Terminal({ tier, userTierName, onOpenPnlChange }: Termin
 
         </div>
 
-        <div className="border-t border-b1 bg-s1 shrink-0">
-          <div className="px-3 py-2 flex items-center justify-between border-b border-b1">
-            <button className="flex items-center gap-1.5 text-xs text-white font-medium bg-s2 border border-b2 rounded px-3 py-1.5 hover:bg-s3 transition-colors" data-testid="btn-market-order">
-              Market
-              <svg className="w-3 h-3 text-muted-foreground" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7h12M8 12h12M8 17h12M4 7h.01M4 12h.01M4 17h.01" /></svg>
-            </button>
-
-            <button
-              onClick={() => setShowSltp(!showSltp)}
-              className={`flex items-center gap-1.5 text-xs font-medium border rounded px-3 py-1.5 transition-colors ${showSltp ? 'text-gold border-gold/50 bg-gold/10' : 'text-white bg-s2 border-b2 hover:bg-s3'}`}
-              data-testid="btn-toggle-sltp"
-            >
-              SL/TP
-              <svg className={`w-3 h-3 transition-transform ${showSltp ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
-            </button>
-          </div>
-
+        <div className="border-t border-b1 bg-s1 shrink-0 px-3 py-2">
           {showSltp && (
-            <div className="px-3 py-2 flex gap-3 border-b border-b1 bg-s2/50">
-              <div className="flex-1 flex flex-col gap-0.5">
-                <label className="text-[9px] text-red font-bold uppercase tracking-wider">Stop Loss</label>
+            <div className="flex gap-3 mb-2">
+              <div className="flex-1 flex items-center gap-1.5">
+                <label className="text-[9px] text-red font-bold uppercase shrink-0">SL</label>
                 <input
                   type="text"
                   inputMode="decimal"
                   placeholder="None"
                   value={orderSl}
                   onChange={(e) => setOrderSl(e.target.value)}
-                  className="w-full bg-s2 border border-b2 rounded px-2 py-1.5 text-xs text-white font-mono outline-none focus:border-red/50"
+                  className="w-full bg-s2 border border-b2 rounded px-2 py-1 text-xs text-white font-mono outline-none focus:border-red/50"
                   data-testid="input-order-sl"
                 />
               </div>
-              <div className="flex-1 flex flex-col gap-0.5">
-                <label className="text-[9px] text-green font-bold uppercase tracking-wider">Take Profit</label>
+              <div className="flex-1 flex items-center gap-1.5">
+                <label className="text-[9px] text-green font-bold uppercase shrink-0">TP</label>
                 <input
                   type="text"
                   inputMode="decimal"
                   placeholder="None"
                   value={orderTp}
                   onChange={(e) => setOrderTp(e.target.value)}
-                  className="w-full bg-s2 border border-b2 rounded px-2 py-1.5 text-xs text-white font-mono outline-none focus:border-green/50"
+                  className="w-full bg-s2 border border-b2 rounded px-2 py-1 text-xs text-white font-mono outline-none focus:border-green/50"
                   data-testid="input-order-tp"
                 />
               </div>
             </div>
           )}
 
-          <div className="px-3 py-3">
-            <div className="flex items-stretch gap-2">
-              <button
-                onClick={() => handleTrade('BUY')}
-                disabled={tradeLoading !== null}
-                className="flex-1 bg-[#22C55E] hover:bg-[#16A34A] text-white py-3 rounded font-heading text-lg font-bold flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                data-testid="btn-buy"
-              >
-                {tradeLoading === 'BUY' ? 'Placing...' : 'Buy'}
-              </button>
+          <div className="flex items-stretch gap-2">
+            <button className="flex items-center gap-1 text-[10px] text-white font-medium bg-s2 border border-b2 rounded px-2 py-1 hover:bg-s3 transition-colors shrink-0" data-testid="btn-market-order">
+              Market
+            </button>
 
-              <div className="flex items-center bg-s2 border border-b2 rounded">
-                <button
-                  onClick={() => setQuantity(clampQuantity(quantity - activeInstrument.step, activeInstrument))}
-                  disabled={atMin}
-                  className={`px-3 py-2 text-sm font-bold transition-colors ${atMin ? 'text-muted-foreground/30 cursor-not-allowed' : 'text-muted-foreground hover:text-white hover:bg-s3'}`}
-                  data-testid="btn-qty-minus"
-                >-</button>
-                <div className="flex items-center gap-1 px-1">
-                  <input
-                    type="text"
-                    inputMode="decimal"
-                    value={displayQty}
-                    onChange={(e) => {
-                      const val = parseFloat(e.target.value);
-                      if (!isNaN(val)) setQuantity(clampQuantity(val, activeInstrument));
-                    }}
-                    className="w-10 bg-transparent text-center text-white font-mono font-bold text-sm outline-none"
-                    data-testid="input-contracts"
-                  />
-                  <span className="text-xs text-muted-foreground font-medium">Lot</span>
-                </div>
-                <button
-                  onClick={() => setQuantity(clampQuantity(quantity + activeInstrument.step, activeInstrument))}
-                  disabled={atMax}
-                  className={`px-3 py-2 text-sm font-bold transition-colors ${atMax ? 'text-muted-foreground/30 cursor-not-allowed' : 'text-muted-foreground hover:text-white hover:bg-s3'}`}
-                  data-testid="btn-qty-plus"
-                >+</button>
+            <button
+              onClick={() => handleTrade('BUY')}
+              disabled={tradeLoading !== null}
+              className="flex-1 bg-[#22C55E] hover:bg-[#16A34A] text-white py-2 rounded font-heading text-base font-bold flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              data-testid="btn-buy"
+            >
+              {tradeLoading === 'BUY' ? '...' : 'Buy'}
+            </button>
+
+            <div className="flex items-center bg-s2 border border-b2 rounded shrink-0">
+              <button
+                onClick={() => setQuantity(clampQuantity(quantity - activeInstrument.step, activeInstrument))}
+                disabled={atMin}
+                className={`px-2.5 py-1 text-sm font-bold transition-colors ${atMin ? 'text-muted-foreground/30 cursor-not-allowed' : 'text-muted-foreground hover:text-white hover:bg-s3'}`}
+                data-testid="btn-qty-minus"
+              >-</button>
+              <div className="flex items-center gap-1 px-0.5">
+                <input
+                  type="text"
+                  inputMode="decimal"
+                  value={displayQty}
+                  onChange={(e) => {
+                    const val = parseFloat(e.target.value);
+                    if (!isNaN(val)) setQuantity(clampQuantity(val, activeInstrument));
+                  }}
+                  className="w-8 bg-transparent text-center text-white font-mono font-bold text-sm outline-none"
+                  data-testid="input-contracts"
+                />
+                <span className="text-[10px] text-muted-foreground font-medium">Lot</span>
               </div>
-
               <button
-                onClick={() => handleTrade('SELL')}
-                disabled={tradeLoading !== null}
-                className="flex-1 bg-[#EF4444] hover:bg-[#DC2626] text-white py-3 rounded font-heading text-lg font-bold flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                data-testid="btn-sell"
-              >
-                {tradeLoading === 'SELL' ? 'Placing...' : 'Sell'}
-              </button>
+                onClick={() => setQuantity(clampQuantity(quantity + activeInstrument.step, activeInstrument))}
+                disabled={atMax}
+                className={`px-2.5 py-1 text-sm font-bold transition-colors ${atMax ? 'text-muted-foreground/30 cursor-not-allowed' : 'text-muted-foreground hover:text-white hover:bg-s3'}`}
+                data-testid="btn-qty-plus"
+              >+</button>
             </div>
-            {tradeStatus && (
-              <div className={`text-center text-xs font-medium mt-2 ${tradeStatus.type === 'success' ? 'text-green' : 'text-red'}`} data-testid="trade-status">
-                {tradeStatus.message}
-              </div>
-            )}
+
+            <button
+              onClick={() => handleTrade('SELL')}
+              disabled={tradeLoading !== null}
+              className="flex-1 bg-[#EF4444] hover:bg-[#DC2626] text-white py-2 rounded font-heading text-base font-bold flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              data-testid="btn-sell"
+            >
+              {tradeLoading === 'SELL' ? '...' : 'Sell'}
+            </button>
+
+            <button
+              onClick={() => setShowSltp(!showSltp)}
+              className={`flex items-center gap-1 text-[10px] font-medium border rounded px-2 py-1 transition-colors shrink-0 ${showSltp ? 'text-gold border-gold/50 bg-gold/10' : 'text-white bg-s2 border-b2 hover:bg-s3'}`}
+              data-testid="btn-toggle-sltp"
+            >
+              SL/TP
+            </button>
           </div>
+          {tradeStatus && (
+            <div className={`text-center text-xs font-medium mt-1 ${tradeStatus.type === 'success' ? 'text-green' : 'text-red'}`} data-testid="trade-status">
+              {tradeStatus.message}
+            </div>
+          )}
         </div>
 
         {positionsWithPnl.length > 0 && (
-          <div className="border-t border-b1 bg-[#0A0A0C] shrink-0 overflow-y-auto max-h-[40vh]">
+          <div className="border-t border-b1 bg-[#0A0A0C] shrink-0 overflow-y-auto max-h-[35vh]">
             {positionsWithPnl.map(pos => (
               <div
                 key={pos.id}
-                className="flex items-center gap-4 px-4 py-3 border-b border-b1 hover:bg-s2/50 transition-colors group"
+                className="flex items-center gap-3 px-3 py-2 border-b border-b1 hover:bg-s2/50 transition-colors group"
                 data-testid={`position-row-${pos.id}`}
               >
-                <span className={`text-[10px] font-bold px-2 py-1 rounded shrink-0 ${pos.side === 'BUY' ? 'bg-[#22C55E] text-white' : 'bg-[#EF4444] text-white'}`}>
+                <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded shrink-0 ${pos.side === 'BUY' ? 'bg-[#22C55E] text-white' : 'bg-[#EF4444] text-white'}`}>
                   {pos.side}
                 </span>
 
-                <div className="flex items-baseline gap-1.5 shrink-0">
-                  <span className="text-white font-bold text-sm data-number">{pos.size}</span>
-                  <span className="text-white font-bold text-sm">{pos.instrument}</span>
-                </div>
+                <span className="text-white font-bold text-xs shrink-0">{pos.size} {pos.instrument}</span>
 
-                <div className="flex items-baseline gap-1 shrink-0">
-                  <span className="text-muted-foreground text-xs">Entry</span>
-                  <span className="text-gold font-semibold text-sm data-number">{formatPrice(pos.entryPrice, pos.instrument)}</span>
-                </div>
+                <span className="text-muted-foreground text-[11px] shrink-0">Entry <span className="text-gold data-number">{formatPrice(pos.entryPrice, pos.instrument)}</span></span>
+                <span className="text-muted-foreground text-[11px] shrink-0">Now <span className="text-white data-number">{pos.currentPrice ? formatPrice(pos.currentPrice, pos.instrument) : '---'}</span></span>
 
-                <div className="flex items-baseline gap-1 shrink-0">
-                  <span className="text-muted-foreground text-xs">Now</span>
-                  <span className="text-white font-semibold text-sm data-number">{pos.currentPrice ? formatPrice(pos.currentPrice, pos.instrument) : '---'}</span>
-                </div>
-
-                <div className="ml-auto flex items-center gap-3">
-                  <span className={`data-number font-bold text-lg ${pos.livePnl >= 0 ? 'text-[#22C55E]' : 'text-[#EF4444]'}`}>
+                <div className="ml-auto flex items-center gap-2">
+                  <span className={`data-number font-bold text-sm ${pos.livePnl >= 0 ? 'text-[#22C55E]' : 'text-[#EF4444]'}`}>
                     {formatPnl(pos.livePnl)}
                   </span>
                   <button
                     onClick={() => handleClose(pos.id)}
                     disabled={closingId === pos.id}
-                    className="opacity-0 group-hover:opacity-100 text-[10px] text-muted-foreground hover:text-white bg-b1 border border-b2 px-2 py-1 rounded transition-all disabled:opacity-50"
+                    className="opacity-0 group-hover:opacity-100 text-[9px] text-muted-foreground hover:text-white bg-b1 border border-b2 px-1.5 py-0.5 rounded transition-all disabled:opacity-50"
                     data-testid={`btn-close-${pos.id}`}
                   >
                     {closingId === pos.id ? '...' : 'Close'}

@@ -33,6 +33,9 @@ export interface IStorage {
 
   createWithdrawal(userId: string, w: InsertWithdrawal): Promise<Withdrawal>;
   getWithdrawals(userId: string): Promise<Withdrawal[]>;
+  getAllWithdrawals(): Promise<Array<Withdrawal & { username: string; email: string }>>;
+  updateWithdrawalStatus(id: string, stage: string, adminNotes?: string): Promise<Withdrawal | undefined>;
+  hasPendingPayout(userId: string): Promise<boolean>;
 
   getLeaderboard(): Promise<Array<User & { totalPnl: number; winRate: number; profitFactor: number; totalTrades: number }>>;
 }
@@ -272,6 +275,39 @@ export class DatabaseStorage implements IStorage {
 
   async getWithdrawals(userId: string): Promise<Withdrawal[]> {
     return db.select().from(withdrawals).where(eq(withdrawals.userId, userId)).orderBy(desc(withdrawals.requestedAt));
+  }
+
+  async getAllWithdrawals(): Promise<Array<Withdrawal & { username: string; email: string }>> {
+    const allWds = await db.select().from(withdrawals).orderBy(desc(withdrawals.requestedAt));
+    const results = [];
+    for (const w of allWds) {
+      const [user] = await db.select().from(users).where(eq(users.id, w.userId));
+      results.push({ ...w, username: user?.username || 'Unknown', email: user?.email || '' });
+    }
+    return results;
+  }
+
+  async updateWithdrawalStatus(id: string, stage: string, adminNotes?: string): Promise<Withdrawal | undefined> {
+    const updates: any = { stage };
+    if (stage === "funds_sent") {
+      updates.status = "completed";
+      updates.processedAt = new Date();
+    } else if (stage === "rejected") {
+      updates.status = "rejected";
+      updates.processedAt = new Date();
+    } else {
+      updates.status = "processing";
+    }
+    if (adminNotes !== undefined) updates.adminNotes = adminNotes;
+    const [wd] = await db.update(withdrawals).set(updates).where(eq(withdrawals.id, id)).returning();
+    return wd;
+  }
+
+  async hasPendingPayout(userId: string): Promise<boolean> {
+    const pending = await db.select().from(withdrawals).where(
+      sql`${withdrawals.userId} = ${userId} AND ${withdrawals.status} != 'completed' AND ${withdrawals.status} != 'rejected'`
+    );
+    return pending.length > 0;
   }
 
   async getLeaderboard() {

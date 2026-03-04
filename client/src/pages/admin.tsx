@@ -3,9 +3,9 @@ import { useLocation } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/lib/auth";
 import { apiRequest } from "@/lib/queryClient";
-import { Users, Plus, Edit2, Shield, X, Key, Check, XCircle, Eye, BarChart2, Clock, UserPlus } from "lucide-react";
+import { Users, Plus, Edit2, Shield, X, Key, Check, XCircle, Eye, BarChart2, Clock, UserPlus, DollarSign, ArrowRight, CheckCircle } from "lucide-react";
 
-type AdminTab = "queue" | "traders" | "create";
+type AdminTab = "queue" | "traders" | "create" | "payouts";
 
 export default function Admin() {
   const [, setLocation] = useLocation();
@@ -52,6 +52,23 @@ export default function Admin() {
       return res.json();
     },
     enabled: !!viewTradesUser,
+  });
+
+  const { data: allPayouts = [] } = useQuery({
+    queryKey: ["/api/admin/payouts"],
+    enabled: !!isAdminUser,
+    refetchInterval: 10000,
+  });
+
+  const advancePayoutMutation = useMutation({
+    mutationFn: async ({ id, stage, adminNotes }: { id: string; stage: string; adminNotes?: string }) => {
+      const res = await apiRequest("POST", `/api/admin/payouts/${id}/advance`, { stage, adminNotes });
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/payouts"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/users"] });
+    },
   });
 
   const createUserMutation = useMutation({
@@ -126,9 +143,12 @@ export default function Admin() {
   const pendingVerifications = allVerifications.filter((v: any) => v.status === "pending");
   const approvedUsers = allUsers.filter((u: any) => u.status === "approved");
 
+  const pendingPayouts = allPayouts.filter((p: any) => p.status !== "completed" && p.status !== "rejected");
+
   const tabs = [
     { id: "queue" as AdminTab, label: "Verification Queue", icon: Clock, count: pendingVerifications.length },
     { id: "traders" as AdminTab, label: "All Traders", icon: Users, count: approvedUsers.length },
+    { id: "payouts" as AdminTab, label: "Payouts", icon: DollarSign, count: pendingPayouts.length },
     { id: "create" as AdminTab, label: "Create Account", icon: UserPlus },
   ];
 
@@ -286,6 +306,121 @@ export default function Admin() {
                 ))}
               </tbody>
             </table>
+          </div>
+        )}
+
+        {activeTab === "payouts" && (
+          <div className="space-y-4">
+            <div className="flex items-center gap-4 mb-2">
+              <h3 className="font-heading text-xl font-bold uppercase">Payout Requests</h3>
+              <span className="text-xs text-muted-foreground">{allPayouts.length} total</span>
+            </div>
+
+            {allPayouts.length === 0 ? (
+              <div className="bg-s1 border border-b1 rounded-lg p-12 text-center text-muted-foreground">
+                <DollarSign className="w-10 h-10 mx-auto mb-3 opacity-30" />
+                <p>No payout requests yet</p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {allPayouts.map((p: any) => {
+                  const stageFlow = ["requested", "payout_accepted", "risk_approved", "funds_sent"];
+                  const currentStageIdx = stageFlow.indexOf(p.stage);
+                  const nextStage = currentStageIdx < stageFlow.length - 1 ? stageFlow[currentStageIdx + 1] : null;
+                  const isTerminal = p.status === "completed" || p.status === "rejected";
+                  const stageLabels: Record<string, string> = {
+                    requested: "Requested",
+                    payout_accepted: "Accepted",
+                    risk_approved: "Risk Approved",
+                    funds_sent: "Funds Sent",
+                    rejected: "Rejected",
+                  };
+                  const stageColors: Record<string, string> = {
+                    requested: "#A1A1AA",
+                    payout_accepted: "#E8C547",
+                    risk_approved: "#3B82F6",
+                    funds_sent: "#22C55E",
+                    rejected: "#EF4444",
+                  };
+
+                  return (
+                    <div key={p.id} className="bg-s1 border border-b1 rounded-lg p-5" data-testid={`admin-payout-${p.id}`}>
+                      <div className="flex items-start justify-between gap-4">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-3 mb-2">
+                            <span className="font-bold text-white">{p.username}</span>
+                            <span className="text-xs text-muted-foreground">{p.email}</span>
+                          </div>
+                          <div className="flex items-center gap-4">
+                            <div>
+                              <div className="text-[10px] text-muted-foreground uppercase">Amount</div>
+                              <div className="data-number text-xl font-bold text-white">${p.amount.toLocaleString('en-US', { minimumFractionDigits: 2 })}</div>
+                            </div>
+                            <div>
+                              <div className="text-[10px] text-muted-foreground uppercase">Requested</div>
+                              <div className="text-sm text-white">{new Date(p.requestedAt).toLocaleDateString()}</div>
+                            </div>
+                            <div>
+                              <div className="text-[10px] text-muted-foreground uppercase">Stage</div>
+                              <span className="text-sm font-bold" style={{ color: stageColors[p.stage] || "#A1A1AA" }}>
+                                {stageLabels[p.stage] || p.stage}
+                              </span>
+                            </div>
+                          </div>
+                          {p.adminNotes && (
+                            <div className="mt-2 text-xs text-muted-foreground bg-s2 rounded px-3 py-2 border border-b1">
+                              <span className="text-[10px] uppercase text-muted-foreground">Notes:</span> {p.adminNotes}
+                            </div>
+                          )}
+                        </div>
+                        {!isTerminal && (
+                          <div className="flex items-center gap-2 shrink-0">
+                            {nextStage && (
+                              <button
+                                onClick={() => advancePayoutMutation.mutate({ id: p.id, stage: nextStage })}
+                                disabled={advancePayoutMutation.isPending}
+                                className="bg-gold text-black text-xs font-bold px-4 py-2 rounded hover:bg-white transition-colors disabled:opacity-50 flex items-center gap-1"
+                                data-testid={`btn-advance-${p.id}`}
+                              >
+                                {stageLabels[nextStage]} <ArrowRight className="w-3 h-3" />
+                              </button>
+                            )}
+                            <button
+                              onClick={() => {
+                                const notes = prompt("Rejection reason (optional):");
+                                advancePayoutMutation.mutate({ id: p.id, stage: "rejected", adminNotes: notes || undefined });
+                              }}
+                              disabled={advancePayoutMutation.isPending}
+                              className="bg-red/20 text-red text-xs font-bold px-4 py-2 rounded hover:bg-red/30 transition-colors disabled:opacity-50"
+                              data-testid={`btn-reject-payout-${p.id}`}
+                            >
+                              Reject
+                            </button>
+                          </div>
+                        )}
+                        {isTerminal && (
+                          <div className="shrink-0">
+                            <span className={`text-xs font-bold uppercase px-3 py-1 rounded ${p.status === 'completed' ? 'bg-green/10 text-green' : 'bg-red/10 text-red'}`}>
+                              {p.status === 'completed' ? 'Paid' : 'Rejected'}
+                            </span>
+                          </div>
+                        )}
+                      </div>
+
+                      {!isTerminal && (
+                        <div className="mt-4 flex items-center gap-1">
+                          {stageFlow.map((s, i) => (
+                            <div key={s} className="flex items-center flex-1">
+                              <div className={`h-1.5 flex-1 rounded-full ${i <= currentStageIdx ? 'bg-gold' : 'bg-b2'}`} />
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
         )}
 

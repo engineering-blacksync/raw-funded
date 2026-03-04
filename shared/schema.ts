@@ -58,7 +58,9 @@ export const withdrawals = pgTable("withdrawals", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   userId: varchar("user_id").notNull(),
   amount: real("amount").notNull(),
-  status: text("status").notNull().default("pending"),
+  status: text("status").notNull().default("requested"),
+  stage: text("stage").notNull().default("requested"),
+  adminNotes: text("admin_notes"),
   requestedAt: timestamp("requested_at").defaultNow(),
   processedAt: timestamp("processed_at"),
 });

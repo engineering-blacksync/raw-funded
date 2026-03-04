@@ -32,9 +32,19 @@ A private prop trading platform where admin assigns funded accounts. Users get a
 - Login allows all non-banned users; routing handled client-side based on status/isAdmin
 - Admin-created accounts are auto-approved with `status: 'approved'`
 
+## Payout System
+- Stage flow: `requested` → `payout_accepted` → `risk_approved` → `funds_sent`
+- Rejection allowed from any non-terminal stage; refunds balance
+- Balance deducted immediately on request; refunded on rejection
+- Trading paused while payout is pending (POST /api/trades blocked)
+- Open positions must be closed before requesting payout
+- Only one active payout per user at a time
+- Server enforces strict state machine — no stage skipping or terminal state mutation
+- Dashboard shows progress tracker with 4 stages; admin panel has Payouts tab
+
 ## Admin System
 - `isAdmin` boolean on users table — only admin users can access `/admin` and `/api/admin/*` routes
-- Admin panel tabs: Verification Queue, All Traders, Create Account
+- Admin panel tabs: Verification Queue, All Traders, Payouts, Create Account
 - Stats bar shows: total users, pending verifications, tier counts, open positions
 - Admin can: approve/reject verifications (assign tier/balance), create accounts, edit tier/balance/leverage/maxContracts, toggle active/disabled, suspend accounts, reset passwords, view trader's open/closed trades
 - `leverage`, `maxContracts`, `isActive` fields on users — admin-assigned per-account
@@ -74,8 +84,11 @@ A private prop trading platform where admin assigns funded accounts. Users get a
 - `POST /api/trades/:id/close` — Close a trade (approved users only)
 - `POST /api/verifications` — Submit verification proof
 - `GET /api/verifications` — List verifications
-- `POST /api/withdrawals` — Request withdrawal (approved users only)
-- `GET /api/withdrawals` — List withdrawals (approved users only)
+- `POST /api/payouts` — Request payout (approved, no open trades, no pending payout)
+- `GET /api/payouts` — List user's payouts
+- `GET /api/payouts/pending` — Check if user has a pending payout
+- `GET /api/admin/payouts` — List all payouts (admin only)
+- `POST /api/admin/payouts/:id/advance` — Advance payout stage (admin only, enforces state machine)
 - `GET /api/leaderboard` — Public leaderboard
 
 ## Trading Terminal

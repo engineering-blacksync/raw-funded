@@ -1,7 +1,8 @@
 import { useState, useEffect, useCallback } from "react";
 import { Link, useLocation } from "wouter";
-import { useQuery } from "@tanstack/react-query";
-import { LogOut, Activity, BarChart2, Shield, Check, CreditCard, ChevronDown, Settings, Clock, Lock } from "lucide-react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { apiRequest } from "@/lib/queryClient";
+import { LogOut, Activity, BarChart2, Shield, Check, CreditCard, ChevronDown, Settings, Clock, Lock, DollarSign, ArrowRight, AlertTriangle, CheckCircle, Loader2 } from "lucide-react";
 import Terminal from "@/components/dashboard/Terminal";
 import { BalanceCard } from "@/components/ui/analytics-bento";
 import { StatCard, CalendarGrid } from "@/components/ui/data-components";
@@ -37,6 +38,208 @@ function useNYTime() {
     return () => clearInterval(id);
   }, []);
   return time;
+}
+
+const PAYOUT_STAGES = [
+  { key: "requested", label: "Requested", color: "#A1A1AA" },
+  { key: "payout_accepted", label: "Payout Accepted", color: "#E8C547" },
+  { key: "risk_approved", label: "Risk Approved", color: "#3B82F6" },
+  { key: "funds_sent", label: "Funds Sent", color: "#22C55E" },
+];
+
+function PayoutTab({ user }: { user: any }) {
+  const queryClient = useQueryClient();
+  const [amount, setAmount] = useState("");
+  const [error, setError] = useState("");
+
+  const { data: payouts = [] } = useQuery({
+    queryKey: ["/api/payouts"],
+  });
+
+  const { data: pendingCheck } = useQuery({
+    queryKey: ["/api/payouts/pending"],
+    refetchInterval: 5000,
+  });
+
+  const hasPending = pendingCheck?.hasPendingPayout;
+  const activePayout = payouts.find((p: any) => p.status !== "completed" && p.status !== "rejected");
+
+  const requestPayout = useMutation({
+    mutationFn: async (amt: number) => {
+      const res = await apiRequest("POST", "/api/payouts", { amount: amt });
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.message);
+      }
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/payouts"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/payouts/pending"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/auth/me"] });
+      setAmount("");
+      setError("");
+    },
+    onError: (err: any) => setError(err.message),
+  });
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    setError("");
+    const amt = parseFloat(amount);
+    if (!amt || amt <= 0) { setError("Enter a valid amount"); return; }
+    if (amt > user.balance) { setError("Amount exceeds your balance"); return; }
+    requestPayout.mutate(amt);
+  };
+
+  const stageIndex = activePayout ? PAYOUT_STAGES.findIndex(s => s.key === activePayout.stage) : -1;
+
+  return (
+    <div className="flex-1 overflow-y-auto p-8">
+      <div className="max-w-2xl mx-auto space-y-8">
+        <div>
+          <h2 className="font-heading text-3xl text-white uppercase tracking-wider mb-1">Payout</h2>
+          <p className="text-sm text-muted-foreground">Request a withdrawal from your funded account. Trading is paused until your payout is processed.</p>
+        </div>
+
+        {hasPending && activePayout && (
+          <div className="bg-s1 border border-b1 rounded-lg p-6">
+            <div className="flex items-center justify-between mb-6">
+              <div>
+                <div className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1">Active Payout Request</div>
+                <div className="data-number text-3xl font-bold text-white">${activePayout.amount.toLocaleString('en-US', { minimumFractionDigits: 2 })}</div>
+                <div className="text-[10px] text-muted-foreground mt-1">Submitted {new Date(activePayout.requestedAt).toLocaleDateString()}</div>
+              </div>
+              <div className="flex items-center gap-2 bg-gold/10 border border-gold/30 rounded px-3 py-1.5">
+                <AlertTriangle className="w-4 h-4 text-gold" />
+                <span className="text-xs font-bold text-gold uppercase">Trading Paused</span>
+              </div>
+            </div>
+
+            <div className="relative">
+              <div className="flex items-center justify-between mb-2">
+                {PAYOUT_STAGES.map((stage, i) => {
+                  const isComplete = i <= stageIndex;
+                  const isCurrent = i === stageIndex;
+                  return (
+                    <div key={stage.key} className="flex flex-col items-center flex-1">
+                      <div
+                        className={`w-10 h-10 rounded-full flex items-center justify-center border-2 transition-colors ${isComplete ? 'border-transparent' : 'border-b2'}`}
+                        style={{ backgroundColor: isComplete ? stage.color + '20' : '#141418', borderColor: isCurrent ? stage.color : undefined }}
+                        data-testid={`stage-${stage.key}`}
+                      >
+                        {isComplete ? (
+                          <CheckCircle className="w-5 h-5" style={{ color: stage.color }} />
+                        ) : (
+                          <div className="w-3 h-3 rounded-full bg-b2" />
+                        )}
+                      </div>
+                      <span className={`text-[10px] mt-2 text-center font-bold uppercase tracking-wider ${isComplete ? 'text-white' : 'text-muted-foreground'}`}>
+                        {stage.label}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+              <div className="absolute top-5 left-[10%] right-[10%] h-0.5 bg-b2 -z-0">
+                <div
+                  className="h-full bg-gold transition-all duration-500"
+                  style={{ width: `${Math.max(0, (stageIndex / (PAYOUT_STAGES.length - 1)) * 100)}%` }}
+                />
+              </div>
+            </div>
+
+            {activePayout.stage === "funds_sent" && (
+              <div className="mt-6 bg-green/10 border border-green/30 rounded p-4 text-center">
+                <CheckCircle className="w-8 h-8 text-green mx-auto mb-2" />
+                <p className="text-sm text-green font-bold">Funds have been sent! Check your payment method.</p>
+              </div>
+            )}
+          </div>
+        )}
+
+        {!hasPending && (
+          <div className="bg-s1 border border-b1 rounded-lg p-6">
+            <div className="mb-6">
+              <div className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1">Available Balance</div>
+              <div className="data-number text-4xl font-bold text-white">${user.balance.toLocaleString('en-US', { minimumFractionDigits: 2 })}</div>
+            </div>
+
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <div>
+                <label className="block text-[10px] text-muted-foreground uppercase tracking-wider mb-2">Payout Amount ($)</label>
+                <div className="relative">
+                  <span className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground text-lg">$</span>
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="1"
+                    max={user.balance}
+                    value={amount}
+                    onChange={e => setAmount(e.target.value)}
+                    placeholder="0.00"
+                    className="w-full bg-background border border-b1 rounded-lg pl-10 pr-4 py-4 text-2xl text-white data-number outline-none focus:border-gold transition-colors"
+                    data-testid="input-payout-amount"
+                  />
+                </div>
+                <div className="flex items-center justify-between mt-2">
+                  <span className="text-[10px] text-muted-foreground">Min: $1.00</span>
+                  <button type="button" onClick={() => setAmount(String(user.balance))} className="text-[10px] text-gold hover:text-white transition-colors" data-testid="btn-max-payout">
+                    MAX: ${user.balance.toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                  </button>
+                </div>
+              </div>
+
+              {error && (
+                <div className="bg-red/10 border border-red/30 rounded px-4 py-3 text-sm text-red flex items-center gap-2">
+                  <AlertTriangle className="w-4 h-4 shrink-0" />
+                  {error}
+                </div>
+              )}
+
+              <div className="bg-background border border-b1 rounded p-4 space-y-2 text-xs text-muted-foreground">
+                <div className="flex justify-between"><span>Trading Status</span><span className="text-gold font-bold">Will be paused</span></div>
+                <div className="flex justify-between"><span>Open Positions</span><span className="text-white">Must be closed first</span></div>
+                <div className="flex justify-between"><span>Processing</span><span className="text-white">Same day</span></div>
+              </div>
+
+              <button
+                type="submit"
+                disabled={requestPayout.isPending || !amount || parseFloat(amount) <= 0}
+                className="w-full bg-gold text-black font-heading text-lg font-bold py-4 rounded-lg hover:bg-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                data-testid="btn-submit-payout"
+              >
+                {requestPayout.isPending ? (
+                  <><Loader2 className="w-5 h-5 animate-spin" /> Processing...</>
+                ) : (
+                  <>Request Payout <ArrowRight className="w-5 h-5" /></>
+                )}
+              </button>
+            </form>
+          </div>
+        )}
+
+        {payouts.length > 0 && (
+          <div>
+            <h3 className="text-[10px] text-muted-foreground uppercase tracking-wider mb-3">Payout History</h3>
+            <div className="space-y-2">
+              {payouts.filter((p: any) => p.status === "completed" || p.status === "rejected").map((p: any) => (
+                <div key={p.id} className="bg-s1 border border-b1 rounded-lg px-4 py-3 flex items-center justify-between" data-testid={`payout-${p.id}`}>
+                  <div>
+                    <span className="data-number text-sm font-bold text-white">${p.amount.toLocaleString('en-US', { minimumFractionDigits: 2 })}</span>
+                    <span className="text-[10px] text-muted-foreground ml-3">{new Date(p.requestedAt).toLocaleDateString()}</span>
+                  </div>
+                  <span className={`text-[10px] font-bold uppercase ${p.status === 'completed' ? 'text-green' : 'text-red'}`}>
+                    {p.status === 'completed' ? 'Paid' : 'Rejected'}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
 }
 
 export default function Dashboard() {
@@ -148,8 +351,8 @@ export default function Dashboard() {
             {currentTier.label}
           </div>
 
-          <button onClick={() => setActiveTab("withdraw")} className="bg-gold text-black text-xs font-bold uppercase px-4 py-2 hover:bg-white transition-colors" data-testid="btn-withdraw">
-            Withdraw
+          <button onClick={() => setActiveTab("payout")} className="bg-gold text-black text-xs font-bold uppercase px-4 py-2 hover:bg-white transition-colors" data-testid="btn-payout">
+            Request Payout
           </button>
 
           <div className="w-px h-6 bg-b1 mx-2"></div>
@@ -169,9 +372,9 @@ export default function Dashboard() {
             {[
               { id: 'terminal', icon: Activity, label: 'Terminal' },
               { id: 'data', icon: BarChart2, label: 'Your Data' },
+              { id: 'payout', icon: DollarSign, label: 'Payout' },
               { id: 'leaderboard', icon: Shield, label: 'Leaderboard' },
               { id: 'verification', icon: Check, label: 'Verification' },
-              { id: 'withdraw', icon: CreditCard, label: 'Withdraw' },
             ].map(item => (
               <button
                 key={item.id}
@@ -325,7 +528,8 @@ export default function Dashboard() {
               </div>
             </div>
           )}
-          {activeTab !== 'terminal' && activeTab !== 'data' && (
+          {activeTab === 'payout' && <PayoutTab user={user} />}
+          {activeTab !== 'terminal' && activeTab !== 'data' && activeTab !== 'payout' && (
             <div className="flex-1 flex items-center justify-center text-muted-foreground">
               <div className="text-center">
                 <h2 className="text-2xl text-white mb-2 uppercase font-heading">{activeTab}</h2>

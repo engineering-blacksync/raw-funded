@@ -297,6 +297,9 @@ export async function registerRoutes(
 
   app.post("/api/trades", requireApproved, async (req: Request, res: Response) => {
     try {
+      const hasPending = await storage.hasPendingPayout(req.user!.id);
+      if (hasPending) return res.status(403).json({ message: "Trading is paused while your payout is being processed" });
+
       const parsed = insertTradeSchema.safeParse(req.body);
       if (!parsed.success) return res.status(400).json({ message: "Invalid trade data" });
 
@@ -385,15 +388,20 @@ export async function registerRoutes(
     return res.json(vers);
   });
 
-  app.post("/api/withdrawals", requireApproved, async (req: Request, res: Response) => {
+  app.post("/api/payouts", requireApproved, async (req: Request, res: Response) => {
     try {
       const parsed = insertWithdrawalSchema.safeParse(req.body);
-      if (!parsed.success) return res.status(400).json({ message: "Invalid withdrawal data" });
+      if (!parsed.success) return res.status(400).json({ message: "Invalid payout data" });
 
       const user = req.user!;
-      if (parsed.data.amount > user.balance) {
-        return res.status(400).json({ message: "Insufficient balance" });
-      }
+      if (parsed.data.amount <= 0) return res.status(400).json({ message: "Amount must be greater than zero" });
+      if (parsed.data.amount > user.balance) return res.status(400).json({ message: "Insufficient balance" });
+
+      const hasPending = await storage.hasPendingPayout(user.id);
+      if (hasPending) return res.status(400).json({ message: "You already have a pending payout request" });
+
+      const openTrades = await storage.getOpenTrades(user.id);
+      if (openTrades.length > 0) return res.status(400).json({ message: "Close all open positions before requesting a payout" });
 
       const wd = await storage.createWithdrawal(user.id, parsed.data);
       await storage.updateUserBalance(user.id, user.balance - parsed.data.amount);
@@ -404,9 +412,69 @@ export async function registerRoutes(
     }
   });
 
-  app.get("/api/withdrawals", requireApproved, async (req: Request, res: Response) => {
+  app.get("/api/payouts", requireAuth, async (req: Request, res: Response) => {
     const wds = await storage.getWithdrawals(req.user!.id);
     return res.json(wds);
+  });
+
+  app.get("/api/payouts/pending", requireApproved, async (req: Request, res: Response) => {
+    const hasPending = await storage.hasPendingPayout(req.user!.id);
+    return res.json({ hasPendingPayout: hasPending });
+  });
+
+  app.get("/api/admin/payouts", requireAdmin, async (_req: Request, res: Response) => {
+    try {
+      const allWds = await storage.getAllWithdrawals();
+      return res.json(allWds);
+    } catch (err: any) {
+      return res.status(500).json({ message: err.message });
+    }
+  });
+
+  app.post("/api/admin/payouts/:id/advance", requireAdmin, async (req: Request, res: Response) => {
+    try {
+      const { stage, adminNotes } = req.body;
+
+      const allowedTransitions: Record<string, string[]> = {
+        requested: ["payout_accepted", "rejected"],
+        payout_accepted: ["risk_approved", "rejected"],
+        risk_approved: ["funds_sent", "rejected"],
+      };
+
+      const allPayouts = await storage.getAllWithdrawals();
+      const current = allPayouts.find((p: any) => p.id === req.params.id);
+      if (!current) return res.status(404).json({ message: "Payout not found" });
+
+      if (current.status === "completed" || current.status === "rejected") {
+        return res.status(400).json({ message: "Cannot modify a completed or rejected payout" });
+      }
+
+      const allowed = allowedTransitions[current.stage];
+      if (!allowed || !allowed.includes(stage)) {
+        return res.status(400).json({ message: `Cannot transition from '${current.stage}' to '${stage}'` });
+      }
+
+      const wd = await storage.updateWithdrawalStatus(req.params.id, stage, adminNotes);
+      if (!wd) return res.status(404).json({ message: "Payout not found" });
+
+      if (stage === "rejected") {
+        const user = await storage.getUser(wd.userId);
+        if (user) {
+          await storage.updateUserBalance(wd.userId, user.balance + wd.amount);
+        }
+      }
+
+      if (stage === "funds_sent") {
+        const user = await storage.getUser(wd.userId);
+        if (user) {
+          await storage.updateUser(wd.userId, { payoutsReceived: (user.payoutsReceived || 0) + 1 } as any);
+        }
+      }
+
+      return res.json(wd);
+    } catch (err: any) {
+      return res.status(500).json({ message: err.message });
+    }
   });
 
   app.get("/api/leaderboard", async (_req: Request, res: Response) => {

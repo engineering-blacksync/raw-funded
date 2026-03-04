@@ -372,6 +372,8 @@ export async function registerRoutes(
     }
   });
 
+  app.post("/api/supabase/trades/close", requireAuth, async (req, res) => { const { supabaseId, close_price, pnl, close_time, status } = req.body; const supabaseUrl = process.env.SUPABASE_URL; const supabaseKey = process.env.SUPABASE_ANON_KEY; if (!supabaseUrl || !supabaseKey) return res.status(500).json({ message: "Supabase not configured" }); try { const response = await fetch(supabaseUrl + "/rest/v1/trades?id=eq." + supabaseId, { method: "PATCH", headers: { "Content-Type": "application/json", "apikey": supabaseKey, "Authorization": "Bearer " + supabaseKey, "Prefer": "return=representation" }, body: JSON.stringify({ close_price, pnl, close_time, status, updated_at: new Date().toISOString() }) }); if (response.ok) return res.json({ success: true }); return res.status(500).json({ message: "Supabase update failed" }); } catch { return res.status(502).json({ message: "Connection failed" }); } });
+
   const priceCache: Record<string, { price: number; ts: number }> = {};
 
   async function fetchYahooPrice(symbol: string): Promise<number> {

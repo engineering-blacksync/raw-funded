@@ -110,6 +110,7 @@ export default function Terminal({ tier, userTierName, onOpenPnlChange }: Termin
   const [orderSl, setOrderSl] = useState('');
   const [orderTp, setOrderTp] = useState('');
   const [showSltp, setShowSltp] = useState(false);
+  const [supabaseTradeIds, setSupabaseTradeIds] = useState<Record<string, string>>({});
 
   const openInstruments = openTrades.map(t => t.instrument);
   const allInstruments = [...new Set([activeInstrument.label, ...openInstruments])];
@@ -241,7 +242,7 @@ export default function Terminal({ tier, userTierName, onOpenPnlChange }: Termin
 
       if (response.ok) {
         const trade: Trade = await response.json();
-        try { await fetch('/api/supabase/trades', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ instrument: activeInstrument.label, side, size, entryPrice, status: 'open', stopLoss: orderSl ? parseFloat(orderSl) : null, takeProfit: orderTp ? parseFloat(orderTp) : null, ticket: null }), }); } catch { }
+        try { const sbRes = await fetch('/api/supabase/trades', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ instrument: activeInstrument.label, side, size, entryPrice, status: 'open', stopLoss: orderSl ? parseFloat(orderSl) : null, takeProfit: orderTp ? parseFloat(orderTp) : null, ticket: null }), }); if (sbRes.ok) { const sbData = await sbRes.json(); if (sbData?.trade?.id) { setSupabaseTradeIds(prev => ({ ...prev, [trade.id]: sbData.trade.id })); } } } catch { }
         setOpenTrades(prev => [...prev, trade]);
         setTradeStatus({ type: 'success', message: `${side} ${quantity} ${activeInstrument.label} @ ${entryPrice.toLocaleString()}` });
 
@@ -280,6 +281,7 @@ export default function Terminal({ tier, userTierName, onOpenPnlChange }: Termin
       });
       if (res.ok) {
         const closed: Trade = await res.json();
+        try { const sbId = supabaseTradeIds[tradeId]; if (sbId) { await fetch('/api/supabase/trades/close', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ supabaseId: sbId, close_price: closed.exitPrice, pnl: closed.pnl, close_time: new Date().toISOString(), status: 'closed' }) }); } } catch { }
         setOpenTrades(prev => prev.filter(t => t.id !== tradeId));
         setClosedTrades(prev => [closed, ...prev]);
       }

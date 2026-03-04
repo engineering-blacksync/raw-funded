@@ -134,12 +134,9 @@ export default function Terminal({ tier, userTierName, onOpenPnlChange }: Termin
   };
 
   const positionsWithPnl = openTrades.map(trade => {
-    const midPrice = livePrices[trade.instrument];
-    const inst = INSTRUMENTS.find(i => i.label === trade.instrument);
-    const halfSpread = ((inst?.spread) || 0) / 2;
-    const exitPrice = midPrice ? (trade.side === 'BUY' ? midPrice - halfSpread : midPrice + halfSpread) : undefined;
-    const pnl = exitPrice ? calcPnl(trade.side, trade.entryPrice, exitPrice, trade.size, trade.instrument) : 0;
-    return { ...trade, livePnl: pnl, currentPrice: exitPrice };
+    const currentPrice = livePrices[trade.instrument];
+    const pnl = currentPrice ? calcPnl(trade.side, trade.entryPrice, currentPrice, trade.size, trade.instrument) : 0;
+    return { ...trade, livePnl: pnl, currentPrice };
   });
 
   const totalOpenPnl = positionsWithPnl.reduce((sum, p) => sum + p.livePnl, 0);
@@ -218,8 +215,8 @@ export default function Terminal({ tier, userTierName, onOpenPnlChange }: Termin
       return;
     }
 
-    const halfSpread = (activeInstrument.spread || 0) / 2;
-    const entryPrice = side === 'BUY' ? midPrice + halfSpread : midPrice - halfSpread;
+    const spread = activeInstrument.spread || 0;
+    const entryPrice = side === 'BUY' ? midPrice + spread : midPrice - spread;
 
     setTradeLoading(side);
     setTradeStatus(null);
@@ -269,13 +266,8 @@ export default function Terminal({ tier, userTierName, onOpenPnlChange }: Termin
     const trade = openTrades.find(t => t.id === tradeId);
     if (!trade) { setClosingId(null); return; }
 
-    let exitPrice = exitPriceOverride ?? livePrices[trade.instrument];
+    const exitPrice = exitPriceOverride ?? livePrices[trade.instrument];
     if (!exitPrice) { setClosingId(null); return; }
-    if (!exitPriceOverride) {
-      const inst = INSTRUMENTS.find(i => i.label === trade.instrument);
-      const halfSpread = ((inst?.spread) || 0) / 2;
-      exitPrice = trade.side === 'BUY' ? exitPrice - halfSpread : exitPrice + halfSpread;
-    }
 
     try {
       const res = await fetch(`/api/trades/${tradeId}/close`, {

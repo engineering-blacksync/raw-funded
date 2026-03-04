@@ -41,6 +41,7 @@ A prop trading platform for traders who've already won elsewhere. Users verify t
 - `GET /api/trades` — Trade history
 - `GET /api/trades/open` — Open positions
 - `GET /api/trades/stats` — P&L, win rate, profit factor
+- `GET /api/trades/analytics` — Detailed analytics (day stats, calendar data, equity curve, instrument breakdown, drawdown, durations)
 - `POST /api/trades` — Open a trade
 - `POST /api/trades/:id/close` — Close a trade
 - `POST /api/verifications` — Submit verification proof
@@ -50,7 +51,7 @@ A prop trading platform for traders who've already won elsewhere. Users verify t
 - `GET /api/leaderboard` — Public leaderboard
 
 ## Trading Terminal
-- TradingView widget: loads `https://s3.tradingview.com/tv.js`, 11 instruments with Simple/Pro view modes
+- TradingView widget: loads `https://s3.tradingview.com/tv.js`, 11 instruments with Simple/Pro view modes (defaults to Pro, no indicators)
 - Per-instrument quantity config: Bitcoin/Gold/Silver use 0.01 step with decimal lots; all others use integer contracts (step 1, max 20)
 - Switching instrument tabs resets quantity to that instrument's default
 - All trades persist in PostgreSQL `trades` table — survive page refresh

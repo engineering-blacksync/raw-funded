@@ -8,6 +8,17 @@ import { StatCard, CalendarGrid } from "@/components/ui/data-components";
 import { TIERS } from "@/lib/constants";
 import { useAuth } from "@/lib/auth";
 
+function formatDuration(ms: number): string {
+  if (ms <= 0) return '—';
+  const totalSec = Math.floor(ms / 1000);
+  const hrs = Math.floor(totalSec / 3600);
+  const mins = Math.floor((totalSec % 3600) / 60);
+  const secs = totalSec % 60;
+  if (hrs > 0) return `${hrs}h ${mins}m`;
+  if (mins > 0) return `${mins}m ${secs}s`;
+  return `${secs}s`;
+}
+
 function useNYTime() {
   const [time, setTime] = useState("");
   useEffect(() => {
@@ -37,6 +48,12 @@ export default function Dashboard() {
   const { data: tradeStats } = useQuery({
     queryKey: ["/api/trades/stats"],
     enabled: isAuthenticated,
+  });
+
+  const { data: analytics } = useQuery<any>({
+    queryKey: ["/api/trades/analytics"],
+    enabled: isAuthenticated,
+    refetchInterval: 10000,
   });
 
   const { data: trades } = useQuery({
@@ -171,13 +188,13 @@ export default function Dashboard() {
                 
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
                   <div>
-                    <BalanceCard balance={user.balance} />
+                    <BalanceCard balance={user.balance} equityCurve={analytics?.equityCurve} totalPnl={analytics?.totalPnl} />
                   </div>
                   <div>
                     <StatCard 
                       title="Net P&L" 
                       value={<span className={`${(stats?.totalPnl ?? 0) >= 0 ? 'text-[#36B37E]' : 'text-[#EF4444]'}`}>${(stats?.totalPnl ?? 0).toFixed(2)}</span>}
-                      subtext="Track your daily change" 
+                      subtext={`${analytics?.totalTrades ?? 0} closed trades`} 
                     />
                   </div>
                   <div>
@@ -185,66 +202,96 @@ export default function Dashboard() {
                       title="Win Rate" 
                       value={
                         <div className="flex items-center justify-between w-full gap-2">
-                          <span>{(stats?.winRate ?? 0).toFixed(2)}%</span>
-                          <div className="w-9 h-9 rounded-full border-[3px] border-[#36B37E] border-l-[#EF4444] border-b-[#EF4444] rotate-45 relative shrink-0">
-                            <div className="absolute -bottom-2 -right-3 bg-white text-black text-[8px] px-0.5 rounded -rotate-45 font-bold">{(stats?.winRate ?? 0).toFixed(1)}%</div>
+                          <span>{(stats?.winRate ?? 0).toFixed(1)}%</span>
+                          <div className="text-xs text-muted-foreground">
+                            <span className="text-[#36B37E]">{analytics?.wins ?? 0}W</span>
+                            {' / '}
+                            <span className="text-[#EF4444]">{analytics?.losses ?? 0}L</span>
                           </div>
                         </div>
                       }
-                      subtext="Track your daily change" 
+                      subtext={`${analytics?.totalTrades ?? 0} total trades`} 
                     />
                   </div>
                   <div>
                     <StatCard 
                       title="Profit Factor" 
-                      value={
-                        <div className="flex items-center justify-between w-full gap-2">
-                          <span>{(stats?.profitFactor ?? 0).toFixed(2)}</span>
-                          <div className="w-9 h-9 rounded-full border-[3px] border-[#36B37E] border-r-transparent border-t-[#EF4444] shrink-0"></div>
-                        </div>
-                      }
-                      subtext="Track your daily change" 
+                      value={<span>{stats?.profitFactor != null ? (!isFinite(stats.profitFactor) ? '∞' : stats.profitFactor.toFixed(2)) : '0.00'}</span>}
+                      subtext="Gross profit / gross loss" 
                     />
                   </div>
                   <div>
                     <StatCard 
-                      title="Avg. Win/Loss Ratio" 
+                      title="Avg. Win/Loss" 
                       value={<span>{(stats?.avgWinLoss ?? 0).toFixed(2)}</span>}
-                      subtext="Track your daily change" 
+                      subtext={`Best: $${(analytics?.bestTrade ?? 0).toFixed(2)} / Worst: $${(analytics?.worstTrade ?? 0).toFixed(2)}`} 
                     />
                   </div>
                 </div>
                 
                 <div>
-                  <CalendarGrid />
+                  <CalendarGrid dateStats={analytics?.dateStats} />
                 </div>
                 
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div className="bg-s1 border border-b1 p-4 rounded-xl flex gap-8">
                     <div>
-                      <div className="text-sm text-muted-foreground flex items-center gap-1 mb-1">Most Active <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg></div>
-                      <div className="text-xl font-medium text-white">Monday</div>
+                      <div className="text-sm text-muted-foreground flex items-center gap-1 mb-1">Most Active</div>
+                      <div className="text-xl font-medium text-white">{analytics?.mostActiveDay?.day ?? '—'}</div>
+                      <div className="text-xs text-muted-foreground mt-0.5">{analytics?.mostActiveDay?.trades ?? 0} trades</div>
                     </div>
                     <div>
-                      <div className="text-sm text-muted-foreground flex items-center gap-1 mb-1">Most Profitable <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg></div>
-                      <div className="text-xl font-medium text-[#36B37E]">Friday<br/>$908.20</div>
+                      <div className="text-sm text-muted-foreground flex items-center gap-1 mb-1">Most Profitable</div>
+                      <div className={`text-xl font-medium ${(analytics?.mostProfitableDay?.pnl ?? 0) >= 0 ? 'text-[#36B37E]' : 'text-[#EF4444]'}`}>
+                        {analytics?.mostProfitableDay?.day ?? '—'}
+                        {analytics?.mostProfitableDay?.pnl != null && <><br/>${analytics.mostProfitableDay.pnl.toFixed(2)}</>}
+                      </div>
                     </div>
                   </div>
                   
                   <div className="bg-s1 border border-b1 p-4 rounded-xl flex flex-col justify-between">
-                     <div className="text-sm text-muted-foreground flex items-center gap-1">Drawdown Curve <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg></div>
-                     <div className="h-10 border-b border-b2 flex items-end relative">
-                       <span className="text-[10px] text-muted-foreground absolute -left-2 -bottom-2">$0</span>
-                     </div>
+                    <div className="text-sm text-muted-foreground flex items-center gap-1 mb-2">Equity Curve</div>
+                    {analytics?.equityCurve?.length > 1 ? (
+                      <svg viewBox={`0 0 ${Math.max(analytics.equityCurve.length * 4, 100)} 50`} className="w-full h-12" preserveAspectRatio="none">
+                        {(() => {
+                          const curve = analytics.equityCurve as number[];
+                          const maxV = Math.max(...curve);
+                          const minV = Math.min(...curve);
+                          const range = maxV - minV || 1;
+                          const points = curve.map((v: number, i: number) => `${(i / (curve.length - 1)) * 100},${50 - ((v - minV) / range) * 46}`).join(' ');
+                          const lastVal = curve[curve.length - 1];
+                          return <polyline points={points} fill="none" stroke={lastVal >= 0 ? '#22C55E' : '#EF4444'} strokeWidth="1.5" />;
+                        })()}
+                      </svg>
+                    ) : (
+                      <div className="h-12 flex items-center justify-center text-xs text-muted-foreground">No data yet</div>
+                    )}
+                    <div className="flex justify-between text-xs mt-1">
+                      <span className="text-muted-foreground">Max DD</span>
+                      <span className="text-[#EF4444] data-number">-${(analytics?.maxDrawdown ?? 0).toFixed(2)}</span>
+                    </div>
                   </div>
                   
                   <div className="bg-s1 border border-b1 p-4 rounded-xl flex flex-col justify-between">
-                    <div className="text-sm text-muted-foreground flex items-center gap-1 mb-2">Trade Duration <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg></div>
+                    <div className="text-sm text-muted-foreground flex items-center gap-1 mb-2">Trade Details</div>
                     <div className="flex justify-between text-sm mb-2">
-                      <div className="text-muted-foreground">Avg Win <span className="text-[#36B37E] font-medium ml-1">$74.72</span></div>
-                      <div className="text-muted-foreground">Avg Loss <span className="text-[#EF4444] font-medium ml-1">-$30.10</span></div>
+                      <div className="text-muted-foreground">Avg Win <span className="text-[#36B37E] font-medium ml-1 data-number">${(analytics?.avgWin ?? 0).toFixed(2)}</span></div>
+                      <div className="text-muted-foreground">Avg Loss <span className="text-[#EF4444] font-medium ml-1 data-number">-${(analytics?.avgLoss ?? 0).toFixed(2)}</span></div>
                     </div>
-                    <div className="text-sm text-muted-foreground">Avg Trade Duration <span className="text-white font-medium ml-1">4 mins 55 secs</span></div>
+                    <div className="text-sm text-muted-foreground">
+                      Avg Duration <span className="text-white font-medium ml-1 data-number">{formatDuration(analytics?.avgDurationMs ?? 0)}</span>
+                    </div>
+                    {analytics?.instrumentStats && Object.keys(analytics.instrumentStats).length > 0 && (
+                      <div className="mt-2 pt-2 border-t border-b1">
+                        <div className="text-xs text-muted-foreground mb-1">By Instrument</div>
+                        {Object.entries(analytics.instrumentStats).map(([inst, data]: [string, any]) => (
+                          <div key={inst} className="flex justify-between text-xs">
+                            <span className="text-white">{inst}</span>
+                            <span className={`data-number ${data.pnl >= 0 ? 'text-[#36B37E]' : 'text-[#EF4444]'}`}>${data.pnl.toFixed(2)} ({data.trades})</span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 </div>
 

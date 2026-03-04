@@ -3,17 +3,27 @@
 import type React from "react"
 import { useState, useRef, useMemo } from "react"
 
-const weekData = [
-  { day: "Sun", value: 4500 },
-  { day: "Mon", value: 5200 },
-  { day: "Tue", value: 6800 },
-  { day: "Wed", value: 7500 },
-  { day: "Thu", value: 6200 },
-  { day: "Fri", value: 7800 },
-  { day: "Sat", value: 10000 },
-]
+export function BalanceCard({ balance = 10000, equityCurve, totalPnl }: { balance?: number; equityCurve?: number[]; totalPnl?: number }) {
+  const weekData = useMemo(() => {
+    if (equityCurve && equityCurve.length > 1) {
+      const step = Math.max(1, Math.floor(equityCurve.length / 7));
+      const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+      return days.map((day, i) => ({
+        day,
+        value: balance - (totalPnl ?? 0) + (equityCurve[Math.min(i * step, equityCurve.length - 1)] ?? 0),
+      }));
+    }
+    return [
+      { day: 'Sun', value: balance },
+      { day: 'Mon', value: balance },
+      { day: 'Tue', value: balance },
+      { day: 'Wed', value: balance },
+      { day: 'Thu', value: balance },
+      { day: 'Fri', value: balance },
+      { day: 'Sat', value: balance },
+    ];
+  }, [equityCurve, balance, totalPnl]);
 
-export function BalanceCard({ balance = 10000 }: { balance?: number }) {
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(6)
   const chartRef = useRef<SVGSVGElement>(null)
 
@@ -104,11 +114,20 @@ export function BalanceCard({ balance = 10000 }: { balance?: number }) {
               ${balance.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
             </h2>
             <div className="mt-1.5 inline-flex items-center gap-1 rounded-full border border-[#222228] bg-[#141418] px-2 py-0.5">
-              <span className="text-[9px] font-semibold text-[#22C55E] data-number">+ $850.50</span>
-              <svg width="8" height="8" viewBox="0 0 16 16" fill="none" className="text-[#22C55E]">
-                <path d="M2 11L6 7L9 10L14 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-                <path d="M10 4H14V8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-              </svg>
+              <span className={`text-[9px] font-semibold data-number ${(totalPnl ?? 0) >= 0 ? 'text-[#22C55E]' : 'text-[#EF4444]'}`}>
+                {(totalPnl ?? 0) >= 0 ? '+' : ''} ${(totalPnl ?? 0).toFixed(2)}
+              </span>
+              {(totalPnl ?? 0) >= 0 ? (
+                <svg width="8" height="8" viewBox="0 0 16 16" fill="none" className="text-[#22C55E]">
+                  <path d="M2 11L6 7L9 10L14 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                  <path d="M10 4H14V8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+              ) : (
+                <svg width="8" height="8" viewBox="0 0 16 16" fill="none" className="text-[#EF4444]">
+                  <path d="M2 5L6 9L9 6L14 12" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                  <path d="M10 12H14V8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+              )}
             </div>
           </div>
         </div>

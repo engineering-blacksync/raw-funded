@@ -82,6 +82,11 @@ export async function registerRoutes(
     return res.json(stats);
   });
 
+  app.get("/api/trades/analytics", requireAuth, async (req: Request, res: Response) => {
+    const analytics = await storage.getDetailedAnalytics(req.user!.id);
+    return res.json(analytics);
+  });
+
   app.post("/api/trades", requireAuth, async (req: Request, res: Response) => {
     try {
       const parsed = insertTradeSchema.safeParse(req.body);

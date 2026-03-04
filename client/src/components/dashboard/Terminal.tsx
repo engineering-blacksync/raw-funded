@@ -100,7 +100,7 @@ export default function Terminal({ tier, userTierName }: TerminalProps) {
   const [quantity, setQuantity] = useState<number>(INSTRUMENTS[0].default);
   const [openTrades, setOpenTrades] = useState<Trade[]>([]);
   const [closedTrades, setClosedTrades] = useState<Trade[]>([]);
-  const [viewMode, setViewMode] = useState<'simple' | 'pro'>('simple');
+  const [viewMode, setViewMode] = useState<'simple' | 'pro'>('pro');
   const [tradeLoading, setTradeLoading] = useState<'BUY' | 'SELL' | null>(null);
   const [tradeStatus, setTradeStatus] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
   const [closingId, setClosingId] = useState<string | null>(null);
@@ -184,7 +184,7 @@ export default function Terminal({ tier, userTierName }: TerminalProps) {
     if (!chartContainerRef.current || !window.TradingView) return;
     chartContainerRef.current.innerHTML = '';
     const modeConfig = viewMode === 'pro'
-      ? { hide_side_toolbar: false, studies: ["RSI@tv-basicstudies", "MACD@tv-basicstudies"], withdateranges: true, save_image: true }
+      ? { hide_side_toolbar: false, studies: [] as string[], withdateranges: true, save_image: true }
       : { hide_side_toolbar: true, studies: [] as string[], withdateranges: false, save_image: false };
 
     new window.TradingView.widget({

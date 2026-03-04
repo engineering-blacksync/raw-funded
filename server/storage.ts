@@ -21,6 +21,7 @@ export interface IStorage {
   getOpenTrades(userId: string): Promise<Trade[]>;
   getTradeHistory(userId: string, limit?: number): Promise<Trade[]>;
   getTradeStats(userId: string): Promise<{ totalPnl: number; winRate: number; profitFactor: number; avgWinLoss: number; totalTrades: number }>;
+  getDetailedAnalytics(userId: string): Promise<any>;
 
   createVerification(userId: string, v: InsertVerification): Promise<Verification>;
   getVerifications(userId: string): Promise<Verification[]>;
@@ -117,6 +118,106 @@ export class DatabaseStorage implements IStorage {
     const avgWinLoss = avgLoss > 0 ? avgWin / avgLoss : 0;
 
     return { totalPnl, winRate, profitFactor, avgWinLoss, totalTrades: closedTrades.length };
+  }
+
+  async getDetailedAnalytics(userId: string) {
+    const allTrades = await db.select().from(trades).where(eq(trades.userId, userId)).orderBy(desc(trades.openedAt));
+    const closedTrades = allTrades.filter(t => t.status === 'closed');
+    const openTrades = allTrades.filter(t => t.status === 'open');
+
+    const wins = closedTrades.filter(t => (t.pnl ?? 0) > 0);
+    const losses = closedTrades.filter(t => (t.pnl ?? 0) < 0);
+    const totalPnl = closedTrades.reduce((sum, t) => sum + (t.pnl ?? 0), 0);
+    const winRate = closedTrades.length > 0 ? (wins.length / closedTrades.length) * 100 : 0;
+    const totalWins = wins.reduce((s, t) => s + (t.pnl ?? 0), 0);
+    const totalLosses = Math.abs(losses.reduce((s, t) => s + (t.pnl ?? 0), 0));
+    const profitFactor = totalLosses > 0 ? totalWins / totalLosses : totalWins > 0 ? Infinity : 0;
+    const avgWin = wins.length > 0 ? totalWins / wins.length : 0;
+    const avgLoss = losses.length > 0 ? totalLosses / losses.length : 0;
+
+    const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+    const dayStats: Record<string, { trades: number; pnl: number }> = {};
+    dayNames.forEach(d => { dayStats[d] = { trades: 0, pnl: 0 }; });
+    for (const t of closedTrades) {
+      if (t.closedAt) {
+        const day = dayNames[new Date(t.closedAt).getDay()];
+        dayStats[day].trades++;
+        dayStats[day].pnl += t.pnl ?? 0;
+      }
+    }
+    const mostActiveDay = Object.entries(dayStats).sort((a, b) => b[1].trades - a[1].trades)[0];
+    const mostProfitableDay = Object.entries(dayStats).sort((a, b) => b[1].pnl - a[1].pnl)[0];
+
+    const dateStats: Record<string, { trades: number; pnl: number; wins: number }> = {};
+    for (const t of closedTrades) {
+      if (t.closedAt) {
+        const dateKey = new Date(t.closedAt).toISOString().slice(0, 10);
+        if (!dateStats[dateKey]) dateStats[dateKey] = { trades: 0, pnl: 0, wins: 0 };
+        dateStats[dateKey].trades++;
+        dateStats[dateKey].pnl += t.pnl ?? 0;
+        if ((t.pnl ?? 0) > 0) dateStats[dateKey].wins++;
+      }
+    }
+
+    const instrumentStats: Record<string, { trades: number; pnl: number; wins: number }> = {};
+    for (const t of closedTrades) {
+      if (!instrumentStats[t.instrument]) instrumentStats[t.instrument] = { trades: 0, pnl: 0, wins: 0 };
+      instrumentStats[t.instrument].trades++;
+      instrumentStats[t.instrument].pnl += t.pnl ?? 0;
+      if ((t.pnl ?? 0) > 0) instrumentStats[t.instrument].wins++;
+    }
+
+    let avgDurationMs = 0;
+    const durTrades = closedTrades.filter(t => t.openedAt && t.closedAt);
+    if (durTrades.length > 0) {
+      const totalMs = durTrades.reduce((sum, t) => sum + (new Date(t.closedAt!).getTime() - new Date(t.openedAt!).getTime()), 0);
+      avgDurationMs = totalMs / durTrades.length;
+    }
+
+    let maxDrawdown = 0;
+    let peak = 0;
+    let runningPnl = 0;
+    const equityCurve: number[] = [];
+    for (const t of [...closedTrades].reverse()) {
+      runningPnl += t.pnl ?? 0;
+      equityCurve.push(runningPnl);
+      if (runningPnl > peak) peak = runningPnl;
+      const dd = peak - runningPnl;
+      if (dd > maxDrawdown) maxDrawdown = dd;
+    }
+
+    return {
+      totalTrades: closedTrades.length,
+      openPositions: openTrades.length,
+      totalPnl,
+      winRate,
+      profitFactor: profitFactor === Infinity ? null : profitFactor,
+      avgWin,
+      avgLoss,
+      wins: wins.length,
+      losses: losses.length,
+      bestTrade: closedTrades.length > 0 ? Math.max(...closedTrades.map(t => t.pnl ?? 0)) : 0,
+      worstTrade: closedTrades.length > 0 ? Math.min(...closedTrades.map(t => t.pnl ?? 0)) : 0,
+      maxDrawdown,
+      avgDurationMs,
+      mostActiveDay: mostActiveDay ? { day: mostActiveDay[0], trades: mostActiveDay[1].trades } : null,
+      mostProfitableDay: mostProfitableDay ? { day: mostProfitableDay[0], pnl: mostProfitableDay[1].pnl } : null,
+      dayStats,
+      dateStats,
+      instrumentStats,
+      equityCurve,
+      recentTrades: closedTrades.slice(0, 20).map(t => ({
+        id: t.id,
+        instrument: t.instrument,
+        side: t.side,
+        size: t.size,
+        entryPrice: t.entryPrice,
+        exitPrice: t.exitPrice,
+        pnl: t.pnl,
+        openedAt: t.openedAt,
+        closedAt: t.closedAt,
+      })),
+    };
   }
 
   async createVerification(userId: string, v: InsertVerification): Promise<Verification> {

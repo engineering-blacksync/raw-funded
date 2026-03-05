@@ -211,6 +211,9 @@ export default function Terminal({ tier, userTierName, balance, onOpenPnlChange 
             }
           } catch {}
         }
+        try {
+          await fetch('/api/account/liquidation-notify', { method: 'POST' });
+        } catch {}
         liquidatingRef.current = false;
       })();
     }

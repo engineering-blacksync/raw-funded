@@ -5,7 +5,7 @@ import multer from "multer";
 import path from "path";
 import { storage } from "./storage";
 import { setupAuth, requireAuth, requireApproved, hashPassword } from "./auth";
-import { sendApprovalEmail, sendRejectionEmail } from "./email";
+import { sendApprovalEmail, sendRejectionEmail, sendWelcomeEmail, sendPayoutUpdateEmail, sendLiquidationEmail } from "./email";
 import {
   insertUserSchema, loginSchema, insertTradeSchema,
   insertVerificationSchema, insertWithdrawalSchema,
@@ -55,6 +55,8 @@ export async function registerRoutes(
 
       const hashedPassword = await hashPassword(parsed.data.password);
       const user = await storage.createUser({ ...parsed.data, password: hashedPassword });
+
+      sendWelcomeEmail(user.email, user.username).catch(() => {});
 
       req.login(user, (err) => {
         if (err) return res.status(500).json({ message: "Login failed after registration" });
@@ -457,18 +459,22 @@ export async function registerRoutes(
       const wd = await storage.updateWithdrawalStatus(req.params.id, stage, adminNotes);
       if (!wd) return res.status(404).json({ message: "Payout not found" });
 
+      const user = await storage.getUser(wd.userId);
+
       if (stage === "rejected") {
-        const user = await storage.getUser(wd.userId);
         if (user) {
           await storage.updateUserBalance(wd.userId, user.balance + wd.amount);
         }
       }
 
       if (stage === "funds_sent") {
-        const user = await storage.getUser(wd.userId);
         if (user) {
           await storage.updateUser(wd.userId, { payoutsReceived: (user.payoutsReceived || 0) + 1 } as any);
         }
+      }
+
+      if (user) {
+        sendPayoutUpdateEmail(user.email, user.username, wd.amount, stage).catch(() => {});
       }
 
       return res.json(wd);
@@ -482,6 +488,25 @@ export async function registerRoutes(
       const leaders = await storage.getLeaderboard();
       const safe = leaders.map(({ password, ...rest }) => rest);
       return res.json(safe);
+    } catch (err: any) {
+      return res.status(500).json({ message: err.message });
+    }
+  });
+
+  const liquidationNotifySent = new Map<number, number>();
+  app.post("/api/account/liquidation-notify", requireApproved, async (req: Request, res: Response) => {
+    try {
+      const user = req.user!;
+      const lastSent = liquidationNotifySent.get(user.id) || 0;
+      if (Date.now() - lastSent < 60_000) {
+        return res.json({ success: true, skipped: true });
+      }
+      const freshUser = await storage.getUser(user.id);
+      if (freshUser && freshUser.balance <= 0) {
+        liquidationNotifySent.set(user.id, Date.now());
+        sendLiquidationEmail(freshUser.email, freshUser.username, freshUser.balance).catch(() => {});
+      }
+      return res.json({ success: true });
     } catch (err: any) {
       return res.status(500).json({ message: err.message });
     }

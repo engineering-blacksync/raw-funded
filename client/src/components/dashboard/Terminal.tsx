@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import type { Trade } from '@shared/schema';
+import PositionLines from './PositionLines';
 
 interface TerminalProps {
   tier: any;
@@ -385,6 +386,33 @@ export default function Terminal({ tier, userTierName, balance, onOpenPnlChange 
     setClosingAll(false);
   };
 
+  const handleUpdateSLTP = useCallback(async (tradeId: string, field: 'stopLoss' | 'takeProfit', newPrice: number | null) => {
+    const trade = openTrades.find(t => t.id === tradeId);
+    if (!trade) return;
+    const body: any = {
+      stopLoss: field === 'stopLoss' ? newPrice : trade.stopLoss,
+      takeProfit: field === 'takeProfit' ? newPrice : trade.takeProfit,
+    };
+    setOpenTrades(prev => prev.map(t => t.id === tradeId ? { ...t, [field]: newPrice } : t));
+    try {
+      await fetch(`/api/trades/${tradeId}/sltp`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+      const sbId = supabaseTradeIds[tradeId];
+      if (sbId) {
+        fetch('/api/supabase/trades/sltp', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ supabaseId: sbId, stopLoss: body.stopLoss, takeProfit: body.takeProfit }),
+        }).catch(() => {});
+      }
+    } catch {}
+  }, [openTrades, supabaseTradeIds]);
+
+  const activePositions = positionsWithPnl.filter(p => p.instrument === activeInstrument.label);
+
   const displayQty = String(quantity);
 
   const formatPnl = (val: number) => `${val >= 0 ? '+' : ''}$${val.toFixed(2)}`;
@@ -438,6 +466,13 @@ export default function Terminal({ tier, userTierName, balance, onOpenPnlChange 
                 <div className="w-8 h-8 border-2 border-gold border-t-transparent rounded-full animate-spin"></div>
               </div>
             )}
+            <PositionLines
+              positions={activePositions}
+              currentPrice={livePrices[activeInstrument.label] || 0}
+              instrumentLabel={activeInstrument.label}
+              onUpdateSL={(tradeId, newPrice) => handleUpdateSLTP(tradeId, 'stopLoss', newPrice)}
+              onUpdateTP={(tradeId, newPrice) => handleUpdateSLTP(tradeId, 'takeProfit', newPrice)}
+            />
           </div>
 
           <div className="w-14 shrink-0 border-l border-b1 bg-s1 flex flex-col items-center justify-center gap-1.5 py-2">

@@ -99,8 +99,8 @@ function calcPnl(side: string, entry: number, current: number, size: number, ins
 export default function Terminal({ tier, userTierName, balance, onOpenPnlChange }: TerminalProps) {
   const chartContainerRef = useRef<HTMLDivElement>(null);
   const tvLoaded = useTradingViewScript();
-  const [activeInstrument, setActiveInstrument] = useState(INSTRUMENTS[0]);
-  const [quantity, setQuantity] = useState<number>(INSTRUMENTS[0].default);
+  const [activeInstrument, setActiveInstrument] = useState(INSTRUMENTS[1]);
+  const [quantity, setQuantity] = useState<number>(INSTRUMENTS[1].default);
   const [openTrades, setOpenTrades] = useState<Trade[]>([]);
   const [closedTrades, setClosedTrades] = useState<Trade[]>([]);
   const [viewMode, setViewMode] = useState<'simple' | 'pro'>('pro');

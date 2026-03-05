@@ -4,6 +4,7 @@ import type { Trade } from '@shared/schema';
 interface TerminalProps {
   tier: any;
   userTierName: string;
+  balance: number;
   onOpenPnlChange?: (pnl: number) => void;
 }
 
@@ -95,7 +96,7 @@ function calcPnl(side: string, entry: number, current: number, size: number, ins
   return (current - entry) * direction * size * contractSize;
 }
 
-export default function Terminal({ tier, userTierName, onOpenPnlChange }: TerminalProps) {
+export default function Terminal({ tier, userTierName, balance, onOpenPnlChange }: TerminalProps) {
   const chartContainerRef = useRef<HTMLDivElement>(null);
   const tvLoaded = useTradingViewScript();
   const [activeInstrument, setActiveInstrument] = useState(INSTRUMENTS[0]);
@@ -107,6 +108,7 @@ export default function Terminal({ tier, userTierName, onOpenPnlChange }: Termin
   const [tradeStatus, setTradeStatus] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
   const [closingId, setClosingId] = useState<string | null>(null);
   const closingIdsRef = useRef<Set<string>>(new Set());
+  const liquidatingRef = useRef(false);
   const [orderSl, setOrderSl] = useState('');
   const [orderTp, setOrderTp] = useState('');
   const [showSltp, setShowSltp] = useState(false);
@@ -169,6 +171,50 @@ export default function Terminal({ tier, userTierName, onOpenPnlChange }: Termin
       }
     }
   }, [livePrices]);
+
+  useEffect(() => {
+    if (openTrades.length === 0 || liquidatingRef.current) return;
+    const equity = balance + totalOpenPnl;
+    if (equity <= 0) {
+      liquidatingRef.current = true;
+      setTradeStatus({ type: 'error', message: 'Account liquidated — equity reached zero' });
+      (async () => {
+        for (const trade of openTrades) {
+          const exitPrice = livePrices[trade.instrument];
+          if (!exitPrice) continue;
+          try {
+            const res = await fetch(`/api/trades/${trade.id}/close`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ exitPrice }),
+            });
+            if (res.ok) {
+              const closed: Trade = await res.json();
+              setOpenTrades(prev => prev.filter(t => t.id !== trade.id));
+              setClosedTrades(prev => [closed, ...prev]);
+              try {
+                const sbId = supabaseTradeIds[trade.id];
+                if (sbId) {
+                  await fetch('/api/supabase/trades/close', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                      supabaseId: sbId,
+                      close_price: closed.exitPrice,
+                      pnl: closed.pnl,
+                      close_time: new Date().toISOString(),
+                      status: 'closed'
+                    })
+                  });
+                }
+              } catch {}
+            }
+          } catch {}
+        }
+        liquidatingRef.current = false;
+      })();
+    }
+  }, [totalOpenPnl, balance, openTrades, livePrices]);
 
   const handleInstrumentChange = (inst: InstrumentConfig) => {
     setActiveInstrument(inst);

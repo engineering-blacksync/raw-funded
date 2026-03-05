@@ -19,17 +19,17 @@ interface InstrumentConfig {
 }
 
 const INSTRUMENTS: InstrumentConfig[] = [
-  { label: 'Bitcoin', symbol: 'PEPPERSTONE:BTCUSD', default: 1, step: 1, min: 1, max: 100, lotSize: 0.01 },
-  { label: 'Gold (GC)', symbol: 'PEPPERSTONE:XAUUSD', default: 1, step: 1, min: 1, max: 10, lotSize: 1, spread: 0.03 },
-  { label: 'Silver', symbol: 'PEPPERSTONE:XAGUSD', default: 1, step: 1, min: 1, max: 10, lotSize: 1, spread: 0.008 },
-  { label: 'Oil (WTI)', symbol: 'PEPPERSTONE:WTI', default: 1, step: 1, min: 1, max: 20, lotSize: 1 },
-  { label: 'S&P 500', symbol: 'PEPPERSTONE:US500', default: 1, step: 1, min: 1, max: 20, lotSize: 1 },
-  { label: 'Nasdaq', symbol: 'PEPPERSTONE:NAS100', default: 1, step: 1, min: 1, max: 20, lotSize: 1 },
-  { label: 'MNQ', symbol: 'PEPPERSTONE:NAS100', default: 1, step: 1, min: 1, max: 20, lotSize: 0.10 },
-  { label: 'MES', symbol: 'PEPPERSTONE:US500', default: 1, step: 1, min: 1, max: 20, lotSize: 0.10 },
-  { label: 'MGC', symbol: 'PEPPERSTONE:XAUUSD', default: 1, step: 1, min: 1, max: 20, lotSize: 0.10, spread: 0.03 },
-  { label: 'SIL', symbol: 'PEPPERSTONE:XAGUSD', default: 1, step: 1, min: 1, max: 20, lotSize: 0.10, spread: 0.008 },
-  { label: 'MCL', symbol: 'PEPPERSTONE:WTI', default: 1, step: 1, min: 1, max: 20, lotSize: 0.10 },
+  { label: 'Bitcoin', symbol: 'COINBASE:BTCUSD', default: 1, step: 1, min: 1, max: 100, lotSize: 0.01 },
+  { label: 'Gold (GC)', symbol: 'OANDA:XAUUSD', default: 1, step: 1, min: 1, max: 10, lotSize: 1, spread: 0.03 },
+  { label: 'Silver', symbol: 'OANDA:XAGUSD', default: 1, step: 1, min: 1, max: 10, lotSize: 1, spread: 0.008 },
+  { label: 'Oil (WTI)', symbol: 'OANDA:WTICOUSD', default: 1, step: 1, min: 1, max: 20, lotSize: 1 },
+  { label: 'S&P 500', symbol: 'OANDA:SPX500USD', default: 1, step: 1, min: 1, max: 20, lotSize: 1 },
+  { label: 'Nasdaq', symbol: 'OANDA:NAS100USD', default: 1, step: 1, min: 1, max: 20, lotSize: 1 },
+  { label: 'MNQ', symbol: 'CME_MINI:MNQ1!', default: 1, step: 1, min: 1, max: 20, lotSize: 0.10 },
+  { label: 'MES', symbol: 'CME_MINI:MES1!', default: 1, step: 1, min: 1, max: 20, lotSize: 0.10 },
+  { label: 'MGC', symbol: 'OANDA:XAUUSD', default: 1, step: 1, min: 1, max: 20, lotSize: 0.10, spread: 0.03 },
+  { label: 'SIL', symbol: 'COMEX:SIL1!', default: 1, step: 1, min: 1, max: 20, lotSize: 0.10, spread: 0.008 },
+  { label: 'MCL', symbol: 'NYMEX:MCL1!', default: 1, step: 1, min: 1, max: 20, lotSize: 0.10 },
 ];
 
 const CONTRACT_SIZES: Record<string, number> = {

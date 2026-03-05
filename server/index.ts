@@ -2,6 +2,8 @@ import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
 import { serveStatic } from "./static";
 import { createServer } from "http";
+import { storage } from "./storage";
+import { hashPassword } from "./auth";
 
 const app = express();
 const httpServer = createServer(app);
@@ -60,6 +62,34 @@ app.use((req, res, next) => {
 });
 
 (async () => {
+  async function seedAdmin() {
+    const adminEmail = "Compliance@rawfunded.com";
+    const existing = await storage.getUserByEmail(adminEmail);
+    if (!existing) {
+      const hashed = await hashPassword("HumanResources");
+      await storage.createUser({
+        username: "Compliance",
+        email: adminEmail,
+        password: hashed,
+      });
+      const created = await storage.getUserByEmail(adminEmail);
+      if (created) {
+        await storage.updateUser(created.id, {
+          isAdmin: true,
+          tier: "titan",
+          status: "approved",
+          balance: 0,
+          leverage: 2000,
+          maxContracts: 999,
+          approvedBy: "system",
+          verifiedAt: new Date(),
+        } as any);
+        log("Admin account seeded: " + adminEmail);
+      }
+    }
+  }
+  await seedAdmin();
+
   await registerRoutes(httpServer, app);
 
   app.use((err: any, _req: Request, res: Response, next: NextFunction) => {

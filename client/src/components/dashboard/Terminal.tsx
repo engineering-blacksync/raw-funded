@@ -19,17 +19,17 @@ interface InstrumentConfig {
 }
 
 const INSTRUMENTS: InstrumentConfig[] = [
-  { label: 'Bitcoin', symbol: 'JUSTMARKETS:BTCUSD', default: 1, step: 1, min: 1, max: 100, lotSize: 0.01 },
-  { label: 'Gold (GC)', symbol: 'JUSTMARKETS:XAUUSD', default: 1, step: 1, min: 1, max: 10, lotSize: 1, spread: 0.03 },
-  { label: 'Silver', symbol: 'JUSTMARKETS:XAGUSD', default: 1, step: 1, min: 1, max: 10, lotSize: 1, spread: 0.008 },
-  { label: 'Oil (WTI)', symbol: 'JUSTMARKETS:WTI', default: 1, step: 1, min: 1, max: 20, lotSize: 1 },
-  { label: 'S&P 500', symbol: 'JUSTMARKETS:US500', default: 1, step: 1, min: 1, max: 20, lotSize: 1 },
-  { label: 'Nasdaq', symbol: 'JUSTMARKETS:US100', default: 1, step: 1, min: 1, max: 20, lotSize: 1 },
-  { label: 'MNQ', symbol: 'JUSTMARKETS:US100', default: 1, step: 1, min: 1, max: 20, lotSize: 0.10 },
-  { label: 'MES', symbol: 'JUSTMARKETS:US500', default: 1, step: 1, min: 1, max: 20, lotSize: 0.10 },
-  { label: 'MGC', symbol: 'JUSTMARKETS:XAUUSD', default: 1, step: 1, min: 1, max: 20, lotSize: 0.10, spread: 0.03 },
-  { label: 'SIL', symbol: 'JUSTMARKETS:XAGUSD', default: 1, step: 1, min: 1, max: 20, lotSize: 0.10, spread: 0.008 },
-  { label: 'MCL', symbol: 'JUSTMARKETS:WTI', default: 1, step: 1, min: 1, max: 20, lotSize: 0.10 },
+  { label: 'Bitcoin', symbol: 'PEPPERSTONE:BTCUSD', default: 1, step: 1, min: 1, max: 100, lotSize: 0.01 },
+  { label: 'Gold (GC)', symbol: 'PEPPERSTONE:XAUUSD', default: 1, step: 1, min: 1, max: 10, lotSize: 1, spread: 0.03 },
+  { label: 'Silver', symbol: 'PEPPERSTONE:XAGUSD', default: 1, step: 1, min: 1, max: 10, lotSize: 1, spread: 0.008 },
+  { label: 'Oil (WTI)', symbol: 'PEPPERSTONE:WTI', default: 1, step: 1, min: 1, max: 20, lotSize: 1 },
+  { label: 'S&P 500', symbol: 'PEPPERSTONE:US500', default: 1, step: 1, min: 1, max: 20, lotSize: 1 },
+  { label: 'Nasdaq', symbol: 'PEPPERSTONE:NAS100', default: 1, step: 1, min: 1, max: 20, lotSize: 1 },
+  { label: 'MNQ', symbol: 'PEPPERSTONE:NAS100', default: 1, step: 1, min: 1, max: 20, lotSize: 0.10 },
+  { label: 'MES', symbol: 'PEPPERSTONE:US500', default: 1, step: 1, min: 1, max: 20, lotSize: 0.10 },
+  { label: 'MGC', symbol: 'PEPPERSTONE:XAUUSD', default: 1, step: 1, min: 1, max: 20, lotSize: 0.10, spread: 0.03 },
+  { label: 'SIL', symbol: 'PEPPERSTONE:XAGUSD', default: 1, step: 1, min: 1, max: 20, lotSize: 0.10, spread: 0.008 },
+  { label: 'MCL', symbol: 'PEPPERSTONE:WTI', default: 1, step: 1, min: 1, max: 20, lotSize: 0.10 },
 ];
 
 const CONTRACT_SIZES: Record<string, number> = {

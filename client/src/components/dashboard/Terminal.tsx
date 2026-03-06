@@ -18,11 +18,12 @@ interface InstrumentConfig {
   max: number;
   lotSize: number;
   spread?: number;
+  tickSize?: number;
 }
 
 const INSTRUMENTS: InstrumentConfig[] = [
   { label: 'Bitcoin', symbol: 'COINBASE:BTCUSD', default: 1, step: 1, min: 1, max: 100, lotSize: 0.01 },
-  { label: 'Gold (GC)', symbol: 'OANDA:XAUUSD', default: 1, step: 1, min: 1, max: 10, lotSize: 1, spread: 0.03 },
+  { label: 'Gold (GC)', symbol: 'OANDA:XAUUSD', default: 1, step: 1, min: 1, max: 10, lotSize: 1, spread: 0.30, tickSize: 0.10 },
   { label: 'Silver', symbol: 'OANDA:XAGUSD', default: 1, step: 1, min: 1, max: 10, lotSize: 1, spread: 0.008 },
   { label: 'Oil (WTI)', symbol: 'OANDA:WTICOUSD', default: 1, step: 1, min: 1, max: 20, lotSize: 1 },
   { label: 'S&P 500', symbol: 'OANDA:SPX500USD', default: 1, step: 1, min: 1, max: 20, lotSize: 1 },
@@ -91,10 +92,21 @@ function useLivePrices(instruments: string[]) {
   return prices;
 }
 
+function getTickSize(instrument: string): number | undefined {
+  return INSTRUMENTS.find(i => i.label === instrument)?.tickSize;
+}
+
+function roundToTick(price: number, instrument: string): number {
+  const tick = getTickSize(instrument);
+  if (!tick) return price;
+  return Math.round(price / tick) * tick;
+}
+
 function calcPnl(side: string, entry: number, current: number, size: number, instrument: string): number {
   const contractSize = CONTRACT_SIZES[instrument] ?? 1;
   const direction = side === 'BUY' ? 1 : -1;
-  return (current - entry) * direction * size * contractSize;
+  const tickedCurrent = roundToTick(current, instrument);
+  return (tickedCurrent - entry) * direction * size * contractSize;
 }
 
 export default function Terminal({ tier, userTierName, balance, onOpenPnlChange }: TerminalProps) {
@@ -265,13 +277,15 @@ export default function Terminal({ tier, userTierName, balance, onOpenPnlChange 
   }, [tvLoaded, createChart]);
 
   const handleTrade = async (side: 'BUY' | 'SELL') => {
-    const midPrice = livePrices[activeInstrument.label];
-    if (!midPrice) {
+    const rawMidPrice = livePrices[activeInstrument.label];
+    if (!rawMidPrice) {
       setTradeStatus({ type: 'error', message: 'Waiting for price data...' });
       setTimeout(() => setTradeStatus(null), 3000);
       return;
     }
 
+    const tick = activeInstrument.tickSize;
+    const midPrice = tick ? Math.round(rawMidPrice / tick) * tick : rawMidPrice;
     const spread = activeInstrument.spread || 0;
     const entryPrice = side === 'BUY' ? midPrice + spread : midPrice - spread;
 
@@ -326,8 +340,9 @@ export default function Terminal({ tier, userTierName, balance, onOpenPnlChange 
     const trade = openTrades.find(t => t.id === tradeId);
     if (!trade) { setClosingId(null); return; }
 
-    const exitPrice = exitPriceOverride ?? livePrices[trade.instrument];
-    if (!exitPrice) { setClosingId(null); return; }
+    const rawExitPrice = exitPriceOverride ?? livePrices[trade.instrument];
+    if (!rawExitPrice) { setClosingId(null); return; }
+    const exitPrice = roundToTick(rawExitPrice, trade.instrument);
 
     try {
       const res = await fetch(`/api/trades/${tradeId}/close`, {

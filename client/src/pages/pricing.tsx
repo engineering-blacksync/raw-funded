@@ -134,7 +134,7 @@ export default function Pricing() {
                         </span>
                       </div>
                       <span className="text-sm text-muted-foreground data-number">
-                        {level.micros} micro{level.micros > 1 ? 's' : ''}
+                        {level.micros} micro{level.micros > 1 ? 's' : ''} per trade
                       </span>
                     </div>
                   ))}

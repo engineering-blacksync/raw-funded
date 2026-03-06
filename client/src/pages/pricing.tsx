@@ -1,46 +1,7 @@
 import { useState } from 'react';
 import { useLocation } from 'wouter';
-
-const CARD_COLORS: Record<string, string> = {
-  bronze: '#CD7F32',
-  silver: '#C0C0C0',
-  gold: '#E8C547',
-  black: '#ffffff',
-};
-
-const PLANS = [
-  {
-    amount: 50,
-    price: '$50',
-    label: '$50 Account',
-    levels: [
-      { card: 'Bronze', micros: 1 },
-      { card: 'Silver', micros: 2 },
-      { card: 'Gold', micros: 3 },
-    ],
-  },
-  {
-    amount: 200,
-    price: '$200',
-    label: '$200 Account',
-    popular: true,
-    levels: [
-      { card: 'Bronze', micros: 4 },
-      { card: 'Silver', micros: 5 },
-      { card: 'Gold', micros: 6 },
-    ],
-  },
-  {
-    amount: 1000,
-    price: '$1,000',
-    label: '$1,000 Account',
-    levels: [
-      { card: 'Bronze', micros: 7 },
-      { card: 'Silver', micros: 8 },
-      { card: 'Gold', micros: 9 },
-    ],
-  },
-];
+import { PricingContainer, type PricingPlan } from '@/components/ui/pricing-container';
+import { motion } from 'framer-motion';
 
 export default function Pricing() {
   const [, navigate] = useLocation();
@@ -67,9 +28,57 @@ export default function Pricing() {
     }
   };
 
+  const plans: PricingPlan[] = [
+    {
+      name: '$50 Account',
+      price: 50,
+      priceLabel: '$50',
+      features: ['Same-day withdrawals', 'No rules or challenges'],
+      isPopular: false,
+      accent: 'bg-[#CD7F32]',
+      levels: [
+        { card: 'Bronze', micros: 1, color: '#CD7F32' },
+        { card: 'Silver', micros: 2, color: '#C0C0C0' },
+        { card: 'Gold', micros: 3, color: '#E8C547' },
+      ],
+      onGetStarted: () => handleGetStarted(50),
+      loading: loading === 50,
+    },
+    {
+      name: '$200 Account',
+      price: 200,
+      priceLabel: '$200',
+      features: ['Same-day withdrawals', 'No rules or challenges'],
+      isPopular: true,
+      accent: 'bg-[#C0C0C0]',
+      levels: [
+        { card: 'Bronze', micros: 4, color: '#CD7F32' },
+        { card: 'Silver', micros: 5, color: '#C0C0C0' },
+        { card: 'Gold', micros: 6, color: '#E8C547' },
+      ],
+      onGetStarted: () => handleGetStarted(200),
+      loading: loading === 200,
+    },
+    {
+      name: '$1,000 Account',
+      price: 1000,
+      priceLabel: '$1,000',
+      features: ['Same-day withdrawals', 'No rules or challenges'],
+      isPopular: false,
+      accent: 'bg-[#E8C547]',
+      levels: [
+        { card: 'Bronze', micros: 7, color: '#CD7F32' },
+        { card: 'Silver', micros: 8, color: '#C0C0C0' },
+        { card: 'Gold', micros: 9, color: '#E8C547' },
+      ],
+      onGetStarted: () => handleGetStarted(1000),
+      loading: loading === 1000,
+    },
+  ];
+
   return (
     <div className="min-h-screen bg-background flex flex-col">
-      <nav className="border-b border-b1 bg-s1 px-6 py-4">
+      <nav className="border-b border-b1 bg-s1 px-6 py-4 relative z-20">
         <div className="max-w-6xl mx-auto flex items-center justify-between">
           <button onClick={() => navigate('/')} className="flex items-center gap-1" data-testid="link-home">
             <span className="font-heading text-xl font-bold tracking-wider text-white">RAW</span>
@@ -85,99 +94,56 @@ export default function Pricing() {
         </div>
       </nav>
 
-      <div className="flex-1 flex flex-col items-center justify-center px-6 py-16">
-        <div className="text-center mb-12">
-          <h1 className="font-heading text-4xl font-bold text-white uppercase tracking-wider mb-3" data-testid="text-pricing-title">
-            Get Your Account
-          </h1>
-          <p className="text-muted-foreground text-lg max-w-lg mx-auto">
-            No rules. No challenges. Same-day withdrawals. Pick your size and start trading.
-          </p>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-5xl w-full">
-          {PLANS.map((plan) => (
-            <div
-              key={plan.amount}
-              className={`relative bg-card border rounded-lg p-6 flex flex-col ${plan.popular ? 'border-gold/50 ring-1 ring-gold/20' : 'border-b1'}`}
-              data-testid={`card-plan-${plan.amount}`}
+      <PricingContainer
+        title="Get Your Account"
+        plans={plans}
+        className="flex-1"
+        blackCard={
+          <div className="max-w-5xl mx-auto">
+            <motion.div
+              className="bg-[#0F0F12] border-2 border-[#2E2E36] rounded-xl p-6 flex flex-col md:flex-row items-center justify-between gap-4
+                shadow-[6px_6px_0px_0px_rgba(255,255,255,0.05)]
+                hover:shadow-[8px_8px_0px_0px_rgba(255,255,255,0.08)]
+                transition-all duration-200"
+              whileHover={{ scale: 1.01 }}
             >
-              {plan.popular && (
-                <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-gold text-black text-[10px] font-bold uppercase px-3 py-1 rounded-full tracking-wider">
-                  Most Popular
-                </div>
-              )}
-
-              <div className="mb-4">
-                <h3 className="font-heading text-xl font-bold text-white uppercase tracking-wide">
-                  {plan.label}
-                </h3>
-                <p className="text-[11px] text-muted-foreground uppercase mt-1">One-time payment</p>
-              </div>
-
-              <div className="mb-6">
-                <span className="text-4xl font-bold text-white data-number">{plan.price}</span>
-              </div>
-
-              <div className="flex-1 mb-6">
-                <div className="text-[10px] text-muted-foreground uppercase tracking-wider font-bold mb-3">Card Levels</div>
-                <div className="space-y-2">
-                  {plan.levels.map((level) => (
-                    <div key={level.card} className="flex items-center justify-between bg-s1 border border-b1 rounded px-3 py-2">
-                      <div className="flex items-center gap-2">
-                        <div
-                          className="w-2 h-2 rounded-full"
-                          style={{ backgroundColor: CARD_COLORS[level.card.toLowerCase()] }}
-                        />
-                        <span className="text-sm font-bold" style={{ color: CARD_COLORS[level.card.toLowerCase()] }}>
-                          {level.card}
-                        </span>
-                      </div>
-                      <span className="text-sm text-muted-foreground data-number">
-                        {level.micros} micro{level.micros > 1 ? 's' : ''} per trade
-                      </span>
-                    </div>
-                  ))}
+              <div className="flex items-center gap-4">
+                <motion.div
+                  className="w-12 h-12 rounded-lg bg-white/5 border-2 border-white/10 flex items-center justify-center
+                    shadow-[3px_3px_0px_0px_rgba(255,255,255,0.05)]"
+                  animate={{
+                    rotate: [0, 5, 0, -5, 0],
+                  }}
+                  transition={{
+                    duration: 4,
+                    repeat: Infinity,
+                    ease: "easeInOut"
+                  }}
+                >
+                  <span className="text-white text-lg font-black font-heading">B</span>
+                </motion.div>
+                <div>
+                  <h3 className="font-heading text-lg font-black text-white uppercase tracking-wide">Black Card</h3>
+                  <p className="text-sm text-[#71717A]">Interview only · Must verify $20,000+ in payouts</p>
                 </div>
               </div>
-
-              <button
-                onClick={() => handleGetStarted(plan.amount)}
-                disabled={loading !== null}
-                className={`w-full py-3 rounded font-heading text-sm font-bold uppercase tracking-wider transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
-                  plan.popular
-                    ? 'bg-gold text-black hover:bg-gold/90'
-                    : 'bg-s3 text-white hover:bg-b1 border border-b2'
-                }`}
-                data-testid={`btn-get-started-${plan.amount}`}
+              <motion.button
+                onClick={() => navigate('/apply')}
+                className="bg-white/10 text-white border-2 border-white/20 px-6 py-2.5 rounded-lg font-heading text-sm font-black uppercase tracking-wider
+                  shadow-[4px_4px_0px_0px_rgba(255,255,255,0.05)]
+                  hover:shadow-[6px_6px_0px_0px_rgba(255,255,255,0.08)]
+                  active:shadow-[2px_2px_0px_0px_rgba(255,255,255,0.05)]
+                  transition-all duration-200 shrink-0"
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.95 }}
+                data-testid="btn-apply-black"
               >
-                {loading === plan.amount ? 'Redirecting...' : 'Get Started'}
-              </button>
-            </div>
-          ))}
-        </div>
-
-        <div className="mt-10 max-w-5xl w-full">
-          <div className="bg-card border border-b1 rounded-lg p-6 flex flex-col md:flex-row items-center justify-between gap-4">
-            <div className="flex items-center gap-4">
-              <div className="w-10 h-10 rounded-lg bg-white/5 border border-white/10 flex items-center justify-center">
-                <span className="text-white text-lg font-bold">B</span>
-              </div>
-              <div>
-                <h3 className="font-heading text-lg font-bold text-white uppercase tracking-wide">Black Card</h3>
-                <p className="text-sm text-muted-foreground">Interview only · Must verify $20,000+ in payouts</p>
-              </div>
-            </div>
-            <button
-              onClick={() => navigate('/apply')}
-              className="bg-white/10 text-white border border-white/20 px-6 py-2.5 rounded font-heading text-sm font-bold uppercase tracking-wider hover:bg-white/15 transition-colors shrink-0"
-              data-testid="btn-apply-black"
-            >
-              Apply Now
-            </button>
+                Apply Now →
+              </motion.button>
+            </motion.div>
           </div>
-        </div>
-      </div>
+        }
+      />
     </div>
   );
 }

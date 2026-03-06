@@ -291,20 +291,24 @@ export async function registerRoutes(
         return res.status(400).json({ message: "Invalid card tier" });
       }
 
-      const cardLeverage: Record<string, number> = { bronze: 50, silver: 250, gold: 500, black: 2000 };
-      const cardMaxMicros: Record<string, number> = { bronze: 1, silver: 3, gold: 10, black: 999 };
-
       const user = await storage.getUser(req.params.id);
       if (!user) return res.status(404).json({ message: "User not found" });
+
+      const accountSize = user.amountPaid || 50;
+      const microsByAccountAndCard: Record<number, Record<string, number>> = {
+        50:   { bronze: 1, silver: 2, gold: 3 },
+        200:  { bronze: 4, silver: 5, gold: 6 },
+        1000: { bronze: 7, silver: 8, gold: 9 },
+      };
+      const maxMicros = cardTier === 'black' ? 999 : (microsByAccountAndCard[accountSize]?.[cardTier] || 1);
 
       const finalBalance = user.amountPaid || user.balance;
       const updated = await storage.updateUser(user.id, {
         card: cardTier,
-        tier: cardTier === 'black' ? 'titan' : cardTier === 'gold' ? 'elite' : 'verified',
+        tier: cardTier === 'black' ? 'titan' : cardTier === 'gold' ? 'elite' : cardTier === 'silver' ? 'elite' : 'verified',
         status: "approved",
         balance: finalBalance,
-        leverage: cardLeverage[cardTier],
-        maxContracts: cardMaxMicros[cardTier],
+        maxContracts: maxMicros,
         isActive: true,
         approvedBy: req.user!.email,
         verifiedAt: new Date(),
@@ -337,23 +341,27 @@ export async function registerRoutes(
       if (!ver) return res.status(404).json({ message: "Verification not found" });
 
       const { card: cardTier } = req.body;
-      const tierLeverage: Record<string, number> = { verified: 250, elite: 500, titan: 2000 };
       const tierContracts: Record<string, number> = { verified: 10, elite: 50, titan: 999 };
-      const cardLeverage: Record<string, number> = { bronze: 50, silver: 250, gold: 500, black: 2000 };
-      const cardMaxMicros: Record<string, number> = { bronze: 1, silver: 3, gold: 10, black: 999 };
       const selectedTier = tier || "verified";
 
       const user = await storage.getUser(ver.userId);
       const finalBalance = balance || (user?.amountPaid ? user.amountPaid : 10000);
       const finalCard = cardTier || null;
-      const finalLeverage = finalCard ? (cardLeverage[finalCard] || 250) : (leverage || tierLeverage[selectedTier] || 250);
-      const finalMaxContracts = finalCard ? (cardMaxMicros[finalCard] || 10) : (maxContracts || tierContracts[selectedTier] || 10);
+
+      let finalMaxContracts = maxContracts || tierContracts[selectedTier] || 10;
+      if (finalCard && user?.amountPaid) {
+        const microsByAccountAndCard: Record<number, Record<string, number>> = {
+          50:   { bronze: 1, silver: 2, gold: 3 },
+          200:  { bronze: 4, silver: 5, gold: 6 },
+          1000: { bronze: 7, silver: 8, gold: 9 },
+        };
+        finalMaxContracts = finalCard === 'black' ? 999 : (microsByAccountAndCard[user.amountPaid]?.[finalCard] || finalMaxContracts);
+      }
 
       await storage.updateUser(ver.userId, {
         tier: selectedTier,
         status: "approved",
         balance: finalBalance,
-        leverage: finalLeverage,
         maxContracts: finalMaxContracts,
         isActive: true,
         approvedBy: req.user!.email,

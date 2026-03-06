@@ -550,15 +550,28 @@ export default function Admin() {
               <div>
                 <label className="block text-[10px] text-muted-foreground uppercase mb-1">Card Tier</label>
                 <select value={assignCard} onChange={e => setAssignCard(e.target.value)} className="w-full bg-s2 border border-b1 rounded px-3 py-2 text-sm text-white outline-none focus:border-gold" data-testid="assign-card-tier">
-                  <option value="bronze">Bronze ($50)</option>
-                  <option value="silver">Silver ($200)</option>
-                  <option value="gold">Gold ($1,000)</option>
-                  <option value="black">Black (Custom)</option>
+                  <option value="bronze">Bronze</option>
+                  <option value="silver">Silver</option>
+                  <option value="gold">Gold</option>
+                  <option value="black">Black (Interview)</option>
                 </select>
               </div>
               <div className="bg-s2 border border-b1 rounded p-3 space-y-1">
-                <div className="flex justify-between text-xs"><span className="text-muted-foreground">Leverage</span><span className="text-white data-number">1:{assignCard === 'bronze' ? 50 : assignCard === 'silver' ? 250 : assignCard === 'gold' ? 500 : 2000}</span></div>
-                <div className="flex justify-between text-xs"><span className="text-muted-foreground">Max Micros</span><span className="text-white data-number">{assignCard === 'bronze' ? 1 : assignCard === 'silver' ? 3 : assignCard === 'gold' ? 10 : 999}</span></div>
+                {(() => {
+                  const acctSize = assignCardUser.amountPaid || 50;
+                  const microMap: Record<number, Record<string, number>> = {
+                    50: { bronze: 1, silver: 2, gold: 3 },
+                    200: { bronze: 4, silver: 5, gold: 6 },
+                    1000: { bronze: 7, silver: 8, gold: 9 },
+                  };
+                  const micros = assignCard === 'black' ? 999 : (microMap[acctSize]?.[assignCard] || 1);
+                  return (
+                    <>
+                      <div className="flex justify-between text-xs"><span className="text-muted-foreground">Account Size</span><span className="text-white data-number">${acctSize.toLocaleString()}</span></div>
+                      <div className="flex justify-between text-xs"><span className="text-muted-foreground">Max Micros</span><span className="text-white data-number">{micros}</span></div>
+                    </>
+                  );
+                })()}
               </div>
               <button type="submit" disabled={assignCardMutation.isPending} className="w-full bg-gold text-black font-bold py-3 rounded text-sm hover:bg-gold/80 transition-colors disabled:opacity-50" data-testid="btn-confirm-assign-card">
                 {assignCardMutation.isPending ? "Assigning..." : "Confirm & Activate Account"}

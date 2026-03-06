@@ -1,40 +1,44 @@
 import { useState } from 'react';
 import { useLocation } from 'wouter';
 
+const CARD_COLORS: Record<string, string> = {
+  bronze: '#CD7F32',
+  silver: '#C0C0C0',
+  gold: '#E8C547',
+  black: '#ffffff',
+};
+
 const PLANS = [
   {
-    name: 'Bronze',
     amount: 50,
     price: '$50',
-    color: '#CD7F32',
-    features: [
-      '1 Micro Gold · 1 Micro NQ · 1 Micro ES',
-      '$2,500 Trading Capital',
+    label: '$50 Account',
+    levels: [
+      { card: 'Bronze', micros: 1 },
+      { card: 'Silver', micros: 2 },
+      { card: 'Gold', micros: 3 },
     ],
-    maxMicros: 1,
   },
   {
-    name: 'Silver',
     amount: 200,
     price: '$200',
-    color: '#C0C0C0',
-    features: [
-      '3 Micros · 1 Mini Gold',
-      '$12,500 Trading Capital',
-    ],
-    maxMicros: 3,
+    label: '$200 Account',
     popular: true,
+    levels: [
+      { card: 'Bronze', micros: 4 },
+      { card: 'Silver', micros: 5 },
+      { card: 'Gold', micros: 6 },
+    ],
   },
   {
-    name: 'Gold',
     amount: 1000,
     price: '$1,000',
-    color: '#E8C547',
-    features: [
-      '10 Micros · 5 Minis',
-      '$62,500 Trading Capital',
+    label: '$1,000 Account',
+    levels: [
+      { card: 'Bronze', micros: 7 },
+      { card: 'Silver', micros: 8 },
+      { card: 'Gold', micros: 9 },
     ],
-    maxMicros: 10,
   },
 ];
 
@@ -87,7 +91,7 @@ export default function Pricing() {
             Get Your Account
           </h1>
           <p className="text-muted-foreground text-lg max-w-lg mx-auto">
-            No rules. No challenges. Same-day withdrawals. Pick your card and start trading.
+            No rules. No challenges. Same-day withdrawals. Pick your size and start trading.
           </p>
         </div>
 
@@ -104,33 +108,37 @@ export default function Pricing() {
                 </div>
               )}
 
-              <div className="flex items-center gap-3 mb-4">
-                <div
-                  className="w-10 h-10 rounded-lg flex items-center justify-center text-lg font-bold"
-                  style={{ background: `${plan.color}20`, color: plan.color }}
-                >
-                  {plan.name[0]}
-                </div>
-                <div>
-                  <h3 className="font-heading text-lg font-bold text-white uppercase tracking-wide" style={{ color: plan.color }}>
-                    {plan.name} Card
-                  </h3>
-                  <p className="text-[11px] text-muted-foreground uppercase">Included</p>
-                </div>
+              <div className="mb-4">
+                <h3 className="font-heading text-xl font-bold text-white uppercase tracking-wide">
+                  {plan.label}
+                </h3>
+                <p className="text-[11px] text-muted-foreground uppercase mt-1">One-time payment</p>
               </div>
 
               <div className="mb-6">
-                <span className="text-3xl font-bold text-white data-number">{plan.price}</span>
-                <span className="text-muted-foreground text-sm ml-1">one-time</span>
+                <span className="text-4xl font-bold text-white data-number">{plan.price}</span>
               </div>
 
-              <div className="flex-1 mb-6 space-y-3">
-                {plan.features.map((feature, i) => (
-                  <div key={i} className="flex items-start gap-2">
-                    <span className="text-gold text-sm mt-0.5">✓</span>
-                    <span className="text-sm text-muted-foreground">{feature}</span>
-                  </div>
-                ))}
+              <div className="flex-1 mb-6">
+                <div className="text-[10px] text-muted-foreground uppercase tracking-wider font-bold mb-3">Card Levels</div>
+                <div className="space-y-2">
+                  {plan.levels.map((level) => (
+                    <div key={level.card} className="flex items-center justify-between bg-s1 border border-b1 rounded px-3 py-2">
+                      <div className="flex items-center gap-2">
+                        <div
+                          className="w-2 h-2 rounded-full"
+                          style={{ backgroundColor: CARD_COLORS[level.card.toLowerCase()] }}
+                        />
+                        <span className="text-sm font-bold" style={{ color: CARD_COLORS[level.card.toLowerCase()] }}>
+                          {level.card}
+                        </span>
+                      </div>
+                      <span className="text-sm text-muted-foreground data-number">
+                        {level.micros} micro{level.micros > 1 ? 's' : ''}
+                      </span>
+                    </div>
+                  ))}
+                </div>
               </div>
 
               <button
@@ -147,6 +155,27 @@ export default function Pricing() {
               </button>
             </div>
           ))}
+        </div>
+
+        <div className="mt-10 max-w-5xl w-full">
+          <div className="bg-card border border-b1 rounded-lg p-6 flex flex-col md:flex-row items-center justify-between gap-4">
+            <div className="flex items-center gap-4">
+              <div className="w-10 h-10 rounded-lg bg-white/5 border border-white/10 flex items-center justify-center">
+                <span className="text-white text-lg font-bold">B</span>
+              </div>
+              <div>
+                <h3 className="font-heading text-lg font-bold text-white uppercase tracking-wide">Black Card</h3>
+                <p className="text-sm text-muted-foreground">Interview only · Must verify $20,000+ in payouts</p>
+              </div>
+            </div>
+            <button
+              onClick={() => navigate('/apply')}
+              className="bg-white/10 text-white border border-white/20 px-6 py-2.5 rounded font-heading text-sm font-bold uppercase tracking-wider hover:bg-white/15 transition-colors shrink-0"
+              data-testid="btn-apply-black"
+            >
+              Apply Now
+            </button>
+          </div>
         </div>
       </div>
     </div>

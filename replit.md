@@ -67,15 +67,23 @@ A private prop trading platform where admin assigns funded accounts. Users get a
 - wouter v3: `<Link>` renders `<a>` natively — never nest `<a>` inside `<Link>`
 
 ## Stripe Payment Flow
-- Three account tiers: Bronze ($50), Silver ($200), Gold ($1,000)
+- Three account sizes: $50, $200, $1,000 (purchased via Stripe)
 - Products seeded in Stripe via `server/seed-products.ts`
 - Flow: User visits `/pricing` → clicks "Get Started" → Stripe Checkout → redirected to `/onboarding?session_id=X&amount=Y` → creates account via `POST /api/auth/register-paid`
-- Payment verified server-side before account creation
+- Payment verified server-side before account creation (amount derived from Stripe, not client)
+- Session reuse prevention: stripeSessionId checked for uniqueness
 - Admin sees Stripe-paid pending users in queue tab with "Assign Card" action
-- Card assignment sets tier, leverage, maxContracts, and activates account
-- Card tiers: bronze (1 micro, 1:50), silver (3 micros, 1:250), gold (10 micros, 1:500), black (999, 1:2000)
 - `stripeClient.ts`: Replit connector-based Stripe client (no raw API key needed)
 - Schema fields: `stripePaid`, `amountPaid`, `card`, `stripeSessionId` on users table
+
+## Card System
+- Card levels: bronze, silver, gold, black
+- Max micros depend on BOTH account size AND card level:
+  - $50:   bronze=1, silver=2, gold=3
+  - $200:  bronze=4, silver=5, gold=6
+  - $1000: bronze=7, silver=8, gold=9
+- Black card: interview only, must verify $20,000+ in payouts, max micros=999
+- Admin assigns card via "Assign Card" in queue or PATCH /api/admin/users/:id
 
 ## API Routes
 - `GET /api/stripe/publishable-key` — Get Stripe publishable key

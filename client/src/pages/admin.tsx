@@ -21,6 +21,8 @@ export default function Admin() {
   const [approveBalance, setApproveBalance] = useState(10000);
   const [rejectReason, setRejectReason] = useState("");
   const [viewTradesUser, setViewTradesUser] = useState<any>(null);
+  const [assignCardUser, setAssignCardUser] = useState<any>(null);
+  const [assignCard, setAssignCard] = useState("bronze");
 
   const [newUser, setNewUser] = useState({
     username: "", email: "", password: "",
@@ -128,6 +130,18 @@ export default function Admin() {
     },
   });
 
+  const assignCardMutation = useMutation({
+    mutationFn: async ({ userId, card }: any) => {
+      const res = await apiRequest("POST", `/api/admin/users/${userId}/assign-card`, { card });
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/users"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/stats"] });
+      setAssignCardUser(null);
+    },
+  });
+
   useEffect(() => {
     if (!isLoading && (!user || !isAdminUser)) setLocation("/dashboard");
   }, [isLoading, user, isAdminUser, setLocation]);
@@ -142,11 +156,12 @@ export default function Admin() {
   const tierLeverage: Record<string, number> = { verified: 250, elite: 500, titan: 2000 };
   const pendingVerifications = allVerifications.filter((v: any) => v.status === "pending");
   const approvedUsers = allUsers.filter((u: any) => u.status === "approved");
+  const stripePendingUsers = allUsers.filter((u: any) => u.stripePaid && u.status === "pending");
 
   const pendingPayouts = allPayouts.filter((p: any) => p.status !== "completed" && p.status !== "rejected");
 
   const tabs = [
-    { id: "queue" as AdminTab, label: "Verification Queue", icon: Clock, count: pendingVerifications.length },
+    { id: "queue" as AdminTab, label: "Verification Queue", icon: Clock, count: pendingVerifications.length + stripePendingUsers.length },
     { id: "traders" as AdminTab, label: "All Traders", icon: Users, count: approvedUsers.length },
     { id: "payouts" as AdminTab, label: "Payouts", icon: DollarSign, count: pendingPayouts.length },
     { id: "create" as AdminTab, label: "Create Account", icon: UserPlus },
@@ -244,6 +259,48 @@ export default function Admin() {
                     </div>
                   </div>
                 ))}
+              </div>
+            )}
+
+            {stripePendingUsers.length > 0 && (
+              <div className="mt-6">
+                <h3 className="font-heading text-lg font-bold uppercase mb-3 flex items-center gap-2">
+                  <DollarSign className="w-4 h-4 text-green" />
+                  Stripe Paid — Awaiting Card Assignment
+                  <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-green/20 text-green">{stripePendingUsers.length}</span>
+                </h3>
+                <div className="space-y-3">
+                  {stripePendingUsers.map((u: any) => {
+                    const cardColors: Record<string, string> = { bronze: '#CD7F32', silver: '#C0C0C0', gold: '#E8C547' };
+                    const paidCard = u.amountPaid === 50 ? 'bronze' : u.amountPaid === 200 ? 'silver' : u.amountPaid === 1000 ? 'gold' : 'unknown';
+                    return (
+                      <div key={u.id} className="bg-s1 border border-b1 rounded-lg p-4" data-testid={`stripe-pending-${u.id}`}>
+                        <div className="flex items-start justify-between">
+                          <div className="space-y-1">
+                            <div className="flex items-center gap-3">
+                              <span className="text-sm font-bold text-white">{u.username}</span>
+                              <span className="text-xs text-muted-foreground">{u.email}</span>
+                            </div>
+                            <div className="flex items-center gap-4 text-xs text-muted-foreground">
+                              <span>Paid: <span className="text-green font-bold">${u.amountPaid?.toLocaleString()}</span></span>
+                              <span>Card: <span className="font-bold" style={{ color: cardColors[paidCard] || '#fff' }}>{paidCard.toUpperCase()}</span></span>
+                              <span>Registered: <span className="text-white">{u.createdAt ? new Date(u.createdAt).toLocaleDateString() : '—'}</span></span>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-2 shrink-0 ml-4">
+                            <button
+                              onClick={() => { setAssignCardUser(u); setAssignCard(paidCard !== 'unknown' ? paidCard : 'bronze'); }}
+                              className="flex items-center gap-1 bg-gold/20 text-gold border border-gold/30 px-3 py-1.5 rounded text-xs font-bold hover:bg-gold/30 transition-colors"
+                              data-testid={`btn-assign-card-${u.id}`}
+                            >
+                              <CheckCircle className="w-3 h-3" /> ASSIGN CARD
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
               </div>
             )}
           </div>
@@ -478,6 +535,38 @@ export default function Admin() {
           </div>
         )}
       </div>
+
+      {assignCardUser && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm" onClick={() => setAssignCardUser(null)}>
+          <div className="bg-card border border-b1 rounded-xl p-6 max-w-md w-full mx-4" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-6">
+              <div>
+                <h3 className="font-heading text-xl font-bold uppercase text-gold">Assign Card</h3>
+                <p className="text-xs text-muted-foreground mt-1">{assignCardUser.username} — Paid ${assignCardUser.amountPaid?.toLocaleString()}</p>
+              </div>
+              <button onClick={() => setAssignCardUser(null)} className="text-muted-foreground hover:text-white"><X className="w-5 h-5" /></button>
+            </div>
+            <form onSubmit={e => { e.preventDefault(); assignCardMutation.mutate({ userId: assignCardUser.id, card: assignCard }); }} className="space-y-4">
+              <div>
+                <label className="block text-[10px] text-muted-foreground uppercase mb-1">Card Tier</label>
+                <select value={assignCard} onChange={e => setAssignCard(e.target.value)} className="w-full bg-s2 border border-b1 rounded px-3 py-2 text-sm text-white outline-none focus:border-gold" data-testid="assign-card-tier">
+                  <option value="bronze">Bronze ($50)</option>
+                  <option value="silver">Silver ($200)</option>
+                  <option value="gold">Gold ($1,000)</option>
+                  <option value="black">Black (Custom)</option>
+                </select>
+              </div>
+              <div className="bg-s2 border border-b1 rounded p-3 space-y-1">
+                <div className="flex justify-between text-xs"><span className="text-muted-foreground">Leverage</span><span className="text-white data-number">1:{assignCard === 'bronze' ? 50 : assignCard === 'silver' ? 250 : assignCard === 'gold' ? 500 : 2000}</span></div>
+                <div className="flex justify-between text-xs"><span className="text-muted-foreground">Max Micros</span><span className="text-white data-number">{assignCard === 'bronze' ? 1 : assignCard === 'silver' ? 3 : assignCard === 'gold' ? 10 : 999}</span></div>
+              </div>
+              <button type="submit" disabled={assignCardMutation.isPending} className="w-full bg-gold text-black font-bold py-3 rounded text-sm hover:bg-gold/80 transition-colors disabled:opacity-50" data-testid="btn-confirm-assign-card">
+                {assignCardMutation.isPending ? "Assigning..." : "Confirm & Activate Account"}
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
 
       {approveModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm" onClick={() => setApproveModal(null)}>

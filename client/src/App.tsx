@@ -11,6 +11,8 @@ import Dashboard from "@/pages/dashboard";
 import Leaderboard from "@/pages/leaderboard";
 import Admin from "@/pages/admin";
 import Pending from "@/pages/pending";
+import Pricing from "@/pages/pricing";
+import Onboarding from "@/pages/onboarding";
 import NotFound from "@/pages/not-found";
 
 function Router() {
@@ -23,6 +25,8 @@ function Router() {
       <Route path="/leaderboard" component={Leaderboard}/>
       <Route path="/admin" component={Admin}/>
       <Route path="/pending" component={Pending}/>
+      <Route path="/pricing" component={Pricing}/>
+      <Route path="/onboarding" component={Onboarding}/>
       <Route component={NotFound} />
     </Switch>
   );

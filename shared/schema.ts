@@ -22,6 +22,10 @@ export const users = pgTable("users", {
   adminNotes: text("admin_notes"),
   verifiedAt: timestamp("verified_at"),
   createdAt: timestamp("created_at").defaultNow(),
+  stripePaid: boolean("stripe_paid").notNull().default(false),
+  amountPaid: integer("amount_paid"),
+  card: text("card"),
+  stripeSessionId: text("stripe_session_id"),
 });
 
 export const trades = pgTable("trades", {

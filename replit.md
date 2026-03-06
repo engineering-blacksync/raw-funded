@@ -21,6 +21,10 @@ A private prop trading platform where admin assigns funded accounts. Users get a
 | `client/src/pages/dashboard.tsx` | Main dashboard with tabs (Terminal, Data, etc.) |
 | `client/src/pages/admin.tsx` | Admin panel — verification queue, all traders, create accounts |
 | `client/src/pages/pending.tsx` | Pending/rejected status page for non-approved users |
+| `client/src/pages/pricing.tsx` | Pricing page with 3 card tiers + Stripe checkout |
+| `client/src/pages/onboarding.tsx` | Post-payment registration page |
+| `server/stripeClient.ts` | Replit connector-based Stripe client |
+| `server/seed-products.ts` | Seeds 3 products in Stripe (run once) |
 
 ## Access Control System
 - **User statuses**: `pending` (default), `approved`, `rejected`, `banned`
@@ -62,7 +66,23 @@ A private prop trading platform where admin assigns funded accounts. Users get a
 - Fonts: Barlow Condensed (headings), Barlow (body), JetBrains Mono (data)
 - wouter v3: `<Link>` renders `<a>` natively — never nest `<a>` inside `<Link>`
 
+## Stripe Payment Flow
+- Three account tiers: Bronze ($50), Silver ($200), Gold ($1,000)
+- Products seeded in Stripe via `server/seed-products.ts`
+- Flow: User visits `/pricing` → clicks "Get Started" → Stripe Checkout → redirected to `/onboarding?session_id=X&amount=Y` → creates account via `POST /api/auth/register-paid`
+- Payment verified server-side before account creation
+- Admin sees Stripe-paid pending users in queue tab with "Assign Card" action
+- Card assignment sets tier, leverage, maxContracts, and activates account
+- Card tiers: bronze (1 micro, 1:50), silver (3 micros, 1:250), gold (10 micros, 1:500), black (999, 1:2000)
+- `stripeClient.ts`: Replit connector-based Stripe client (no raw API key needed)
+- Schema fields: `stripePaid`, `amountPaid`, `card`, `stripeSessionId` on users table
+
 ## API Routes
+- `GET /api/stripe/publishable-key` — Get Stripe publishable key
+- `POST /api/stripe/create-checkout` — Create Stripe checkout session (amount: 50/200/1000)
+- `GET /api/stripe/verify-session/:id` — Verify Stripe payment status
+- `POST /api/auth/register-paid` — Register after Stripe payment (verifies session)
+- `POST /api/admin/users/:id/assign-card` — Assign card tier to Stripe-paid user (admin only)
 - `POST /api/auth/register` — Register (status defaults to pending)
 - `POST /api/auth/login` — Login (email + password)
 - `POST /api/auth/logout` — Logout

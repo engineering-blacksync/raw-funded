@@ -10,9 +10,10 @@ export interface IStorage {
   getUser(id: string): Promise<User | undefined>;
   getUserByUsername(username: string): Promise<User | undefined>;
   getUserByEmail(email: string): Promise<User | undefined>;
+  getUserByStripeSessionId(sessionId: string): Promise<User | undefined>;
   createUser(user: InsertUser & { password: string }): Promise<User>;
   getAllUsers(): Promise<User[]>;
-  updateUser(id: string, data: Partial<Pick<User, 'tier' | 'status' | 'balance' | 'leverage' | 'maxContracts' | 'isActive' | 'propFirm' | 'payoutsReceived' | 'approvedBy' | 'adminNotes' | 'verifiedAt'>>): Promise<User | undefined>;
+  updateUser(id: string, data: Partial<Pick<User, 'tier' | 'status' | 'balance' | 'leverage' | 'maxContracts' | 'isActive' | 'propFirm' | 'payoutsReceived' | 'approvedBy' | 'adminNotes' | 'verifiedAt' | 'stripePaid' | 'amountPaid' | 'card' | 'stripeSessionId'>>): Promise<User | undefined>;
   updateUserPassword(id: string, hashedPassword: string): Promise<User | undefined>;
   updateUserTier(id: string, tier: string): Promise<User | undefined>;
   updateUserBalance(id: string, balance: number): Promise<User | undefined>;
@@ -56,6 +57,11 @@ export class DatabaseStorage implements IStorage {
     return user;
   }
 
+  async getUserByStripeSessionId(sessionId: string): Promise<User | undefined> {
+    const [user] = await db.select().from(users).where(eq(users.stripeSessionId, sessionId));
+    return user;
+  }
+
   async createUser(insertUser: InsertUser & { password: string }): Promise<User> {
     const [user] = await db.insert(users).values(insertUser).returning();
     return user;
@@ -65,7 +71,7 @@ export class DatabaseStorage implements IStorage {
     return db.select().from(users);
   }
 
-  async updateUser(id: string, data: Partial<Pick<User, 'tier' | 'status' | 'balance' | 'leverage' | 'maxContracts' | 'isActive' | 'propFirm' | 'payoutsReceived' | 'approvedBy' | 'adminNotes' | 'verifiedAt'>>): Promise<User | undefined> {
+  async updateUser(id: string, data: Partial<Pick<User, 'tier' | 'status' | 'balance' | 'leverage' | 'maxContracts' | 'isActive' | 'propFirm' | 'payoutsReceived' | 'approvedBy' | 'adminNotes' | 'verifiedAt' | 'stripePaid' | 'amountPaid' | 'card' | 'stripeSessionId'>>): Promise<User | undefined> {
     const [user] = await db.update(users).set(data).where(eq(users.id, id)).returning();
     return user;
   }

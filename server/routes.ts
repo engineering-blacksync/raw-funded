@@ -10,6 +10,7 @@ import {
   insertUserSchema, loginSchema, insertTradeSchema,
   insertVerificationSchema, insertWithdrawalSchema,
 } from "@shared/schema";
+import { getUncachableStripeClient, getStripePublishableKey } from "./stripeClient";
 
 const upload = multer({
   storage: multer.diskStorage({
@@ -40,6 +41,121 @@ export async function registerRoutes(
     if (!req.file) return res.status(400).json({ message: "No file uploaded or invalid file type" });
     const fileUrl = `/uploads/${req.file.filename}`;
     return res.json({ url: fileUrl, filename: req.file.originalname });
+  });
+
+  app.get("/api/stripe/publishable-key", async (_req: Request, res: Response) => {
+    try {
+      const key = await getStripePublishableKey();
+      return res.json({ publishableKey: key });
+    } catch (err: any) {
+      return res.status(500).json({ message: "Stripe not configured" });
+    }
+  });
+
+  app.post("/api/stripe/create-checkout", async (req: Request, res: Response) => {
+    try {
+      const { amount } = req.body;
+      const validAmounts = [50, 200, 1000];
+      if (!validAmounts.includes(amount)) {
+        return res.status(400).json({ message: "Invalid amount" });
+      }
+
+      const stripe = await getUncachableStripeClient();
+      const productNames: Record<number, string> = {
+        50: 'Raw Funded — $50 Account',
+        200: 'Raw Funded — $200 Account',
+        1000: 'Raw Funded — $1,000 Account',
+      };
+
+      const products = await stripe.products.search({ query: `name:'${productNames[amount]}'` });
+      if (products.data.length === 0) {
+        return res.status(404).json({ message: "Product not found in Stripe" });
+      }
+      const product = products.data[0];
+      const prices = await stripe.prices.list({ product: product.id, active: true, limit: 1 });
+      if (prices.data.length === 0) {
+        return res.status(404).json({ message: "Price not found" });
+      }
+
+      const baseUrl = `${req.protocol}://${req.get('host')}`;
+      const session = await stripe.checkout.sessions.create({
+        payment_method_types: ['card'],
+        line_items: [{ price: prices.data[0].id, quantity: 1 }],
+        mode: 'payment',
+        success_url: `${baseUrl}/onboarding?session_id={CHECKOUT_SESSION_ID}&amount=${amount}`,
+        cancel_url: `${baseUrl}/pricing`,
+      });
+
+      return res.json({ url: session.url });
+    } catch (err: any) {
+      console.error('[stripe] Checkout error:', err.message);
+      return res.status(500).json({ message: err.message });
+    }
+  });
+
+  app.get("/api/stripe/verify-session/:sessionId", async (req: Request, res: Response) => {
+    try {
+      const stripe = await getUncachableStripeClient();
+      const session = await stripe.checkout.sessions.retrieve(req.params.sessionId);
+      if (session.payment_status === 'paid') {
+        return res.json({ paid: true, amountPaid: (session.amount_total || 0) / 100 });
+      }
+      return res.json({ paid: false });
+    } catch (err: any) {
+      return res.status(500).json({ message: err.message });
+    }
+  });
+
+  app.post("/api/auth/register-paid", async (req: Request, res: Response) => {
+    try {
+      const { email, username, password, sessionId } = req.body;
+      if (!email || !username || !password || !sessionId) {
+        return res.status(400).json({ message: "All fields required" });
+      }
+
+      const stripe = await getUncachableStripeClient();
+      const session = await stripe.checkout.sessions.retrieve(sessionId);
+      if (session.payment_status !== 'paid') {
+        return res.status(400).json({ message: "Payment not verified" });
+      }
+
+      const verifiedAmount = (session.amount_total || 0) / 100;
+      const validAmounts = [50, 200, 1000];
+      if (!validAmounts.includes(verifiedAmount)) {
+        return res.status(400).json({ message: "Invalid payment amount" });
+      }
+
+      const existingSession = await storage.getUserByStripeSessionId(sessionId);
+      if (existingSession) {
+        return res.status(409).json({ message: "This payment has already been used to create an account" });
+      }
+
+      const existingEmail = await storage.getUserByEmail(email);
+      if (existingEmail) return res.status(409).json({ message: "Email already registered" });
+      const existingUsername = await storage.getUserByUsername(username);
+      if (existingUsername) return res.status(409).json({ message: "Username taken" });
+
+      const hashedPassword = await hashPassword(password);
+      const user = await storage.createUser({ username, email, password: hashedPassword });
+
+      await storage.updateUser(user.id, {
+        balance: verifiedAmount,
+        stripePaid: true,
+        amountPaid: verifiedAmount,
+        stripeSessionId: sessionId,
+        status: 'pending',
+      } as any);
+
+      sendWelcomeEmail(email, username).catch(() => {});
+
+      req.login(user, (err) => {
+        if (err) return res.status(500).json({ message: "Login failed after registration" });
+        const { password: _pw, ...safeUser } = user;
+        return res.status(201).json({ ...safeUser, balance: verifiedAmount, stripePaid: true, amountPaid: verifiedAmount });
+      });
+    } catch (err: any) {
+      return res.status(500).json({ message: err.message || "Registration failed" });
+    }
   });
 
   app.post("/api/auth/register", async (req: Request, res: Response) => {
@@ -145,7 +261,7 @@ export async function registerRoutes(
 
   app.patch("/api/admin/users/:id", requireAdmin, async (req: Request, res: Response) => {
     try {
-      const { tier, balance, leverage, maxContracts, isActive, propFirm, payoutsReceived, status, adminNotes } = req.body;
+      const { tier, balance, leverage, maxContracts, isActive, propFirm, payoutsReceived, status, adminNotes, card } = req.body;
       const updates: any = {};
       if (tier !== undefined) updates.tier = tier;
       if (balance !== undefined) updates.balance = balance;
@@ -156,11 +272,49 @@ export async function registerRoutes(
       if (payoutsReceived !== undefined) updates.payoutsReceived = payoutsReceived;
       if (status !== undefined) updates.status = status;
       if (adminNotes !== undefined) updates.adminNotes = adminNotes;
+      if (card !== undefined) updates.card = card;
 
       const user = await storage.updateUser(req.params.id, updates);
       if (!user) return res.status(404).json({ message: "User not found" });
 
       const { password, ...safeUser } = user;
+      return res.json(safeUser);
+    } catch (err: any) {
+      return res.status(500).json({ message: err.message });
+    }
+  });
+
+  app.post("/api/admin/users/:id/assign-card", requireAdmin, async (req: Request, res: Response) => {
+    try {
+      const { card: cardTier } = req.body;
+      if (!cardTier || !['bronze', 'silver', 'gold', 'black'].includes(cardTier)) {
+        return res.status(400).json({ message: "Invalid card tier" });
+      }
+
+      const cardLeverage: Record<string, number> = { bronze: 50, silver: 250, gold: 500, black: 2000 };
+      const cardMaxMicros: Record<string, number> = { bronze: 1, silver: 3, gold: 10, black: 999 };
+
+      const user = await storage.getUser(req.params.id);
+      if (!user) return res.status(404).json({ message: "User not found" });
+
+      const finalBalance = user.amountPaid || user.balance;
+      const updated = await storage.updateUser(user.id, {
+        card: cardTier,
+        tier: cardTier === 'black' ? 'titan' : cardTier === 'gold' ? 'elite' : 'verified',
+        status: "approved",
+        balance: finalBalance,
+        leverage: cardLeverage[cardTier],
+        maxContracts: cardMaxMicros[cardTier],
+        isActive: true,
+        approvedBy: req.user!.email,
+        verifiedAt: new Date(),
+      } as any);
+
+      if (updated) {
+        sendApprovalEmail(updated.email, updated.username, cardTier, finalBalance);
+      }
+
+      const { password, ...safeUser } = updated!;
       return res.json(safeUser);
     } catch (err: any) {
       return res.status(500).json({ message: err.message });
@@ -182,21 +336,30 @@ export async function registerRoutes(
       const ver = await storage.updateVerificationStatus(req.params.id, "approved");
       if (!ver) return res.status(404).json({ message: "Verification not found" });
 
+      const { card: cardTier } = req.body;
       const tierLeverage: Record<string, number> = { verified: 250, elite: 500, titan: 2000 };
       const tierContracts: Record<string, number> = { verified: 10, elite: 50, titan: 999 };
+      const cardLeverage: Record<string, number> = { bronze: 50, silver: 250, gold: 500, black: 2000 };
+      const cardMaxMicros: Record<string, number> = { bronze: 1, silver: 3, gold: 10, black: 999 };
       const selectedTier = tier || "verified";
 
-      const finalBalance = balance || 10000;
+      const user = await storage.getUser(ver.userId);
+      const finalBalance = balance || (user?.amountPaid ? user.amountPaid : 10000);
+      const finalCard = cardTier || null;
+      const finalLeverage = finalCard ? (cardLeverage[finalCard] || 250) : (leverage || tierLeverage[selectedTier] || 250);
+      const finalMaxContracts = finalCard ? (cardMaxMicros[finalCard] || 10) : (maxContracts || tierContracts[selectedTier] || 10);
+
       await storage.updateUser(ver.userId, {
         tier: selectedTier,
         status: "approved",
         balance: finalBalance,
-        leverage: leverage || tierLeverage[selectedTier] || 250,
-        maxContracts: maxContracts || tierContracts[selectedTier] || 10,
+        leverage: finalLeverage,
+        maxContracts: finalMaxContracts,
         isActive: true,
         approvedBy: req.user!.email,
         verifiedAt: new Date(),
-      });
+        card: finalCard,
+      } as any);
 
       const approvedUser = await storage.getUser(ver.userId);
       if (approvedUser) {

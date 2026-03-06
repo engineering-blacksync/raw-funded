@@ -34,7 +34,7 @@ export default function Home() {
             <span className="text-xs text-center whitespace-nowrap text-[#A1A1AA]">
               Raw Funded is now live for futures traders!
             </span>
-            <Link href="/apply" className="flex items-center gap-1 text-xs text-gold hover:text-white transition-all active:scale-95 whitespace-nowrap">
+            <Link href="/pricing" className="flex items-center gap-1 text-xs text-gold hover:text-white transition-all active:scale-95 whitespace-nowrap">
               Read more
               <ArrowRight size={12} />
             </Link>
@@ -228,7 +228,7 @@ export default function Home() {
             </p>
             <div className="flex flex-col gap-3">
               <button
-                onClick={() => { setShowModal(false); setLocation('/apply'); }}
+                onClick={() => { setShowModal(false); setLocation('/pricing'); }}
                 className="w-full py-3 rounded-lg font-bold text-base bg-gradient-to-b from-[#E8C547] via-[#E8C547]/95 to-[#E8C547]/70 text-black hover:scale-[1.02] active:scale-95 transition-all shadow-lg shadow-gold/20"
                 data-testid="btn-modal-yes"
               >

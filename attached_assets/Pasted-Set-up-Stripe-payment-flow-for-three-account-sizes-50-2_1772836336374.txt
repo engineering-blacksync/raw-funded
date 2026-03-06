@@ -1,0 +1,95 @@
+Set up Stripe payment flow for three account sizes: $50, $200, $1,000. Here is exactly how it works:
+1. STRIPE PRODUCTS
+Create three Stripe products:
+
+"Raw Funded — $50 Account" — $50 one-time payment
+"Raw Funded — $200 Account" — $200 one-time payment
+"Raw Funded — $1,000 Account" — $1,000 one-time payment
+
+Store the Stripe product IDs in environment variables: STRIPE_PRODUCT_50, STRIPE_PRODUCT_200, STRIPE_PRODUCT_1000
+2. PRICING PAGE — THREE CARDS
+Add a new /pricing page that shows three payment cards:
+Card 1 — $50
+Bronze Card Included
+1Micro Gold · 1 Micro NQ · 1 Micro ES
+$2,500 Buying Power
+[Get Started] button → Stripe checkout
+Card 2 — $200
+Silver Card Included
+3 Micros · 1 Mini Gold
+$12,500 Buying Power
+[Get Started] button → Stripe checkout
+Card 3 — $1,000
+Gold Card Included
+10 Micros · 5Minis
+$62,500 Buying Power
+[Get Started] button → Stripe checkout
+Each button opens Stripe hosted checkout for that amount.
+3. STRIPE CHECKOUT FLOW
+When user clicks "Get Started" on any card open Stripe checkout for that product amount. On successful payment Stripe redirects to /onboarding?session_id={CHECKOUT_SESSION_ID}&amount={50|200|1000}
+4. ONBOARDING PAGE
+On /onboarding verify the Stripe session is paid using Stripe SDK. Extract the amount paid from the session (50, 200, or 1000).
+Show a form:
+
+Email
+Username
+Password
+[Create Account] button
+
+When submitted create account in Supabase profiles table with:
+
+email: (from form)
+username: (from form)
+password: (hash it)
+status: "pending"
+balance: (amount paid — 50, 200, or 1000)
+card: null (not assigned yet)
+stripe_paid: true
+amount_paid: (50, 200, or 1000)
+max_micros: null (assigned when card is assigned)
+leverage: null (assigned when card is assigned)
+
+Redirect to /pending page that says:
+"Your account is created. Balance: $[AMOUNT]. Our team will assign your card tier within 24 hours. Check your email for updates."
+5. ADMIN ASSIGNS CARD TIER
+In admin panel Verification Queue show all pending accounts including those who paid via Stripe.
+For each trader admin selects a card tier dropdown: Bronze / Silver / Gold / Black
+When admin clicks Approve:
+
+Set status: "approved"
+Set card: (selected tier)
+Set leverage based on card:
+
+Bronze = 1:50
+Silver = 1:250
+Gold = 1:500
+Black = 1:2000
+
+
+Set max_micros based on card:
+
+Bronze = 1
+Silver = 3
+Gold = 10
+Black = 999(unlimited)
+
+
+Set verified_at: timestamp
+Send approval email to trader
+
+6. SUPABASE COLUMNS NEEDED
+Add to profiles table:
+
+stripe_paid: boolean
+amount_paid: number (50, 200, or 1000)
+card: text (bronze, silver, gold, black)
+max_micros: number
+leverage: number
+payout_goal: number (null until they set it)
+
+7. TERMINAL ENFORCES CARD LIMITS
+On the terminal when placing a trade the max lot size input field should have a max value equal to trader's max_micros. Bronze = max input1. Silver = max input 3. Gold = max input 10. Black = no limit.
+Show the card tier badge on the dashboard top right so trader always sees what card they have.
+8. NO DEPOSIT LANGUAGE ANYWHERE
+Use only: "Account", "Trading Capital", "Get Started", "Card Tier". Never say "deposit", "balance", or "funding amount".
+Do not touch the landing page. Do not touch the chart. Do not touch existing dashboard styling. Only add the pricing page, Stripe integration, onboarding flow, and admin card assignment logic.

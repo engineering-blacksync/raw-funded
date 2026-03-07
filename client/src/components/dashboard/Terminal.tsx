@@ -353,7 +353,7 @@ export default function Terminal({ tier, userTierName, balance, onOpenPnlChange,
 
   const positionsWithPnl = visibleOpenTrades.map(trade => {
     const currentPrice = livePrices[trade.instrument];
-    const pnl = currentPrice ? calcPnl(trade.side, trade.entryPrice, currentPrice, trade.size) : 0;
+    const pnl = (currentPrice && trade.entryPrice > 0 && trade.status === 'executed') ? calcPnl(trade.side, trade.entryPrice, currentPrice, trade.size) : 0;
     return { ...trade, livePnl: pnl, currentPrice };
   });
 
@@ -368,6 +368,7 @@ export default function Terminal({ tier, userTierName, balance, onOpenPnlChange,
     if (now - lastPnlSyncRef.current < 3000) return;
     lastPnlSyncRef.current = now;
     for (const pos of positionsWithPnl) {
+      if (pos.entryPrice === 0 || pos.status === 'open') continue;
       const sbId = supabaseTradeIds[pos.id];
       if (!sbId) continue;
       fetch('/api/supabase/trades/update', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ supabaseId: sbId, pnl: pos.livePnl }) }).catch(() => {});
@@ -377,7 +378,7 @@ export default function Terminal({ tier, userTierName, balance, onOpenPnlChange,
   useEffect(() => {
     if (openTrades.length === 0) return;
     for (const pos of positionsWithPnl) {
-      if (!pos.currentPrice) continue;
+      if (!pos.currentPrice || pos.entryPrice === 0 || pos.status === 'open') continue;
       if (pos.stopLoss && pos.side === 'BUY' && pos.currentPrice <= pos.stopLoss) {
         handleClose(pos.id, pos.currentPrice);
       } else if (pos.stopLoss && pos.side === 'SELL' && pos.currentPrice >= pos.stopLoss) {

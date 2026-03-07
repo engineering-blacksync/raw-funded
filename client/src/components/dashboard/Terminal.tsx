@@ -324,7 +324,7 @@ export default function Terminal({ tier, userTierName, balance, onOpenPnlChange,
         return;
       }
 
-      if (newStatus === 'executed' && row.open_price) {
+      if (row.open_price && (newStatus === 'executed' || newStatus === 'open')) {
         setOpenTrades(prev => prev.map(t => {
           if (t.id !== localId || t.status === 'executed') return t;
           return { ...t, status: 'executed', entryPrice: row.open_price };
@@ -569,7 +569,7 @@ export default function Terminal({ tier, userTierName, balance, onOpenPnlChange,
           console.log('Trade failed, removed:', localTradeId);
           return;
         }
-        if (data.status === 'executed' && data.open_price) {
+        if (data.open_price && (data.status === 'executed' || data.status === 'open')) {
           const fillPrice = data.open_price;
           setOpenTrades(prev => prev.map(t => t.id === localTradeId ? { ...t, status: 'executed', entryPrice: fillPrice } : t));
           fetch(`/api/trades/${localTradeId}/entry-price`, {

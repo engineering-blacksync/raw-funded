@@ -104,6 +104,34 @@ function calcPnl(side: string, entry: number, current: number, size: number): nu
   return (current - entry) * direction * size;
 }
 
+function isMarketOpen(instrument: string): boolean {
+  const now = new Date();
+  const utcDay = now.getUTCDay();
+  const utcHour = now.getUTCHours();
+  const utcMinute = now.getUTCMinutes();
+  const utcTime = utcHour * 60 + utcMinute;
+
+  if (instrument === 'MBT') {
+    return !(utcDay === 6 || (utcDay === 0 && utcTime < 22 * 60) || (utcDay === 5 && utcTime >= 21 * 60));
+  }
+
+  if (['Gold (GC)', 'Silver', 'Oil (WTI)', 'MGC', 'SIL', 'MCL'].includes(instrument)) {
+    if (utcDay === 6) return false;
+    if (utcDay === 0 && utcTime < 23 * 60) return false;
+    if (utcDay === 5 && utcTime >= 22 * 60) return false;
+    return true;
+  }
+
+  if (['S&P 500', 'Nasdaq', 'MNQ', 'MES'].includes(instrument)) {
+    if (utcDay === 6) return false;
+    if (utcDay === 0 && utcTime < 23 * 60) return false;
+    if (utcDay === 5 && utcTime >= 22 * 60) return false;
+    return true;
+  }
+
+  return true;
+}
+
 export default function Terminal({ tier, userTierName, balance, onOpenPnlChange, allowedInstruments }: TerminalProps) {
   const chartContainerRef = useRef<HTMLDivElement>(null);
   const tvLoaded = useTradingViewScript();
@@ -304,6 +332,12 @@ export default function Terminal({ tier, userTierName, balance, onOpenPnlChange,
   };
 
   const handleTrade = async (side: 'BUY' | 'SELL') => {
+    if (!isMarketOpen(activeInstrument.label)) {
+      setTradeStatus({ type: 'error', message: `Market closed for ${activeInstrument.label}` });
+      setTimeout(() => setTradeStatus(null), 5000);
+      return;
+    }
+
     const rawMidPrice = livePrices[activeInstrument.label];
     if (!rawMidPrice) {
       setTradeStatus({ type: 'error', message: 'Waiting for price data...' });

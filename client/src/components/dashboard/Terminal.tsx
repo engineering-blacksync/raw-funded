@@ -174,9 +174,20 @@ function roundToTick(price: number, instrument: string): number {
   return Math.round(price / tick) * tick;
 }
 
-function calcPnl(side: string, entry: number, current: number, size: number): number {
+const PNL_TICK_MAP: Record<string, number> = {
+  'MBT': 0.50,
+  'Bitcoin': 0.50,
+  'BTCUSD': 0.50,
+  'Gold (GC)': 10,
+  'MGC': 1,
+};
+
+function calcPnl(side: string, entry: number, current: number, size: number, instrument?: string): number {
   const direction = side === 'BUY' ? 1 : -1;
-  return (current - entry) * direction * size;
+  const rawPnl = (current - entry) * direction * size;
+  const tick = instrument ? PNL_TICK_MAP[instrument] : undefined;
+  if (!tick) return rawPnl;
+  return Math.trunc(rawPnl / tick) * tick;
 }
 
 function isMarketOpen(instrument: string): boolean {
@@ -412,7 +423,7 @@ export default function Terminal({ tier, userTierName, balance, onOpenPnlChange,
   const positionsWithPnl = visibleOpenTrades.map(trade => {
     const rawPrice = livePrices[trade.instrument];
     const currentPrice = rawPrice ? getNowPrice(trade.instrument, trade.side, rawPrice) : undefined;
-    const pnl = (currentPrice && trade.entryPrice > 0 && trade.status === 'executed') ? calcPnl(trade.side, trade.entryPrice, currentPrice, trade.size) : 0;
+    const pnl = (currentPrice && trade.entryPrice > 0 && trade.status === 'executed') ? calcPnl(trade.side, trade.entryPrice, currentPrice, trade.size, trade.instrument) : 0;
     return { ...trade, livePnl: pnl, currentPrice };
   });
 
@@ -1046,7 +1057,7 @@ export default function Terminal({ tier, userTierName, balance, onOpenPnlChange,
                 <div className="border-t border-b1 pt-2 space-y-1">
                   <span className="text-muted-foreground uppercase tracking-wider">P&L Check</span>
                   {positionsWithPnl.map(pos => {
-                    const expectedPnl = pos.currentPrice ? calcPnl(pos.side, pos.entryPrice, pos.currentPrice, pos.size) : 0;
+                    const expectedPnl = pos.currentPrice ? calcPnl(pos.side, pos.entryPrice, pos.currentPrice, pos.size, pos.instrument) : 0;
                     const match = Math.abs(expectedPnl - pos.livePnl) < 0.01;
                     return (
                       <div key={pos.id} className="grid grid-cols-6 gap-1 items-center text-[9px]" data-testid={`debug-row-${pos.id}`}>

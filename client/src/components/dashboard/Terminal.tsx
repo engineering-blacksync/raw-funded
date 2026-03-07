@@ -241,6 +241,8 @@ export default function Terminal({ tier, userTierName, balance, onOpenPnlChange,
   const supabaseChannelRef = useRef<RealtimeChannel | null>(null);
   const supabaseTradeIdsRef = useRef<Record<string, string>>({});
   useEffect(() => { supabaseTradeIdsRef.current = supabaseTradeIds; }, [supabaseTradeIds]);
+  const initialLoadDoneRef = useRef(false);
+  const initialLoadTimestampRef = useRef<string | null>(null);
 
   const loadTrades = useCallback(async () => {
     try {
@@ -248,17 +250,30 @@ export default function Terminal({ tier, userTierName, balance, onOpenPnlChange,
         fetch('/api/trades/open'),
         fetch('/api/trades'),
       ]);
-      if (openRes.ok) setOpenTrades(await openRes.json());
+      if (openRes.ok) {
+        const trades: Trade[] = await openRes.json();
+        const seen = new Set<string>();
+        const deduped = trades.filter(t => {
+          if (seen.has(t.id)) return false;
+          seen.add(t.id);
+          return true;
+        });
+        setOpenTrades(deduped);
+      }
       if (historyRes.ok) {
         const all: Trade[] = await historyRes.json();
         setClosedTrades(all.filter(t => t.status === 'closed'));
       }
+      initialLoadTimestampRef.current = new Date().toISOString();
+      initialLoadDoneRef.current = true;
     } catch {}
   }, []);
 
   const rtProcessedRef = useRef<Record<string, string>>({});
 
   const handleRealtimeChange = useCallback((payload: any) => {
+    if (!initialLoadDoneRef.current) return;
+
     const { eventType, new: row, old: oldRow } = payload;
 
     if (eventType === 'DELETE') {
@@ -317,10 +332,14 @@ export default function Terminal({ tier, userTierName, balance, onOpenPnlChange,
   }, []);
 
   useEffect(() => {
-    loadTrades();
-
     let channel: RealtimeChannel | null = null;
+    let mounted = true;
+
     (async () => {
+      await loadTrades();
+
+      if (!mounted) return;
+
       try {
         const configRes = await fetch('/api/supabase/config');
         if (!configRes.ok) return;
@@ -340,11 +359,30 @@ export default function Terminal({ tier, userTierName, balance, onOpenPnlChange,
     })();
 
     return () => {
-      if (channel) channel.unsubscribe();
+      mounted = false;
+      initialLoadDoneRef.current = false;
+      initialLoadTimestampRef.current = null;
+      rtProcessedRef.current = {};
+      if (channel) {
+        channel.unsubscribe();
+        channel = null;
+      }
+      supabaseChannelRef.current = null;
+      setOpenTrades([]);
+      setClosedTrades([]);
+      setSupabaseTradeIds({});
     };
   }, [loadTrades, handleRealtimeChange]);
 
-  const visibleOpenTrades = openTrades.filter(t => t.status === 'open' || t.status === 'executed');
+  const visibleOpenTrades = (() => {
+    const filtered = openTrades.filter(t => t.status === 'open' || t.status === 'executed');
+    const seen = new Set<string>();
+    return filtered.filter(t => {
+      if (seen.has(t.id)) return false;
+      seen.add(t.id);
+      return true;
+    });
+  })();
 
   const SPREAD_MAP: Record<string, number> = {
     BTCUSD: 20,
@@ -624,7 +662,10 @@ export default function Terminal({ tier, userTierName, balance, onOpenPnlChange,
           console.log('Supabase trade ID mapped:', trade.id, '->', supabaseId);
           pollSupabaseFillPrice(supabaseId, trade.id, prelimPrice);
         }
-        setOpenTrades(prev => [...prev, pendingTrade]);
+        setOpenTrades(prev => {
+          if (prev.some(t => t.id === trade.id)) return prev;
+          return [...prev, pendingTrade];
+        });
         setTradeStatus({ type: 'success', message: `${side} ${quantity} ${activeInstrument.label} placed` });
 
         setOrderSl('');

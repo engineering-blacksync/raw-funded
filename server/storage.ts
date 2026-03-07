@@ -22,6 +22,7 @@ export interface IStorage {
   createTrade(userId: string, trade: InsertTrade): Promise<Trade>;
   closeTrade(tradeId: string, exitPrice: number, pnl: number): Promise<Trade | undefined>;
   updateTradeEntryPrice(tradeId: string, entryPrice: number): Promise<Trade | undefined>;
+  updateTradeStatus(tradeId: string, status: string): Promise<Trade | undefined>;
   updateTradeSLTP(tradeId: string, stopLoss: number | null, takeProfit: number | null): Promise<Trade | undefined>;
   getOpenTrades(userId: string): Promise<Trade[]>;
   getTradeHistory(userId: string, limit?: number): Promise<Trade[]>;
@@ -114,6 +115,15 @@ export class DatabaseStorage implements IStorage {
     const [t] = await db
       .update(trades)
       .set({ entryPrice })
+      .where(eq(trades.id, tradeId))
+      .returning();
+    return t;
+  }
+
+  async updateTradeStatus(tradeId: string, status: string): Promise<Trade | undefined> {
+    const [t] = await db
+      .update(trades)
+      .set({ status })
       .where(eq(trades.id, tradeId))
       .returning();
     return t;

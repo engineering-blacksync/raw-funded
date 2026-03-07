@@ -456,6 +456,36 @@ export async function registerRoutes(
 
   app.get("/api/trades/open", requireApproved, async (req: Request, res: Response) => {
     const open = await storage.getOpenTrades(req.user!.id);
+
+    const supabaseUrl = process.env.SUPABASE_URL;
+    const supabaseKey = process.env.SUPABASE_ANON_KEY;
+    if (supabaseUrl && supabaseKey) {
+      try {
+        const sbRes = await fetch(
+          `${supabaseUrl}/rest/v1/trades?trader_username=eq.${encodeURIComponent(req.user!.username)}&status=in.(open,executed)&select=id,open_price,status,instrument,side,size`,
+          { headers: { apikey: supabaseKey, Authorization: `Bearer ${supabaseKey}` } }
+        );
+        if (sbRes.ok) {
+          const sbTrades: any[] = await sbRes.json();
+          for (const local of open) {
+            if (local.status === 'open' || local.entryPrice === 0) {
+              const match = sbTrades.find(
+                s => s.instrument === local.instrument && s.side === local.side && s.size === local.size && s.open_price > 0
+              );
+              if (match) {
+                local.entryPrice = match.open_price;
+                local.status = match.status === 'executed' ? 'executed' : local.status;
+                storage.updateTradeEntryPrice(local.id, match.open_price).catch(() => {});
+                if (match.status === 'executed') {
+                  storage.updateTradeStatus(local.id, 'executed').catch(() => {});
+                }
+              }
+            }
+          }
+        }
+      } catch {}
+    }
+
     return res.json(open);
   });
 

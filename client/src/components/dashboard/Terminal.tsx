@@ -24,17 +24,17 @@ interface InstrumentConfig {
 }
 
 const INSTRUMENTS: InstrumentConfig[] = [
-  { label: 'MBT', symbol: 'BINANCE:BTCUSDT', default: 1, step: 1, min: 1, max: 20, lotSize: 0.10 },
-  { label: 'Gold (GC)', symbol: 'COMEX:GC1!', default: 1, step: 1, min: 1, max: 10, lotSize: 1, spread: 0.30, tickSize: 0.10 },
-  { label: 'Silver', symbol: 'COMEX:SI1!', default: 1, step: 1, min: 1, max: 10, lotSize: 1, spread: 0.008 },
-  { label: 'Oil (WTI)', symbol: 'NYMEX:CL1!', default: 1, step: 1, min: 1, max: 20, lotSize: 1 },
-  { label: 'S&P 500', symbol: 'CME_MINI:ES1!', default: 1, step: 1, min: 1, max: 20, lotSize: 1 },
-  { label: 'Nasdaq', symbol: 'CME_MINI:NQ1!', default: 1, step: 1, min: 1, max: 20, lotSize: 1 },
-  { label: 'MNQ', symbol: 'CME_MINI:MNQ1!', default: 1, step: 1, min: 1, max: 20, lotSize: 0.10 },
-  { label: 'MES', symbol: 'CME_MINI:MES1!', default: 1, step: 1, min: 1, max: 20, lotSize: 0.10 },
-  { label: 'MGC', symbol: 'COMEX:GC1!', default: 1, step: 1, min: 1, max: 20, lotSize: 0.10, spread: 0.03 },
-  { label: 'SIL', symbol: 'COMEX:SI1!', default: 1, step: 1, min: 1, max: 20, lotSize: 0.10, spread: 0.008 },
-  { label: 'MCL', symbol: 'NYMEX:MCL1!', default: 1, step: 1, min: 1, max: 20, lotSize: 0.10 },
+  { label: 'MBT', symbol: 'COINBASE:BTCUSD', default: 1, step: 1, min: 1, max: 20, lotSize: 0.10 },
+  { label: 'Gold (GC)', symbol: 'OANDA:XAUUSD', default: 1, step: 1, min: 1, max: 10, lotSize: 1, spread: 0.30, tickSize: 0.10 },
+  { label: 'Silver', symbol: 'OANDA:XAGUSD', default: 1, step: 1, min: 1, max: 10, lotSize: 1, spread: 0.008 },
+  { label: 'Oil (WTI)', symbol: 'TVC:USOIL', default: 1, step: 1, min: 1, max: 20, lotSize: 1 },
+  { label: 'S&P 500', symbol: 'TVC:SPX', default: 1, step: 1, min: 1, max: 20, lotSize: 1 },
+  { label: 'Nasdaq', symbol: 'NASDAQ:NDX', default: 1, step: 1, min: 1, max: 20, lotSize: 1 },
+  { label: 'MNQ', symbol: 'COINBASE:BTCUSD', default: 1, step: 1, min: 1, max: 20, lotSize: 0.10 },
+  { label: 'MES', symbol: 'TVC:SPX', default: 1, step: 1, min: 1, max: 20, lotSize: 0.10 },
+  { label: 'MGC', symbol: 'OANDA:XAUUSD', default: 1, step: 1, min: 1, max: 20, lotSize: 0.10, spread: 0.03 },
+  { label: 'SIL', symbol: 'OANDA:XAGUSD', default: 1, step: 1, min: 1, max: 20, lotSize: 0.10, spread: 0.008 },
+  { label: 'MCL', symbol: 'TVC:USOIL', default: 1, step: 1, min: 1, max: 20, lotSize: 0.10 },
 ];
 
 
@@ -190,7 +190,8 @@ function isMarketOpen(instrument: string): boolean {
   const utcMinute = now.getUTCMinutes();
   const utcTime = utcHour * 60 + utcMinute;
 
-  if (['MBT', 'Bitcoin', 'BTCUSD'].includes(instrument)) {
+  const btcNames = ['MBT', 'Bitcoin', 'BTCUSD', 'MNQ'];
+  if (btcNames.includes(instrument) || instrument.toLowerCase().includes('btc') || instrument.toLowerCase().includes('bitcoin')) {
     return true;
   }
 

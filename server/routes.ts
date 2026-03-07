@@ -820,18 +820,18 @@ export async function registerRoutes(
   }
 
   const TV_INSTRUMENT_MAP: Record<string, { exchange: string; ticker: string }> = {
-    'Bitcoin': { exchange: 'crypto', ticker: 'BINANCE:BTCUSDT' },
-    'MBT': { exchange: 'crypto', ticker: 'BINANCE:BTCUSDT' },
-    'Gold (GC)': { exchange: 'futures', ticker: 'COMEX:GC1!' },
-    'Silver': { exchange: 'futures', ticker: 'COMEX:SI1!' },
-    'Oil (WTI)': { exchange: 'futures', ticker: 'NYMEX:CL1!' },
-    'S&P 500': { exchange: 'futures', ticker: 'CME_MINI:ES1!' },
-    'Nasdaq': { exchange: 'futures', ticker: 'CME_MINI:NQ1!' },
-    'MNQ': { exchange: 'futures', ticker: 'CME_MINI:MNQ1!' },
-    'MES': { exchange: 'futures', ticker: 'CME_MINI:MES1!' },
-    'MGC': { exchange: 'futures', ticker: 'COMEX:GC1!' },
-    'SIL': { exchange: 'futures', ticker: 'COMEX:SI1!' },
-    'MCL': { exchange: 'futures', ticker: 'NYMEX:MCL1!' },
+    'Bitcoin': { exchange: 'crypto', ticker: 'COINBASE:BTCUSD' },
+    'MBT': { exchange: 'crypto', ticker: 'COINBASE:BTCUSD' },
+    'Gold (GC)': { exchange: 'forex', ticker: 'OANDA:XAUUSD' },
+    'Silver': { exchange: 'forex', ticker: 'OANDA:XAGUSD' },
+    'Oil (WTI)': { exchange: 'cfd', ticker: 'TVC:USOIL' },
+    'S&P 500': { exchange: 'cfd', ticker: 'TVC:SPX' },
+    'Nasdaq': { exchange: 'america', ticker: 'NASDAQ:NDX' },
+    'MNQ': { exchange: 'crypto', ticker: 'COINBASE:BTCUSD' },
+    'MES': { exchange: 'cfd', ticker: 'TVC:SPX' },
+    'MGC': { exchange: 'forex', ticker: 'OANDA:XAUUSD' },
+    'SIL': { exchange: 'forex', ticker: 'OANDA:XAGUSD' },
+    'MCL': { exchange: 'cfd', ticker: 'TVC:USOIL' },
   };
 
   const PRICE_SOURCES: Record<string, () => Promise<number>> = {};

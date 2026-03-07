@@ -136,7 +136,7 @@ A private prop trading platform where admin assigns funded accounts. Users get a
 - All trades persist in PostgreSQL; live P&L via price polling
 - Contract sizes: BTC=1, Gold(GC)=100oz, MGC=10oz, Silver/SIL=5000, Oil/MCL=1000, S&P/MES=50/5, Nasdaq/MNQ=20/2
 - Price sources: Binance WebSocket (BTC/MBT — real-time, sub-second), TradingView Scanner API (all other instruments — 1s polling)
-- Chart symbols: BINANCE:BTCUSDT, COMEX:GC1!, COMEX:SI1!, NYMEX:CL1!, CME_MINI:ES1!, CME_MINI:NQ1!, CME_MINI:MNQ1!, CME_MINI:MES1!, NYMEX:MCL1!
+- Chart symbols: COINBASE:BTCUSD, OANDA:XAUUSD, OANDA:XAGUSD, TVC:USOIL, TVC:SPX, NASDAQ:NDX (free TradingView widget compatible — no COMEX/CME/NYMEX futures)
 - Debug panel: dev-only collapsible panel showing WS status, last price, update timestamp, and P&L verification per position
 
 ## Supabase Integration

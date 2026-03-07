@@ -529,6 +529,20 @@ export async function registerRoutes(
     }
   });
 
+  app.patch("/api/trades/:id/entry-price", requireApproved, async (req: Request, res: Response) => {
+    try {
+      const { entryPrice } = req.body;
+      if (typeof entryPrice !== "number") return res.status(400).json({ message: "entryPrice required" });
+      const openTrades = await storage.getOpenTrades(req.user!.id);
+      const trade = openTrades.find(t => t.id === req.params.id);
+      if (!trade) return res.status(404).json({ message: "Trade not found" });
+      const updated = await storage.updateTradeEntryPrice(trade.id, entryPrice);
+      return res.json(updated);
+    } catch (err: any) {
+      return res.status(500).json({ message: err.message });
+    }
+  });
+
   app.patch("/api/trades/:id/sltp", requireApproved, async (req: Request, res: Response) => {
     try {
       const { stopLoss, takeProfit } = req.body;
@@ -733,6 +747,27 @@ export async function registerRoutes(
       }
     } catch (err: any) {
       return res.status(502).json({ message: "Connection to Supabase failed" });
+    }
+  });
+
+  app.get("/api/supabase/trades/:supabaseId", requireApproved, async (req: Request, res: Response) => {
+    const { supabaseId } = req.params;
+    const supabaseUrl = process.env.SUPABASE_URL;
+    const supabaseKey = process.env.SUPABASE_ANON_KEY;
+    if (!supabaseUrl || !supabaseKey) return res.status(500).json({ message: "Supabase not configured" });
+    try {
+      const username = req.user!.username;
+      const response = await fetch(`${supabaseUrl}/rest/v1/trades?id=eq.${supabaseId}&trader_username=eq.${encodeURIComponent(username)}&select=id,open_price,status,ticket`, {
+        headers: { 'apikey': supabaseKey, 'Authorization': `Bearer ${supabaseKey}` },
+      });
+      if (response.ok) {
+        const data = await response.json();
+        if (data.length > 0) return res.json(data[0]);
+        return res.status(404).json({ message: "Trade not found" });
+      }
+      return res.status(response.status).json({ message: "Supabase fetch failed" });
+    } catch {
+      return res.status(502).json({ message: "Connection failed" });
     }
   });
 

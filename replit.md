@@ -87,6 +87,13 @@ A private prop trading platform where admin assigns funded accounts. Users get a
 - `allowedInstruments` text[] column on users — admin toggles which instruments each trader can access
 - null/empty = all instruments allowed; specific array = only those instruments visible in Terminal
 
+## Trade Execution Flow (MT5 Bridge)
+- Trade placed → inserted into Supabase → MT5 bridge executes → writes real fill price to `open_price`
+- Dashboard polls `GET /api/supabase/trades/:id` for MT5 fill price, updates local entry price via `PATCH /api/trades/:id/entry-price`
+- Entry price displayed is always from Supabase `open_price` (MT5 source of truth), never from chart
+- P&L: BUY = (current - open_price) × size × contractSize; SELL = (open_price - current) × size × contractSize
+- CONTRACT_SIZES must match between client (Terminal.tsx) and server (routes.ts)
+
 ## API Routes
 - `GET /api/stripe/publishable-key` — Get Stripe publishable key
 - `POST /api/stripe/create-checkout` — Create Stripe checkout session (amount: 50/200/1000)

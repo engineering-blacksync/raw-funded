@@ -38,7 +38,7 @@ const INSTRUMENTS: InstrumentConfig[] = [
 
 const CONTRACT_SIZES: Record<string, number> = {
   'MBT': 0.1, 'Gold (GC)': 100, 'Silver': 5000, 'Oil (WTI)': 1000,
-  'S&P 500': 50, 'Nasdaq': 20, 'MNQ': 2, 'MES': 5, 'MGC': 100, 'SIL': 5000, 'MCL': 1000,
+  'S&P 500': 50, 'Nasdaq': 20, 'MNQ': 2, 'MES': 5, 'MGC': 10, 'SIL': 5000, 'MCL': 1000,
 };
 
 declare global {
@@ -283,6 +283,30 @@ export default function Terminal({ tier, userTierName, balance, onOpenPnlChange,
     if (tvLoaded) createChart();
   }, [tvLoaded, createChart]);
 
+  const pollSupabaseFillPrice = async (supabaseId: string, localTradeId: string, initialPrice: number) => {
+    const maxAttempts = 10;
+    const delayMs = 500;
+    for (let i = 0; i < maxAttempts; i++) {
+      await new Promise(r => setTimeout(r, delayMs));
+      try {
+        const res = await fetch(`/api/supabase/trades/${supabaseId}`);
+        if (!res.ok) continue;
+        const data = await res.json();
+        if (data.open_price && data.open_price !== initialPrice) {
+          const fillPrice = data.open_price;
+          setOpenTrades(prev => prev.map(t => t.id === localTradeId ? { ...t, entryPrice: fillPrice } : t));
+          fetch(`/api/trades/${localTradeId}/entry-price`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ entryPrice: fillPrice }),
+          }).catch(() => {});
+          console.log('MT5 fill price received:', fillPrice, 'for trade', localTradeId);
+          return;
+        }
+      } catch {}
+    }
+  };
+
   const handleTrade = async (side: 'BUY' | 'SELL') => {
     const rawMidPrice = livePrices[activeInstrument.label];
     if (!rawMidPrice) {
@@ -293,20 +317,48 @@ export default function Terminal({ tier, userTierName, balance, onOpenPnlChange,
 
     const tick = activeInstrument.tickSize;
     const midPrice = tick ? Math.round(rawMidPrice / tick) * tick : rawMidPrice;
-    const spread = activeInstrument.spread || 0;
-    const entryPrice = side === 'BUY' ? midPrice + spread : midPrice - spread;
+    const prelimPrice = midPrice;
 
     setTradeLoading(side);
     setTradeStatus(null);
 
     try {
       const size = quantity * activeInstrument.lotSize;
+
+      const sbRes = await fetch('/api/supabase/trades', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          instrument: activeInstrument.label,
+          side,
+          size,
+          entryPrice: prelimPrice,
+          status: 'open',
+          stopLoss: orderSl ? parseFloat(orderSl) : null,
+          takeProfit: orderTp ? parseFloat(orderTp) : null,
+          ticket: null,
+        }),
+      });
+
+      let supabaseId: string | null = null;
+      let fillPrice = prelimPrice;
+
+      if (sbRes.ok) {
+        const sbData = await sbRes.json();
+        if (sbData?.trade?.id) {
+          supabaseId = sbData.trade.id;
+          if (sbData.trade.open_price) {
+            fillPrice = sbData.trade.open_price;
+          }
+        }
+      }
+
       const body: any = {
         instrument: activeInstrument.label,
         side,
         contracts: quantity,
         size,
-        entryPrice,
+        entryPrice: fillPrice,
       };
       if (orderSl) body.stopLoss = parseFloat(orderSl);
       if (orderTp) body.takeProfit = parseFloat(orderTp);
@@ -319,9 +371,13 @@ export default function Terminal({ tier, userTierName, balance, onOpenPnlChange,
 
       if (response.ok) {
         const trade: Trade = await response.json();
-        try { const sbRes = await fetch('/api/supabase/trades', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ instrument: activeInstrument.label, side, size, entryPrice, status: 'open', stopLoss: orderSl ? parseFloat(orderSl) : null, takeProfit: orderTp ? parseFloat(orderTp) : null, ticket: null }), }); if (sbRes.ok) { const sbData = await sbRes.json(); if (sbData?.trade?.id) { setSupabaseTradeIds(prev => ({ ...prev, [trade.id]: sbData.trade.id })); console.log('Supabase trade ID mapped:', trade.id, '->', sbData.trade.id); } } } catch { }
+        if (supabaseId) {
+          setSupabaseTradeIds(prev => ({ ...prev, [trade.id]: supabaseId! }));
+          console.log('Supabase trade ID mapped:', trade.id, '->', supabaseId);
+          pollSupabaseFillPrice(supabaseId, trade.id, prelimPrice);
+        }
         setOpenTrades(prev => [...prev, trade]);
-        setTradeStatus({ type: 'success', message: `${side} ${quantity} ${activeInstrument.label} @ ${entryPrice.toLocaleString()}` });
+        setTradeStatus({ type: 'success', message: `${side} ${quantity} ${activeInstrument.label} @ ${fillPrice.toLocaleString()}` });
 
         setOrderSl('');
         setOrderTp('');

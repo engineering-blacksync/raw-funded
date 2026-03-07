@@ -466,8 +466,8 @@ export default function Terminal({ tier, userTierName, balance, onOpenPnlChange,
   }, [tvLoaded, createChart]);
 
   const pollSupabaseFillPrice = async (supabaseId: string, localTradeId: string, _initialPrice: number) => {
-    const maxAttempts = 60;
-    const delayMs = 1000;
+    const maxAttempts = 120;
+    const delayMs = 500;
     for (let i = 0; i < maxAttempts; i++) {
       await new Promise(r => setTimeout(r, delayMs));
       const stillOpen = openTradesRef.current.some(t => t.id === localTradeId && t.status === 'open');

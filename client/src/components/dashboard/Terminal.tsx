@@ -111,8 +111,8 @@ function isMarketOpen(instrument: string): boolean {
   const utcMinute = now.getUTCMinutes();
   const utcTime = utcHour * 60 + utcMinute;
 
-  if (instrument === 'MBT') {
-    return !(utcDay === 6 || (utcDay === 0 && utcTime < 22 * 60) || (utcDay === 5 && utcTime >= 21 * 60));
+  if (['MBT', 'Bitcoin', 'BTCUSD'].includes(instrument)) {
+    return true;
   }
 
   if (['Gold (GC)', 'Silver', 'Oil (WTI)', 'MGC', 'SIL', 'MCL'].includes(instrument)) {

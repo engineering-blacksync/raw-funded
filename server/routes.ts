@@ -489,20 +489,6 @@ export async function registerRoutes(
     }
   });
 
-  const CONTRACT_SIZES: Record<string, number> = {
-    'MBT': 0.1,
-    'Gold (GC)': 100,
-    'Silver': 5000,
-    'Oil (WTI)': 1000,
-    'S&P 500': 50,
-    'Nasdaq': 20,
-    'MNQ': 2,
-    'MES': 5,
-    'MGC': 10,
-    'SIL': 5000,
-    'MCL': 1000,
-  };
-
   app.post("/api/trades/:id/close", requireApproved, async (req: Request, res: Response) => {
     try {
       const { exitPrice } = req.body;
@@ -512,9 +498,8 @@ export async function registerRoutes(
       const trade = openTrades.find(t => t.id === req.params.id);
       if (!trade) return res.status(404).json({ message: "Trade not found" });
 
-      const contractSize = CONTRACT_SIZES[trade.instrument] ?? 1;
       const direction = trade.side === "BUY" ? 1 : -1;
-      const pnl = (exitPrice - trade.entryPrice) * direction * trade.size * contractSize;
+      const pnl = (exitPrice - trade.entryPrice) * direction * trade.size;
 
       const closedTrade = await storage.closeTrade(trade.id, exitPrice, pnl);
 

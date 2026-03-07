@@ -91,8 +91,9 @@ A private prop trading platform where admin assigns funded accounts. Users get a
 - Trade placed → inserted into Supabase → MT5 bridge executes → writes real fill price to `open_price`
 - Dashboard polls `GET /api/supabase/trades/:id` for MT5 fill price, updates local entry price via `PATCH /api/trades/:id/entry-price`
 - Entry price displayed is always from Supabase `open_price` (MT5 source of truth), never from chart
-- P&L: BUY = (current - open_price) × size × contractSize; SELL = (open_price - current) × size × contractSize
-- CONTRACT_SIZES must match between client (Terminal.tsx) and server (routes.ts)
+- P&L: BUY = (current - open_price) × lot_size; SELL = (open_price - current) × lot_size
+- lot_size = contracts × instrument.lotSize (MBT/MGC lotSize=0.10 so 1 contract = 0.1 lot; others lotSize=1)
+- No CONTRACT_SIZES multiplier — lot size conversion handled by instrument config lotSize field
 
 ## API Routes
 - `GET /api/stripe/publishable-key` — Get Stripe publishable key

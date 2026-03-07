@@ -1,0 +1,43 @@
+The live P&L shown on the dashboard is significantly different from what MT5 shows. There are three things causing this that all need to be fixed together.
+
+---
+
+FIX 1 — READ ENTRY PRICE FROM SUPABASE, NOT THE CHART
+
+The open_price must come from the `open_price` field in the Supabase trades row. This is the real fill price written back by the MT5 bridge after execution. Do not use the chart price, the current price, or any locally estimated price as the entry. Only ever use `open_price` from Supabase.
+
+---
+
+FIX 2 — P&L FORMULA SIGN IS FLIPPED
+
+The correct formula is:
+
+  BUY trade:  P&L = (current price - open_price) × lot_size
+  SELL trade: P&L = (open_price - current price) × lot_size
+
+Check the current implementation and correct it to match exactly this.
+
+---
+
+FIX 3 — INSTRUMENT LOT SIZE CONVERSIONS
+
+The frontend is sending raw contract sizes (like MBT, MGC) but MT5 trades in standard lots. The P&L calculation must convert contract size to lot size before doing any math. Use this conversion table:
+
+  MBT (Micro Bitcoin)  → divide size by 10   (1 MBT = 0.1 BTC = 0.1 lot)
+  MGC (Micro Gold)     → divide size by 10   (1 MGC = 0.1 oz, standard Gold lot = 1 oz... adjust to broker spec)
+  Bitcoin / BTCUSD     → size is already in lots, no conversion
+  Gold / XAUUSD        → size is already in lots, no conversion
+  Silver / XAGUSD      → size is already in lots, no conversion
+  Oil / WTI            → size is already in lots, no conversion
+  S&P 500 / US500      → size is already in lots, no conversion
+  Nasdaq / US100       → size is already in lots, no conversion
+
+So if a trader places 2 MBT, the lot size used in the P&L formula should be 0.2, not 2.
+
+---
+
+IMPORTANT
+
+The P&L will never be perfectly identical to MT5 because TradingView and Just Markets use different price feeds with slightly different spreads and timing. That is expected and acceptable. The goal is for the numbers to be in the same range — if MT5 shows $3.68, Replit should show something close to that, not $0.18.
+
+Apply all three fixes together. The entry price, the sign, and the lot size conversion all need to be correct simultaneously for the P&L to be accurate.

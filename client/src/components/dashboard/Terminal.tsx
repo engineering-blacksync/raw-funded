@@ -36,10 +36,6 @@ const INSTRUMENTS: InstrumentConfig[] = [
   { label: 'MCL', symbol: 'NYMEX:MCL1!', default: 1, step: 1, min: 1, max: 20, lotSize: 0.10 },
 ];
 
-const CONTRACT_SIZES: Record<string, number> = {
-  'MBT': 0.1, 'Gold (GC)': 100, 'Silver': 5000, 'Oil (WTI)': 1000,
-  'S&P 500': 50, 'Nasdaq': 20, 'MNQ': 2, 'MES': 5, 'MGC': 10, 'SIL': 5000, 'MCL': 1000,
-};
 
 declare global {
   interface Window { TradingView: any; }
@@ -103,11 +99,9 @@ function roundToTick(price: number, instrument: string): number {
   return Math.round(price / tick) * tick;
 }
 
-function calcPnl(side: string, entry: number, current: number, size: number, instrument: string): number {
-  const contractSize = CONTRACT_SIZES[instrument] ?? 1;
+function calcPnl(side: string, entry: number, current: number, size: number): number {
   const direction = side === 'BUY' ? 1 : -1;
-  const tickedCurrent = roundToTick(current, instrument);
-  return (tickedCurrent - entry) * direction * size * contractSize;
+  return (current - entry) * direction * size;
 }
 
 export default function Terminal({ tier, userTierName, balance, onOpenPnlChange, allowedInstruments }: TerminalProps) {
@@ -158,7 +152,7 @@ export default function Terminal({ tier, userTierName, balance, onOpenPnlChange,
 
   const positionsWithPnl = openTrades.map(trade => {
     const currentPrice = livePrices[trade.instrument];
-    const pnl = currentPrice ? calcPnl(trade.side, trade.entryPrice, currentPrice, trade.size, trade.instrument) : 0;
+    const pnl = currentPrice ? calcPnl(trade.side, trade.entryPrice, currentPrice, trade.size) : 0;
     return { ...trade, livePnl: pnl, currentPrice };
   });
 

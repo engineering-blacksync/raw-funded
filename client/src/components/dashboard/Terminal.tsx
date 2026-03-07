@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
+import { createClient, type RealtimeChannel } from '@supabase/supabase-js';
 import type { Trade } from '@shared/schema';
 import PositionLines from './PositionLines';
 
@@ -160,11 +161,9 @@ export default function Terminal({ tier, userTierName, balance, onOpenPnlChange,
   const allInstruments = [...new Set([activeInstrument.label, ...openInstruments])];
   const livePrices = useLivePrices(allInstruments);
 
-  useEffect(() => {
-    loadTrades();
-  }, []);
+  const supabaseChannelRef = useRef<RealtimeChannel | null>(null);
 
-  const loadTrades = async () => {
+  const loadTrades = useCallback(async () => {
     try {
       const [openRes, historyRes] = await Promise.all([
         fetch('/api/trades/open'),
@@ -176,11 +175,36 @@ export default function Terminal({ tier, userTierName, balance, onOpenPnlChange,
         setClosedTrades(all.filter(t => t.status === 'closed'));
       }
     } catch {}
-  };
+  }, []);
 
-  const executedTrades = openTrades.filter(t => t.status === 'executed');
+  useEffect(() => {
+    loadTrades();
 
-  const positionsWithPnl = executedTrades.map(trade => {
+    let channel: RealtimeChannel | null = null;
+    (async () => {
+      try {
+        const configRes = await fetch('/api/supabase/config');
+        if (!configRes.ok) return;
+        const { url, anonKey } = await configRes.json();
+        const supabase = createClient(url, anonKey);
+        channel = supabase
+          .channel('trades-realtime')
+          .on('postgres_changes', { event: '*', schema: 'public', table: 'trades' }, () => {
+            loadTrades();
+          })
+          .subscribe();
+        supabaseChannelRef.current = channel;
+      } catch {}
+    })();
+
+    return () => {
+      if (channel) channel.unsubscribe();
+    };
+  }, [loadTrades]);
+
+  const visibleOpenTrades = openTrades.filter(t => t.status === 'open' || t.status === 'executed');
+
+  const positionsWithPnl = visibleOpenTrades.map(trade => {
     const currentPrice = livePrices[trade.instrument];
     const pnl = currentPrice ? calcPnl(trade.side, trade.entryPrice, currentPrice, trade.size) : 0;
     return { ...trade, livePnl: pnl, currentPrice };
@@ -459,7 +483,7 @@ export default function Terminal({ tier, userTierName, balance, onOpenPnlChange,
   const handleCloseAll = async () => {
     if (closingAll || openTrades.length === 0) return;
     setClosingAll(true);
-    const tradesToClose = openTrades.filter(t => t.status === 'executed');
+    const tradesToClose = openTrades.filter(t => t.status === 'open' || t.status === 'executed');
     for (const trade of tradesToClose) {
       await handleClose(trade.id);
     }
@@ -672,8 +696,9 @@ export default function Terminal({ tier, userTierName, balance, onOpenPnlChange,
               </span>
 
               <span className="text-white font-bold text-xs shrink-0">{(() => { const inst = INSTRUMENTS.find(i => i.label === pos.instrument); return inst ? Math.round(pos.size / inst.lotSize) : pos.size; })()} {pos.instrument}</span>
+              {pos.status === 'open' && <span className="text-[8px] text-gold animate-pulse shrink-0">PENDING</span>}
 
-              <span className="text-muted-foreground text-[11px] shrink-0">Entry <span className="text-gold data-number">{formatPrice(pos.entryPrice, pos.instrument)}</span></span>
+              <span className="text-muted-foreground text-[11px] shrink-0">Entry <span className="text-gold data-number">{pos.status === 'open' ? '---' : formatPrice(pos.entryPrice, pos.instrument)}</span></span>
               <span className="text-muted-foreground text-[11px] shrink-0">Now <span className="text-white data-number">{pos.currentPrice ? formatPrice(pos.currentPrice, pos.instrument) : '---'}</span></span>
 
               <div className="ml-auto flex items-center gap-2">

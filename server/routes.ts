@@ -735,6 +735,13 @@ export async function registerRoutes(
     }
   });
 
+  app.get("/api/supabase/config", requireApproved, (req: Request, res: Response) => {
+    const supabaseUrl = process.env.SUPABASE_URL;
+    const supabaseKey = process.env.SUPABASE_ANON_KEY;
+    if (!supabaseUrl || !supabaseKey) return res.status(500).json({ message: "Supabase not configured" });
+    return res.json({ url: supabaseUrl, anonKey: supabaseKey });
+  });
+
   app.get("/api/supabase/trades/:supabaseId", requireApproved, async (req: Request, res: Response) => {
     const { supabaseId } = req.params;
     const supabaseUrl = process.env.SUPABASE_URL;

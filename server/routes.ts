@@ -494,6 +494,85 @@ export async function registerRoutes(
     return res.json(stats);
   });
 
+  app.get("/api/supabase/trades/open", requireApproved, async (req: Request, res: Response) => {
+    const supabaseUrl = process.env.SUPABASE_URL;
+    const supabaseKey = process.env.SUPABASE_ANON_KEY;
+    if (!supabaseUrl || !supabaseKey) return res.status(500).json({ message: "Supabase not configured" });
+    try {
+      const sbRes = await fetch(
+        `${supabaseUrl}/rest/v1/trades?trader_username=eq.${encodeURIComponent(req.user!.username)}&status=in.(open,executed)&select=id,instrument,side,size,open_price,status,ticket,stop_loss,take_profit,created_at`,
+        { headers: { apikey: supabaseKey, Authorization: `Bearer ${supabaseKey}` } }
+      );
+      if (!sbRes.ok) return res.status(502).json({ message: "Supabase query failed" });
+      return res.json(await sbRes.json());
+    } catch {
+      return res.status(502).json({ message: "Connection to Supabase failed" });
+    }
+  });
+
+  app.post("/api/trades/close-with-supabase", requireApproved, async (req: Request, res: Response) => {
+    const { localTradeId, supabaseId, exitPrice } = req.body;
+    if (typeof exitPrice !== "number") return res.status(400).json({ message: "exitPrice required" });
+
+    try {
+      const openTrades = await storage.getOpenTrades(req.user!.id);
+      const trade = localTradeId ? openTrades.find(t => t.id === localTradeId) : null;
+
+      if (trade) {
+        const direction = trade.side === "BUY" ? 1 : -1;
+        const pnl = (exitPrice - trade.entryPrice) * direction * trade.size;
+        const closedTrade = await storage.closeTrade(trade.id, exitPrice, pnl);
+        const user = await storage.getUser(req.user!.id);
+        if (user) await storage.updateUserBalance(user.id, user.balance + pnl);
+
+        if (supabaseId) {
+          const supabaseUrl = process.env.SUPABASE_URL;
+          const supabaseKey = process.env.SUPABASE_ANON_KEY;
+          if (supabaseUrl && supabaseKey) {
+            fetch(`${supabaseUrl}/rest/v1/trades?id=eq.${supabaseId}`, {
+              method: "PATCH",
+              headers: { "Content-Type": "application/json", apikey: supabaseKey, Authorization: `Bearer ${supabaseKey}`, Prefer: "return=minimal" },
+              body: JSON.stringify({ close_price: exitPrice, pnl, close_time: new Date().toISOString(), status: "closed", updated_at: new Date().toISOString() }),
+            }).catch(() => {});
+          }
+        }
+        return res.json(closedTrade);
+      }
+
+      if (supabaseId) {
+        const supabaseUrl = process.env.SUPABASE_URL;
+        const supabaseKey = process.env.SUPABASE_ANON_KEY;
+        if (!supabaseUrl || !supabaseKey) return res.status(500).json({ message: "Supabase not configured" });
+        const sbRes = await fetch(`${supabaseUrl}/rest/v1/trades?id=eq.${supabaseId}&select=*`, {
+          headers: { apikey: supabaseKey, Authorization: `Bearer ${supabaseKey}` },
+        });
+        if (!sbRes.ok) return res.status(502).json({ message: "Supabase query failed" });
+        const sbTrades = await sbRes.json();
+        const sbTrade = sbTrades[0];
+        if (!sbTrade) return res.status(404).json({ message: "Trade not found in Supabase" });
+
+        const direction = sbTrade.side === "BUY" ? 1 : -1;
+        const entryPrice = sbTrade.open_price || 0;
+        const pnl = entryPrice ? (exitPrice - entryPrice) * direction * sbTrade.size : 0;
+
+        await fetch(`${supabaseUrl}/rest/v1/trades?id=eq.${supabaseId}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json", apikey: supabaseKey, Authorization: `Bearer ${supabaseKey}`, Prefer: "return=minimal" },
+          body: JSON.stringify({ close_price: exitPrice, pnl, close_time: new Date().toISOString(), status: "closed", updated_at: new Date().toISOString() }),
+        });
+
+        const user = await storage.getUser(req.user!.id);
+        if (user) await storage.updateUserBalance(user.id, user.balance + pnl);
+
+        return res.json({ id: supabaseId, exitPrice, pnl, status: "closed", instrument: sbTrade.instrument, side: sbTrade.side, size: sbTrade.size, entryPrice });
+      }
+
+      return res.status(404).json({ message: "Trade not found" });
+    } catch (err: any) {
+      return res.status(500).json({ message: err.message });
+    }
+  });
+
   app.get("/api/trades/analytics", requireApproved, async (req: Request, res: Response) => {
     const analytics = await storage.getDetailedAnalytics(req.user!.id);
     return res.json(analytics);

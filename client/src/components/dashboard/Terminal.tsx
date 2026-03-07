@@ -640,27 +640,54 @@ export default function Terminal({ tier, userTierName, balance, onOpenPnlChange,
     }
   };
 
+  const fetchSupabaseOpenTrades = async (): Promise<any[]> => {
+    try {
+      const res = await fetch('/api/supabase/trades/open');
+      if (res.ok) return await res.json();
+    } catch {}
+    return [];
+  };
+
+  const closeTradeViaServer = async (localTradeId: string | null, supabaseId: string | null, exitPrice: number) => {
+    const res = await fetch('/api/trades/close-with-supabase', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ localTradeId, supabaseId, exitPrice }),
+    });
+    if (res.ok) return await res.json();
+    return null;
+  };
+
   const handleClose = async (tradeId: string, exitPriceOverride?: number) => {
     if (closingId === tradeId || closingIdsRef.current.has(tradeId)) return;
     closingIdsRef.current.add(tradeId);
     setClosingId(tradeId);
 
-    const trade = openTrades.find(t => t.id === tradeId);
-    if (!trade) { setClosingId(null); return; }
+    const localTrade = openTrades.find(t => t.id === tradeId);
+    let instrument = localTrade?.instrument;
+    let sbId = supabaseTradeIds[tradeId] || null;
 
-    const rawExitPrice = exitPriceOverride ?? livePrices[trade.instrument];
-    if (!rawExitPrice) { setClosingId(null); return; }
-    const exitPrice = roundToTick(rawExitPrice, trade.instrument);
+    if (!sbId && localTrade) {
+      const sbTrades = await fetchSupabaseOpenTrades();
+      const match = sbTrades.find(s => s.instrument === localTrade.instrument && s.side === localTrade.side && s.size === localTrade.size);
+      if (match) sbId = match.id;
+    }
+
+    if (!instrument && sbId) {
+      const sbTrades = await fetchSupabaseOpenTrades();
+      const match = sbTrades.find(s => s.id === sbId);
+      if (match) instrument = match.instrument;
+    }
+
+    if (!instrument) { closingIdsRef.current.delete(tradeId); setClosingId(null); return; }
+
+    const rawExitPrice = exitPriceOverride ?? livePrices[instrument];
+    if (!rawExitPrice) { closingIdsRef.current.delete(tradeId); setClosingId(null); return; }
+    const exitPrice = roundToTick(rawExitPrice, instrument);
 
     try {
-      const res = await fetch(`/api/trades/${tradeId}/close`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ exitPrice }),
-      });
-      if (res.ok) {
-        const closed: Trade = await res.json();
-        try { const sbId = supabaseTradeIds[tradeId]; if (sbId) { await fetch('/api/supabase/trades/close', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ supabaseId: sbId, close_price: closed.exitPrice, pnl: closed.pnl, close_time: new Date().toISOString(), status: 'closed' }) }); } } catch { }
+      const closed = await closeTradeViaServer(tradeId, sbId, exitPrice);
+      if (closed) {
         setOpenTrades(prev => prev.filter(t => t.id !== tradeId));
         setClosedTrades(prev => [closed, ...prev]);
       }
@@ -674,12 +701,48 @@ export default function Terminal({ tier, userTierName, balance, onOpenPnlChange,
   const [showDebug, setShowDebug] = useState(false);
   const isDev = import.meta.env.DEV;
   const handleCloseAll = async () => {
-    if (closingAll || openTrades.length === 0) return;
+    if (closingAll) return;
     setClosingAll(true);
-    const tradesToClose = openTrades.filter(t => t.status === 'open' || t.status === 'executed');
-    for (const trade of tradesToClose) {
-      await handleClose(trade.id);
+
+    const sbTrades = await fetchSupabaseOpenTrades();
+
+    const localTrades = openTrades.filter(t => t.status === 'open' || t.status === 'executed');
+    const processedSbIds = new Set<string>();
+
+    for (const trade of localTrades) {
+      const sbId = supabaseTradeIds[trade.id] || sbTrades.find(s => s.instrument === trade.instrument && s.side === trade.side && s.size === trade.size && !processedSbIds.has(s.id))?.id || null;
+      if (sbId) processedSbIds.add(sbId);
+
+      const rawPrice = livePrices[trade.instrument];
+      if (!rawPrice) continue;
+      const exitPrice = roundToTick(rawPrice, trade.instrument);
+
+      try {
+        closingIdsRef.current.add(trade.id);
+        const closed = await closeTradeViaServer(trade.id, sbId, exitPrice);
+        if (closed) {
+          setOpenTrades(prev => prev.filter(t => t.id !== trade.id));
+          setClosedTrades(prev => [closed, ...prev]);
+        }
+      } catch {} finally {
+        closingIdsRef.current.delete(trade.id);
+      }
     }
+
+    for (const sbTrade of sbTrades) {
+      if (processedSbIds.has(sbTrade.id)) continue;
+      const rawPrice = livePrices[sbTrade.instrument];
+      if (!rawPrice) continue;
+      const exitPrice = roundToTick(rawPrice, sbTrade.instrument);
+
+      try {
+        const closed = await closeTradeViaServer(null, sbTrade.id, exitPrice);
+        if (closed) {
+          setClosedTrades(prev => [closed, ...prev]);
+        }
+      } catch {}
+    }
+
     setClosingAll(false);
   };
 

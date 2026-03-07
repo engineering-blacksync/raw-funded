@@ -579,13 +579,14 @@ export default function Terminal({ tier, userTierName, balance, onOpenPnlChange,
 
       if (response.ok) {
         const trade: Trade = await response.json();
+        const pendingTrade = { ...trade, entryPrice: 0, status: 'open' as const };
         if (supabaseId) {
           setSupabaseTradeIds(prev => ({ ...prev, [trade.id]: supabaseId! }));
           console.log('Supabase trade ID mapped:', trade.id, '->', supabaseId);
           pollSupabaseFillPrice(supabaseId, trade.id, prelimPrice);
         }
-        setOpenTrades(prev => [...prev, trade]);
-        setTradeStatus({ type: 'success', message: `${side} ${quantity} ${activeInstrument.label} @ ${fillPrice.toLocaleString()}` });
+        setOpenTrades(prev => [...prev, pendingTrade]);
+        setTradeStatus({ type: 'success', message: `${side} ${quantity} ${activeInstrument.label} placed` });
 
         setOrderSl('');
         setOrderTp('');
@@ -852,7 +853,7 @@ export default function Terminal({ tier, userTierName, balance, onOpenPnlChange,
               </span>
 
               <span className="text-white font-bold text-xs shrink-0">{(() => { const inst = INSTRUMENTS.find(i => i.label === pos.instrument); return inst ? Math.round(pos.size / inst.lotSize) : pos.size; })()} {pos.instrument}</span>
-              <span className="text-muted-foreground text-[11px] shrink-0">Entry <span className="text-gold data-number">{pos.entryPrice ? formatPrice(pos.entryPrice, pos.instrument) : ''}</span></span>
+              <span className="text-muted-foreground text-[11px] shrink-0">{pos.status === 'open' || !pos.entryPrice ? <span className="text-gold text-[8px] animate-pulse">Pending</span> : <>Entry <span className="text-gold data-number">{formatPrice(pos.entryPrice, pos.instrument)}</span></>}</span>
               <span className="text-muted-foreground text-[11px] shrink-0">Now <span className="text-white data-number">{pos.currentPrice ? formatPrice(pos.currentPrice, pos.instrument) : '---'}</span></span>
 
               <div className="ml-auto flex items-center gap-2">

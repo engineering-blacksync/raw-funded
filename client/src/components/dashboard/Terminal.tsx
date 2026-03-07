@@ -16,6 +16,7 @@ interface TerminalProps {
   balance: number;
   onOpenPnlChange?: (pnl: number) => void;
   allowedInstruments?: string[] | null;
+  username: string;
 }
 
 interface InstrumentConfig {
@@ -226,7 +227,7 @@ function isMarketOpen(instrument: string): boolean {
   return true;
 }
 
-export default function Terminal({ tier, userTierName, balance, onOpenPnlChange, allowedInstruments }: TerminalProps) {
+export default function Terminal({ tier, userTierName, balance, onOpenPnlChange, allowedInstruments, username }: TerminalProps) {
   const chartContainerRef = useRef<HTMLDivElement>(null);
   const tvLoaded = useTradingViewScript();
 
@@ -415,16 +416,18 @@ export default function Terminal({ tier, userTierName, balance, onOpenPnlChange,
         const configRes = await fetch('/api/supabase/config');
         if (!configRes.ok) return;
         const { url, anonKey } = await configRes.json();
+        if (!username) return;
         const supabase = createClient(url, anonKey);
+        const rtFilter = `trader_username=eq.${username}`;
         channel = supabase
           .channel('trades-realtime')
-          .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'trades' }, (payload) => {
+          .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'trades', filter: rtFilter }, (payload) => {
             handleRealtimeChange(payload);
           })
-          .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'trades' }, (payload) => {
+          .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'trades', filter: rtFilter }, (payload) => {
             handleRealtimeChange(payload);
           })
-          .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'trades' }, (payload) => {
+          .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'trades', filter: rtFilter }, (payload) => {
             handleRealtimeChange(payload);
           })
           .subscribe();
@@ -444,7 +447,7 @@ export default function Terminal({ tier, userTierName, balance, onOpenPnlChange,
       setClosedTrades([]);
       setSupabaseTradeIds({});
     };
-  }, [fetchPositionsFromSupabase, loadClosedTrades, handleRealtimeChange]);
+  }, [fetchPositionsFromSupabase, loadClosedTrades, handleRealtimeChange, username]);
 
   const visibleOpenTrades = (() => {
     const filtered = openTrades.filter(t => t.mt5Status === 'filled');

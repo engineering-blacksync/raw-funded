@@ -26,6 +26,7 @@ export const users = pgTable("users", {
   amountPaid: integer("amount_paid"),
   card: text("card"),
   stripeSessionId: text("stripe_session_id"),
+  allowedInstruments: text("allowed_instruments").array(),
 });
 
 export const trades = pgTable("trades", {

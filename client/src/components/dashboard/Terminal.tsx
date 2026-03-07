@@ -7,6 +7,7 @@ interface TerminalProps {
   userTierName: string;
   balance: number;
   onOpenPnlChange?: (pnl: number) => void;
+  allowedInstruments?: string[] | null;
 }
 
 interface InstrumentConfig {
@@ -109,11 +110,17 @@ function calcPnl(side: string, entry: number, current: number, size: number, ins
   return (tickedCurrent - entry) * direction * size * contractSize;
 }
 
-export default function Terminal({ tier, userTierName, balance, onOpenPnlChange }: TerminalProps) {
+export default function Terminal({ tier, userTierName, balance, onOpenPnlChange, allowedInstruments }: TerminalProps) {
   const chartContainerRef = useRef<HTMLDivElement>(null);
   const tvLoaded = useTradingViewScript();
-  const [activeInstrument, setActiveInstrument] = useState(INSTRUMENTS[1]);
-  const [quantity, setQuantity] = useState<number>(INSTRUMENTS[1].default);
+
+  const visibleInstruments = allowedInstruments && allowedInstruments.length > 0
+    ? INSTRUMENTS.filter(i => allowedInstruments.includes(i.label))
+    : INSTRUMENTS;
+
+  const defaultInstrument = visibleInstruments.find(i => i.label === 'MGC') || visibleInstruments[0];
+  const [activeInstrument, setActiveInstrument] = useState(defaultInstrument);
+  const [quantity, setQuantity] = useState<number>(defaultInstrument.default);
   const [openTrades, setOpenTrades] = useState<Trade[]>([]);
   const [closedTrades, setClosedTrades] = useState<Trade[]>([]);
   const [viewMode, setViewMode] = useState<'simple' | 'pro'>('pro');
@@ -444,11 +451,11 @@ export default function Terminal({ tier, userTierName, balance, onOpenPnlChange 
       <div className="flex flex-col" style={{ height: '100vh' }}>
         <div className="flex items-center border-b border-b1 bg-s1 shrink-0">
           <div className="flex overflow-x-auto no-scrollbar flex-1">
-            {INSTRUMENTS.map((inst) => (
+            {visibleInstruments.map((inst) => (
               <button
-                key={inst.symbol}
+                key={inst.label}
                 onClick={() => handleInstrumentChange(inst)}
-                className={`px-3 py-2 text-[11px] font-medium whitespace-nowrap transition-colors border-b-2 ${activeInstrument.symbol === inst.symbol ? 'border-gold text-white bg-s2' : 'border-transparent text-muted-foreground hover:text-white hover:bg-s2/50'}`}
+                className={`px-3 py-2 text-[11px] font-medium whitespace-nowrap transition-colors border-b-2 ${activeInstrument.label === inst.label ? 'border-gold text-white bg-s2' : 'border-transparent text-muted-foreground hover:text-white hover:bg-s2/50'}`}
                 data-testid={`instrument-${inst.label}`}
               >
                 {inst.label}

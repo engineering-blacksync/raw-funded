@@ -7,6 +7,11 @@ import { Users, Plus, Edit2, Shield, X, Key, Check, XCircle, Eye, BarChart2, Clo
 
 type AdminTab = "queue" | "traders" | "create" | "payouts";
 
+const ALL_INSTRUMENTS = [
+  'Bitcoin', 'Gold (GC)', 'Silver', 'Oil (WTI)', 'S&P 500', 'Nasdaq',
+  'MNQ', 'MES', 'MGC', 'SIL', 'MCL'
+];
+
 export default function Admin() {
   const [, setLocation] = useLocation();
   const { user, isLoading } = useAuth();
@@ -678,6 +683,45 @@ export default function Admin() {
               <div>
                 <label className="block text-[10px] text-muted-foreground uppercase mb-1">Internal Notes</label>
                 <textarea value={editingUser.adminNotes || ""} onChange={e => setEditingUser((p: any) => ({ ...p, adminNotes: e.target.value }))} rows={2} className="w-full bg-s2 border border-b1 rounded px-3 py-2 text-sm text-white outline-none focus:border-gold resize-none" data-testid="admin-edit-notes" />
+              </div>
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <label className="text-[10px] text-muted-foreground uppercase font-bold">Allowed Instruments</label>
+                  <div className="flex gap-2">
+                    <button type="button" onClick={() => setEditingUser((p: any) => ({ ...p, allowedInstruments: null }))} className="text-[10px] text-gold hover:text-white transition-colors">All</button>
+                    <button type="button" onClick={() => setEditingUser((p: any) => ({ ...p, allowedInstruments: [] }))} className="text-[10px] text-red hover:text-white transition-colors">None</button>
+                  </div>
+                </div>
+                <div className="grid grid-cols-3 gap-1.5">
+                  {ALL_INSTRUMENTS.map(inst => {
+                    const allowed = editingUser.allowedInstruments;
+                    const isEnabled = !allowed || allowed.includes(inst);
+                    return (
+                      <button
+                        key={inst}
+                        type="button"
+                        onClick={() => {
+                          setEditingUser((p: any) => {
+                            const current = p.allowedInstruments || [...ALL_INSTRUMENTS];
+                            if (current.includes(inst)) {
+                              return { ...p, allowedInstruments: current.filter((i: string) => i !== inst) };
+                            } else {
+                              return { ...p, allowedInstruments: [...current, inst] };
+                            }
+                          });
+                        }}
+                        className={`px-2 py-1.5 rounded text-[10px] font-bold uppercase border transition-colors ${
+                          isEnabled
+                            ? 'bg-gold/20 text-gold border-gold/30'
+                            : 'bg-s2 text-muted-foreground border-b1 opacity-50'
+                        }`}
+                        data-testid={`toggle-instrument-${inst}`}
+                      >
+                        {inst}
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
               <div className="flex items-center justify-between gap-4">
                 <div className="flex items-center gap-3">

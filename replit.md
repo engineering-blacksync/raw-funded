@@ -84,6 +84,8 @@ A private prop trading platform where admin assigns funded accounts. Users get a
   - $1000: bronze=7, silver=8, gold=9
 - Black card: interview only, must verify $20,000+ in payouts, max micros=999
 - Admin assigns card via "Assign Card" in queue or PATCH /api/admin/users/:id
+- `allowedInstruments` text[] column on users — admin toggles which instruments each trader can access
+- null/empty = all instruments allowed; specific array = only those instruments visible in Terminal
 
 ## API Routes
 - `GET /api/stripe/publishable-key` — Get Stripe publishable key

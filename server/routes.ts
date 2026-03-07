@@ -261,7 +261,7 @@ export async function registerRoutes(
 
   app.patch("/api/admin/users/:id", requireAdmin, async (req: Request, res: Response) => {
     try {
-      const { tier, balance, leverage, maxContracts, isActive, propFirm, payoutsReceived, status, adminNotes, card } = req.body;
+      const { tier, balance, leverage, maxContracts, isActive, propFirm, payoutsReceived, status, adminNotes, card, allowedInstruments } = req.body;
       const updates: any = {};
       if (tier !== undefined) updates.tier = tier;
       if (balance !== undefined) updates.balance = balance;
@@ -273,6 +273,7 @@ export async function registerRoutes(
       if (status !== undefined) updates.status = status;
       if (adminNotes !== undefined) updates.adminNotes = adminNotes;
       if (card !== undefined) updates.card = card;
+      if (allowedInstruments !== undefined) updates.allowedInstruments = allowedInstruments;
 
       const user = await storage.updateUser(req.params.id, updates);
       if (!user) return res.status(404).json({ message: "User not found" });

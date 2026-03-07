@@ -404,7 +404,7 @@ export default function Dashboard() {
         </aside>
 
         <main className="flex-1 overflow-hidden flex flex-col bg-background">
-          {activeTab === 'terminal' && <Terminal tier={currentTier} userTierName={user.tier} balance={user.balance} onOpenPnlChange={handleOpenPnlChange} />}
+          {activeTab === 'terminal' && <Terminal tier={currentTier} userTierName={user.tier} balance={user.balance} onOpenPnlChange={handleOpenPnlChange} allowedInstruments={user.allowedInstruments} />}
           {activeTab === 'data' && (
             <div className="flex-1 overflow-y-auto p-8">
               <div className="max-w-6xl mx-auto space-y-6">

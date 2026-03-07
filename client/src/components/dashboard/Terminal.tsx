@@ -314,7 +314,10 @@ export default function Terminal({ tier, userTierName, balance, onOpenPnlChange,
         const supabase = createClient(url, anonKey);
         channel = supabase
           .channel('trades-realtime')
-          .on('postgres_changes', { event: '*', schema: 'public', table: 'trades' }, (payload) => {
+          .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'trades' }, (payload) => {
+            handleRealtimeChange(payload);
+          })
+          .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'trades' }, (payload) => {
             handleRealtimeChange(payload);
           })
           .subscribe();

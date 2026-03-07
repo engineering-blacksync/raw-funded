@@ -247,26 +247,13 @@ export default function Terminal({ tier, userTierName, balance, onOpenPnlChange,
   const supabaseTradeIdsRef = useRef<Record<string, string>>({});
   useEffect(() => { supabaseTradeIdsRef.current = supabaseTradeIds; }, [supabaseTradeIds]);
 
-  const initialLoadDone = useRef(false);
   const loadTrades = useCallback(async () => {
     try {
       const [openRes, historyRes] = await Promise.all([
         fetch('/api/trades/open'),
         fetch('/api/trades'),
       ]);
-      if (openRes.ok) {
-        const serverOpen: Trade[] = await openRes.json();
-        if (!initialLoadDone.current) {
-          setOpenTrades(serverOpen);
-          initialLoadDone.current = true;
-        } else {
-          setOpenTrades(prev => {
-            const localOnly = prev.filter(t => !serverOpen.some(s => s.id === t.id) && !closingIdsRef.current.has(t.id));
-            const merged = [...serverOpen, ...localOnly];
-            return merged;
-          });
-        }
-      }
+      if (openRes.ok) setOpenTrades(await openRes.json());
       if (historyRes.ok) {
         const all: Trade[] = await historyRes.json();
         setClosedTrades(all.filter(t => t.status === 'closed'));
@@ -277,9 +264,20 @@ export default function Terminal({ tier, userTierName, balance, onOpenPnlChange,
   const rtProcessedRef = useRef<Record<string, string>>({});
 
   const handleRealtimeChange = useCallback((payload: any) => {
-    const { eventType, new: row } = payload;
-    if (!row) return;
+    const { eventType, new: row, old: oldRow } = payload;
 
+    if (eventType === 'DELETE') {
+      if (!oldRow?.id) return;
+      const sbId = oldRow.id;
+      const idMap = supabaseTradeIdsRef.current;
+      const localId = Object.entries(idMap).find(([, v]) => v === sbId)?.[0];
+      if (localId) {
+        setOpenTrades(prev => prev.filter(t => t.id !== localId));
+      }
+      return;
+    }
+
+    if (!row) return;
     const sbId = row.id;
     const dedupKey = `${sbId}:${row.status}:${row.open_price || ''}`;
     if (rtProcessedRef.current[sbId] === dedupKey) return;
@@ -294,7 +292,13 @@ export default function Terminal({ tier, userTierName, balance, onOpenPnlChange,
       if (newStatus === 'closed' || newStatus === 'failed') {
         if (closingIdsRef.current.has(localId)) {
           setOpenTrades(prev => prev.filter(t => t.id !== localId));
-          if (newStatus === 'closed') loadTrades();
+          if (newStatus === 'closed') {
+            setClosedTrades(prev => {
+              const existing = openTradesRef.current.find(t => t.id === localId);
+              if (!existing) return prev;
+              return [{ ...existing, status: 'closed', exitPrice: row.close_price, pnl: row.pnl }, ...prev];
+            });
+          }
         }
         return;
       }
@@ -314,10 +318,8 @@ export default function Terminal({ tier, userTierName, balance, onOpenPnlChange,
       }
 
       setOpenTrades(prev => prev.map(t => t.id === localId ? { ...t, status: newStatus } : t));
-    } else if (eventType === 'INSERT') {
-      loadTrades();
     }
-  }, [loadTrades]);
+  }, []);
 
   useEffect(() => {
     loadTrades();
@@ -331,10 +333,10 @@ export default function Terminal({ tier, userTierName, balance, onOpenPnlChange,
         const supabase = createClient(url, anonKey);
         channel = supabase
           .channel('trades-realtime')
-          .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'trades' }, (payload) => {
+          .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'trades' }, (payload) => {
             handleRealtimeChange(payload);
           })
-          .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'trades' }, (payload) => {
+          .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'trades' }, (payload) => {
             handleRealtimeChange(payload);
           })
           .subscribe();

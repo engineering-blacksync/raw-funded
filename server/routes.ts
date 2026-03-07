@@ -806,6 +806,45 @@ export async function registerRoutes(
     'MCL': () => fetchYahooPrice('MCL=F'),
   };
 
+  app.post("/api/prices/batch", async (req: Request, res: Response) => {
+    const { instruments } = req.body;
+    if (!Array.isArray(instruments)) return res.status(400).json({ message: "instruments array required" });
+
+    const now = Date.now();
+    const results: Record<string, number> = {};
+    const toFetch: string[] = [];
+
+    for (const inst of instruments) {
+      const cached = priceCache[inst];
+      if (cached && now - cached.ts < 400) {
+        results[inst] = cached.price;
+      } else if (PRICE_SOURCES[inst]) {
+        toFetch.push(inst);
+      }
+    }
+
+    if (toFetch.length > 0) {
+      const fetched = await Promise.allSettled(
+        toFetch.map(async (inst) => {
+          const price = await PRICE_SOURCES[inst]();
+          priceCache[inst] = { price, ts: Date.now() };
+          return { inst, price };
+        })
+      );
+      for (const r of fetched) {
+        if (r.status === 'fulfilled') {
+          results[r.value.inst] = r.value.price;
+        } else {
+          const inst = toFetch[fetched.indexOf(r)];
+          const cached = priceCache[inst];
+          if (cached) results[inst] = cached.price;
+        }
+      }
+    }
+
+    return res.json({ prices: results });
+  });
+
   app.get("/api/prices/:instrument", async (req: Request, res: Response) => {
     const instrument = decodeURIComponent(req.params.instrument);
     const fetcher = PRICE_SOURCES[instrument];

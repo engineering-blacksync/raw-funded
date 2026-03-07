@@ -64,26 +64,24 @@ function useLivePrices(instruments: string[]) {
     let active = true;
     const fetchAll = async () => {
       const unique = [...new Set(instruments)];
-      const results = await Promise.allSettled(
-        unique.map(async (inst) => {
-          const res = await fetch(`/api/prices/${encodeURIComponent(inst)}`);
-          if (!res.ok) return null;
-          const data = await res.json();
-          return { inst, price: data.price as number };
-        })
-      );
-      if (!active) return;
-      const updated = { ...pricesRef.current };
-      for (const r of results) {
-        if (r.status === 'fulfilled' && r.value && r.value.price > 0) {
-          updated[r.value.inst] = r.value.price;
+      try {
+        const res = await fetch('/api/prices/batch', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ instruments: unique }),
+        });
+        if (!res.ok || !active) return;
+        const data = await res.json();
+        const updated = { ...pricesRef.current };
+        for (const [inst, price] of Object.entries(data.prices)) {
+          if (typeof price === 'number' && price > 0) updated[inst] = price;
         }
-      }
-      pricesRef.current = updated;
-      setPrices(prev => ({ ...prev, ...updated }));
+        pricesRef.current = updated;
+        setPrices({ ...updated });
+      } catch {}
     };
     fetchAll();
-    const interval = setInterval(fetchAll, 800);
+    const interval = setInterval(fetchAll, 500);
     return () => { active = false; clearInterval(interval); };
   }, [instruments.join(',')]);
 

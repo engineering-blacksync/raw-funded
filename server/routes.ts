@@ -519,6 +519,51 @@ export async function registerRoutes(
     }
   });
 
+  app.get("/api/supabase/positions", requireApproved, async (req: Request, res: Response) => {
+    const supabaseUrl = process.env.SUPABASE_URL;
+    const supabaseKey = process.env.SUPABASE_ANON_KEY;
+    if (!supabaseUrl || !supabaseKey) return res.json([]);
+    try {
+      const sbRes = await fetch(
+        `${supabaseUrl}/rest/v1/trades?trader_username=eq.${encodeURIComponent(req.user!.username)}&status=in.(open,executed)&mt5_status=eq.filled&select=id,instrument,side,size,open_price,status,ticket,stop_loss,take_profit,created_at`,
+        { headers: { apikey: supabaseKey, Authorization: `Bearer ${supabaseKey}` } }
+      );
+      if (!sbRes.ok) return res.json([]);
+      const sbTrades: any[] = await sbRes.json();
+
+      const localOpen = await storage.getOpenTrades(req.user!.id);
+      const usedLocalIds = new Set<string>();
+
+      const positions = sbTrades
+        .filter((s: any) => s.open_price && s.open_price > 0)
+        .map((s: any) => {
+          const localMatch = localOpen.find(
+            l => !usedLocalIds.has(l.id) && l.instrument === s.instrument && l.side === s.side && l.size === s.size
+          );
+          if (localMatch) usedLocalIds.add(localMatch.id);
+          if (localMatch && (localMatch.entryPrice !== s.open_price || localMatch.status !== 'executed')) {
+            storage.updateTradeEntryPrice(localMatch.id, s.open_price).catch(() => {});
+            storage.updateTradeStatus(localMatch.id, 'executed').catch(() => {});
+          }
+          return {
+            supabaseId: s.id,
+            localId: localMatch?.id || null,
+            instrument: s.instrument,
+            side: s.side,
+            size: s.size,
+            entryPrice: s.open_price,
+            stopLoss: s.stop_loss || null,
+            takeProfit: s.take_profit || null,
+            openedAt: s.created_at,
+          };
+        });
+
+      return res.json(positions);
+    } catch {
+      return res.json([]);
+    }
+  });
+
   app.post("/api/trades/close-with-supabase", requireApproved, async (req: Request, res: Response) => {
     const { localTradeId, supabaseId, exitPrice } = req.body;
     if (typeof exitPrice !== "number") return res.status(400).json({ message: "exitPrice required" });
@@ -552,7 +597,7 @@ export async function registerRoutes(
         const supabaseUrl = process.env.SUPABASE_URL;
         const supabaseKey = process.env.SUPABASE_ANON_KEY;
         if (!supabaseUrl || !supabaseKey) return res.status(500).json({ message: "Supabase not configured" });
-        const sbRes = await fetch(`${supabaseUrl}/rest/v1/trades?id=eq.${supabaseId}&select=*`, {
+        const sbRes = await fetch(`${supabaseUrl}/rest/v1/trades?id=eq.${supabaseId}&trader_username=eq.${encodeURIComponent(req.user!.username)}&select=*`, {
           headers: { apikey: supabaseKey, Authorization: `Bearer ${supabaseKey}` },
         });
         if (!sbRes.ok) return res.status(502).json({ message: "Supabase query failed" });
@@ -564,7 +609,7 @@ export async function registerRoutes(
         const entryPrice = sbTrade.open_price || 0;
         const pnl = entryPrice ? (exitPrice - entryPrice) * direction * sbTrade.size : 0;
 
-        await fetch(`${supabaseUrl}/rest/v1/trades?id=eq.${supabaseId}`, {
+        await fetch(`${supabaseUrl}/rest/v1/trades?id=eq.${supabaseId}&trader_username=eq.${encodeURIComponent(req.user!.username)}`, {
           method: "PATCH",
           headers: { "Content-Type": "application/json", apikey: supabaseKey, Authorization: `Bearer ${supabaseKey}`, Prefer: "return=minimal" },
           body: JSON.stringify({ close_price: exitPrice, pnl, close_time: new Date().toISOString(), status: "closed", updated_at: new Date().toISOString() }),

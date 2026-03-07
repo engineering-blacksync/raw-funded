@@ -93,17 +93,20 @@ A private prop trading platform where admin assigns funded accounts. Users get a
 - null/empty = all instruments allowed; specific array = only those instruments visible in Terminal
 
 ## Trade Execution Flow (MT5 Bridge)
-- Trade placed → inserted into Supabase → MT5 bridge picks up → sets `mt5_status` and `open_price`
+- Trade placed → inserted into local DB + Supabase → MT5 bridge picks up → sets `mt5_status` and `open_price`
 - Supabase `mt5_status` column: `pending` → `filled` (with `open_price`) or `rejected` (with `reject_reason`)
-- Dashboard polls `GET /api/supabase/trades/:id` which returns `id,open_price,status,ticket,mt5_status,reject_reason`
-- Trade shows as live (P&L ticking) only when `mt5_status = 'filled'` and `open_price` is set
-- If `mt5_status = 'rejected'`: trade kept visible but grayed out (opacity-40), reject_reason shown as error banner + inline red text, Dismiss button to remove
-- UI badges per trade: pending=yellow "Pending", filled=green "Live", rejected=red "Rejected"
-- Rejected trades excluded from P&L totals; close button disabled for non-filled trades (tooltip: "This trade was not executed on MT5")
-- Close All only processes filled (or legacy executed) trades, skips pending/rejected
-- `LocalTrade` extends `Trade` with optional `mt5Status`/`rejectReason` — used only in Terminal component state
-- **Bridge status**: polls `GET /api/supabase/bridge-status` every 10s (reads `bridge_status` table row id=1); if `last_ping` >30s stale OR `status` != 'online', all Buy/Sell disabled + red banner; `handleTrade` also blocks submission
-- Legacy fallback: if `mt5_status` is null, falls back to checking `open_price` + `status` fields
+- **Positions list driven entirely from Supabase** — never from local DB state
+  - `GET /api/supabase/positions` fetches Supabase trades where `status=open/executed` AND `mt5_status=filled`
+  - Server matches with local DB trades to provide `localId` for close operations
+  - Client polls this endpoint every 3 seconds for live sync
+  - Supabase RT subscription also handles DELETE/UPDATE/INSERT events for immediate updates
+  - Only `mt5_status='filled'` trades appear; pending/rejected are never shown in positions list
+  - Empty Supabase = empty positions list (no stale data)
+  - Trades removed from Supabase are immediately removed from UI
+- Trade creation: local DB + Supabase insert; trade does NOT appear in positions until MT5 fills (next 3s poll)
+- Rejected trades: error banner shown via RT subscription, trade never appears in positions list
+- `LocalTrade` extends `Trade` with `mt5Status`, `rejectReason`, `supabaseId`
+- **Bridge status**: polls `GET /api/supabase/bridge-status` every 10s; if `last_ping` >30s stale OR `status` != 'online', all Buy/Sell disabled + red banner; server also gates `POST /api/trades`
 - Entry price displayed is always from Supabase `open_price` (MT5 source of truth), never from chart
 - P&L: BUY = (current - open_price) × lot_size; SELL = (open_price - current) × lot_size
 - P&L tick rounding: MBT/Bitcoin/BTCUSD=$0.50, Gold(GC)=$10, MGC=$1 (uses Math.trunc)

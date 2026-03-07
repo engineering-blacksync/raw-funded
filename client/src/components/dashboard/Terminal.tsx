@@ -141,20 +141,21 @@ function useLivePrices(instruments: string[]) {
   }, [hasBtc, instruments.join(','), updatePrice]);
 
   useEffect(() => {
-    if (nonBtcInstruments.length === 0) return;
+    const allPolled = [...new Set([...nonBtcInstruments, ...instruments.filter(i => BTC_INSTRUMENTS.includes(i))])];
+    if (allPolled.length === 0) return;
     let active = true;
     const fetchAll = async () => {
-      const unique = [...new Set(nonBtcInstruments)];
       try {
         const res = await fetch('/api/prices/batch', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ instruments: unique }),
+          body: JSON.stringify({ instruments: allPolled }),
         });
         if (!res.ok || !active) return;
         const data = await res.json();
         for (const [inst, price] of Object.entries(data.prices)) {
           if (typeof price === 'number' && price > 0) {
+            if (BTC_INSTRUMENTS.includes(inst) && pricesRef.current[inst] && globalBinanceDebug.wsStatus === 'connected') continue;
             updatePrice(inst, price);
           }
         }
@@ -163,7 +164,7 @@ function useLivePrices(instruments: string[]) {
     fetchAll();
     const interval = setInterval(fetchAll, 1000);
     return () => { active = false; clearInterval(interval); };
-  }, [nonBtcInstruments.join(','), updatePrice]);
+  }, [instruments.join(','), updatePrice]);
 
   return { prices, binanceDebug };
 }
@@ -490,7 +491,20 @@ export default function Terminal({ tier, userTierName, balance, onOpenPnlChange,
       return;
     }
 
-    const rawMidPrice = livePrices[activeInstrument.label];
+    let rawMidPrice = livePrices[activeInstrument.label];
+    if (!rawMidPrice && BTC_INSTRUMENTS.includes(activeInstrument.label)) {
+      try {
+        const fallbackRes = await fetch('/api/prices/batch', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ instruments: [activeInstrument.label] }),
+        });
+        if (fallbackRes.ok) {
+          const fallbackData = await fallbackRes.json();
+          rawMidPrice = fallbackData.prices?.[activeInstrument.label];
+        }
+      } catch {}
+    }
     if (!rawMidPrice) {
       setTradeStatus({ type: 'error', message: 'Waiting for price data...' });
       setTimeout(() => setTradeStatus(null), 3000);

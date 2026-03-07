@@ -93,10 +93,16 @@ A private prop trading platform where admin assigns funded accounts. Users get a
 - null/empty = all instruments allowed; specific array = only those instruments visible in Terminal
 
 ## Trade Execution Flow (MT5 Bridge)
-- Trade placed → inserted into Supabase → MT5 bridge executes → writes real fill price to `open_price`
-- Dashboard polls `GET /api/supabase/trades/:id` for MT5 fill price, updates local entry price via `PATCH /api/trades/:id/entry-price`
+- Trade placed → inserted into Supabase → MT5 bridge picks up → sets `mt5_status` and `open_price`
+- Supabase `mt5_status` column: `pending` → `filled` (with `open_price`) or `rejected` (with `reject_reason`)
+- Dashboard polls `GET /api/supabase/trades/:id` which returns `id,open_price,status,ticket,mt5_status,reject_reason`
+- Trade shows as live (P&L ticking) only when `mt5_status = 'filled'` and `open_price` is set
+- If `mt5_status = 'rejected'`: trade removed from open positions, reject_reason shown as error banner
+- Legacy fallback: if `mt5_status` is null, falls back to checking `open_price` + `status` fields
 - Entry price displayed is always from Supabase `open_price` (MT5 source of truth), never from chart
 - P&L: BUY = (current - open_price) × lot_size; SELL = (open_price - current) × lot_size
+- P&L tick rounding: MBT/Bitcoin/BTCUSD=$0.50, Gold(GC)=$10, MGC=$1 (uses Math.trunc)
+- $2 per-contract platform spread applied at trade entry (BUY adds, SELL subtracts)
 - lot_size = contracts × instrument.lotSize (MBT/MGC lotSize=0.10 so 1 contract = 0.1 lot; others lotSize=1)
 - No CONTRACT_SIZES multiplier — lot size conversion handled by instrument config lotSize field
 

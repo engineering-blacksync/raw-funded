@@ -300,7 +300,7 @@ export default function Terminal({ tier, userTierName, balance, onOpenPnlChange,
 
     if (!row) return;
     const sbId = row.id;
-    const dedupKey = `${sbId}:${row.status}:${row.open_price || ''}`;
+    const dedupKey = `${sbId}:${row.status}:${row.mt5_status || ''}:${row.open_price || ''}`;
     if (rtProcessedRef.current[sbId] === dedupKey) return;
     rtProcessedRef.current[sbId] = dedupKey;
 
@@ -309,6 +309,17 @@ export default function Terminal({ tier, userTierName, balance, onOpenPnlChange,
 
     if (eventType === 'UPDATE' && localId) {
       const newStatus = row.status;
+      const mt5Status = row.mt5_status;
+
+      if (mt5Status === 'rejected') {
+        setOpenTrades(prev => prev.filter(t => t.id !== localId));
+        const reason = row.reject_reason || 'Order rejected by MT5';
+        setTradeStatus({ type: 'error', message: reason });
+        setTimeout(() => setTradeStatus(null), 8000);
+        fetch(`/api/trades/${localId}/status`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ status: 'closed' }) }).catch(() => {});
+        console.log('RT: trade rejected by MT5:', localId, reason);
+        return;
+      }
 
       if (newStatus === 'closed' || newStatus === 'failed') {
         if (closingIdsRef.current.has(localId)) {
@@ -324,7 +335,7 @@ export default function Terminal({ tier, userTierName, balance, onOpenPnlChange,
         return;
       }
 
-      if (row.open_price && (newStatus === 'executed' || newStatus === 'open')) {
+      if (mt5Status === 'filled' && row.open_price) {
         setOpenTrades(prev => prev.map(t => {
           if (t.id !== localId || t.status === 'executed') return t;
           return { ...t, status: 'executed', entryPrice: row.open_price };
@@ -334,7 +345,21 @@ export default function Terminal({ tier, userTierName, balance, onOpenPnlChange,
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ entryPrice: row.open_price }),
         }).catch(() => {});
-        console.log('RT: status→executed, fill price:', row.open_price, 'for', localId);
+        console.log('RT: MT5 filled, price:', row.open_price, 'for', localId);
+        return;
+      }
+
+      if (!mt5Status && row.open_price && (newStatus === 'executed' || newStatus === 'open')) {
+        setOpenTrades(prev => prev.map(t => {
+          if (t.id !== localId || t.status === 'executed') return t;
+          return { ...t, status: 'executed', entryPrice: row.open_price };
+        }));
+        fetch(`/api/trades/${localId}/entry-price`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ entryPrice: row.open_price }),
+        }).catch(() => {});
+        console.log('RT: status→executed (legacy), fill price:', row.open_price, 'for', localId);
         return;
       }
 
@@ -564,12 +589,21 @@ export default function Terminal({ tier, userTierName, balance, onOpenPnlChange,
         const res = await fetch(`/api/supabase/trades/${supabaseId}`);
         if (!res.ok) continue;
         const data = await res.json();
+        if (data.mt5_status === 'rejected') {
+          setOpenTrades(prev => prev.filter(t => t.id !== localTradeId));
+          const reason = data.reject_reason || 'Order rejected by MT5';
+          setTradeStatus({ type: 'error', message: reason });
+          setTimeout(() => setTradeStatus(null), 8000);
+          fetch(`/api/trades/${localTradeId}/status`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ status: 'closed' }) }).catch(() => {});
+          console.log('Trade rejected by MT5:', localTradeId, reason);
+          return;
+        }
         if (data.status === 'failed') {
           setOpenTrades(prev => prev.filter(t => t.id !== localTradeId));
           console.log('Trade failed, removed:', localTradeId);
           return;
         }
-        if (data.open_price && (data.status === 'executed' || data.status === 'open')) {
+        if (data.mt5_status === 'filled' && data.open_price) {
           const fillPrice = data.open_price;
           setOpenTrades(prev => prev.map(t => t.id === localTradeId ? { ...t, status: 'executed', entryPrice: fillPrice } : t));
           fetch(`/api/trades/${localTradeId}/entry-price`, {
@@ -578,6 +612,17 @@ export default function Terminal({ tier, userTierName, balance, onOpenPnlChange,
             body: JSON.stringify({ entryPrice: fillPrice }),
           }).catch(() => {});
           console.log('MT5 fill price received:', fillPrice, 'for trade', localTradeId);
+          return;
+        }
+        if (!data.mt5_status && data.open_price && (data.status === 'executed' || data.status === 'open')) {
+          const fillPrice = data.open_price;
+          setOpenTrades(prev => prev.map(t => t.id === localTradeId ? { ...t, status: 'executed', entryPrice: fillPrice } : t));
+          fetch(`/api/trades/${localTradeId}/entry-price`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ entryPrice: fillPrice }),
+          }).catch(() => {});
+          console.log('MT5 fill price received (legacy):', fillPrice, 'for trade', localTradeId);
           return;
         }
       } catch {}
@@ -947,8 +992,8 @@ export default function Terminal({ tier, userTierName, balance, onOpenPnlChange,
             </button>
 
             {tradeStatus && (
-              <div className={`text-[7px] font-medium text-center px-0.5 ${tradeStatus.type === 'success' ? 'text-green' : 'text-red'}`} data-testid="trade-status">
-                {tradeStatus.type === 'success' ? '✓' : '✗'}
+              <div className={`text-[10px] font-medium text-center px-1 py-0.5 rounded ${tradeStatus.type === 'success' ? 'text-green' : 'text-red bg-red/10 border border-red/20'}`} data-testid="trade-status">
+                {tradeStatus.type === 'success' ? '✓' : `✗ ${tradeStatus.message}`}
               </div>
             )}
           </div>

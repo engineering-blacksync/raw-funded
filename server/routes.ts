@@ -463,25 +463,33 @@ export async function registerRoutes(
     if (supabaseUrl && supabaseKey) {
       try {
         const sbRes = await fetch(
-          `${supabaseUrl}/rest/v1/trades?trader_username=eq.${encodeURIComponent(req.user!.username)}&status=in.(open,executed)&select=id,open_price,status,instrument,side,size`,
+          `${supabaseUrl}/rest/v1/trades?trader_username=eq.${encodeURIComponent(req.user!.username)}&status=in.(open,executed)&select=id,open_price,status,instrument,side,size,mt5_status,reject_reason`,
           { headers: { apikey: supabaseKey, Authorization: `Bearer ${supabaseKey}` } }
         );
         if (sbRes.ok) {
           const sbTrades: any[] = await sbRes.json();
+          const rejectedLocalIds: string[] = [];
           for (const local of open) {
             if (local.status === 'open' || local.entryPrice === 0) {
               const match = sbTrades.find(
-                s => s.instrument === local.instrument && s.side === local.side && s.size === local.size && s.open_price > 0
+                s => s.instrument === local.instrument && s.side === local.side && s.size === local.size
               );
-              if (match) {
+              if (match && match.mt5_status === 'rejected') {
+                rejectedLocalIds.push(local.id);
+                storage.updateTradeStatus(local.id, 'closed').catch(() => {});
+                continue;
+              }
+              if (match && match.open_price > 0 && (match.mt5_status === 'filled' || !match.mt5_status)) {
                 local.entryPrice = match.open_price;
-                local.status = match.status === 'executed' ? 'executed' : local.status;
+                local.status = 'executed';
                 storage.updateTradeEntryPrice(local.id, match.open_price).catch(() => {});
-                if (match.status === 'executed') {
-                  storage.updateTradeStatus(local.id, 'executed').catch(() => {});
-                }
+                storage.updateTradeStatus(local.id, 'executed').catch(() => {});
               }
             }
+          }
+          if (rejectedLocalIds.length > 0) {
+            const filtered = open.filter(t => !rejectedLocalIds.includes(t.id));
+            return res.json(filtered);
           }
         }
       } catch {}
@@ -632,6 +640,20 @@ export async function registerRoutes(
       const trade = openTrades.find(t => t.id === req.params.id);
       if (!trade) return res.status(404).json({ message: "Trade not found" });
       const updated = await storage.updateTradeEntryPrice(trade.id, entryPrice);
+      return res.json(updated);
+    } catch (err: any) {
+      return res.status(500).json({ message: err.message });
+    }
+  });
+
+  app.patch("/api/trades/:id/status", requireApproved, async (req: Request, res: Response) => {
+    try {
+      const { status } = req.body;
+      if (!status || typeof status !== "string") return res.status(400).json({ message: "status required" });
+      const allTrades = await storage.getOpenTrades(req.user!.id);
+      const trade = allTrades.find(t => t.id === req.params.id);
+      if (!trade) return res.status(404).json({ message: "Trade not found" });
+      const updated = await storage.updateTradeStatus(trade.id, status);
       return res.json(updated);
     } catch (err: any) {
       return res.status(500).json({ message: err.message });
@@ -863,7 +885,7 @@ export async function registerRoutes(
     if (!supabaseUrl || !supabaseKey) return res.status(500).json({ message: "Supabase not configured" });
     try {
       const username = req.user!.username;
-      const response = await fetch(`${supabaseUrl}/rest/v1/trades?id=eq.${supabaseId}&trader_username=eq.${encodeURIComponent(username)}&select=id,open_price,status,ticket`, {
+      const response = await fetch(`${supabaseUrl}/rest/v1/trades?id=eq.${supabaseId}&trader_username=eq.${encodeURIComponent(username)}&select=id,open_price,status,ticket,mt5_status,reject_reason`, {
         headers: { 'apikey': supabaseKey, 'Authorization': `Bearer ${supabaseKey}` },
       });
       if (response.ok) {

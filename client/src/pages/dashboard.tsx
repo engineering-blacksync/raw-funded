@@ -47,8 +47,59 @@ const PAYOUT_STAGES = [
   { key: "funds_sent", label: "Funds Sent", color: "#22C55E" },
 ];
 
+const PAYOUT_METHODS = [
+  {
+    id: 'usdt',
+    label: 'USDT (Tether)',
+    icon: '₮',
+    speed: 'Same Day',
+    speedColor: 'text-green',
+    addressLabel: 'USDT Wallet Address (TRC-20 or ERC-20)',
+    placeholder: 'Enter your USDT wallet address',
+  },
+  {
+    id: 'btc',
+    label: 'Bitcoin',
+    icon: '₿',
+    speed: 'Same Day',
+    speedColor: 'text-green',
+    addressLabel: 'Bitcoin Wallet Address',
+    placeholder: 'Enter your BTC wallet address',
+  },
+  {
+    id: 'eth',
+    label: 'Ethereum',
+    icon: 'Ξ',
+    speed: 'Same Day',
+    speedColor: 'text-green',
+    addressLabel: 'Ethereum Wallet Address',
+    placeholder: 'Enter your ETH wallet address',
+  },
+  {
+    id: 'wise',
+    label: 'Wise',
+    icon: '🌐',
+    speed: '1–3 Business Days',
+    speedColor: 'text-gold',
+    addressLabel: 'Wise Email Address',
+    placeholder: 'Enter your Wise email',
+  },
+  {
+    id: 'rise',
+    label: 'Rise',
+    icon: '🚀',
+    speed: '1–3 Business Days',
+    speedColor: 'text-gold',
+    addressLabel: 'Rise Account Email',
+    placeholder: 'Enter your Rise email',
+  },
+];
+
 function PayoutTab({ user }: { user: any }) {
   const queryClient = useQueryClient();
+  const [step, setStep] = useState<'method' | 'amount'>('method');
+  const [selectedMethod, setSelectedMethod] = useState<string | null>(null);
+  const [payoutAddress, setPayoutAddress] = useState('');
   const [amount, setAmount] = useState("");
   const [error, setError] = useState("");
 
@@ -65,11 +116,11 @@ function PayoutTab({ user }: { user: any }) {
   const activePayout = payouts.find((p: any) => p.status !== "completed" && p.status !== "rejected");
 
   const requestPayout = useMutation({
-    mutationFn: async (amt: number) => {
-      const res = await apiRequest("POST", "/api/payouts", { amount: amt });
+    mutationFn: async (data: { amount: number; payoutMethod: string; payoutAddress: string }) => {
+      const res = await apiRequest("POST", "/api/payouts", data);
       if (!res.ok) {
-        const data = await res.json();
-        throw new Error(data.message);
+        const d = await res.json();
+        throw new Error(d.message);
       }
       return res.json();
     },
@@ -78,6 +129,9 @@ function PayoutTab({ user }: { user: any }) {
       queryClient.invalidateQueries({ queryKey: ["/api/payouts/pending"] });
       queryClient.invalidateQueries({ queryKey: ["/api/auth/me"] });
       setAmount("");
+      setPayoutAddress("");
+      setSelectedMethod(null);
+      setStep('method');
       setError("");
     },
     onError: (err: any) => setError(err.message),
@@ -89,10 +143,14 @@ function PayoutTab({ user }: { user: any }) {
     const amt = parseFloat(amount);
     if (!amt || amt <= 0) { setError("Enter a valid amount"); return; }
     if (amt > user.balance) { setError("Amount exceeds your balance"); return; }
-    requestPayout.mutate(amt);
+    if (!payoutAddress.trim()) { setError("Enter your payout address"); return; }
+    if (!selectedMethod) { setError("Select a payout method"); return; }
+    requestPayout.mutate({ amount: amt, payoutMethod: selectedMethod, payoutAddress: payoutAddress.trim() });
   };
 
+  const activeMethodConfig = PAYOUT_METHODS.find(m => m.id === selectedMethod);
   const stageIndex = activePayout ? PAYOUT_STAGES.findIndex(s => s.key === activePayout.stage) : -1;
+  const activeMethodLabel = activePayout?.payoutMethod ? PAYOUT_METHODS.find(m => m.id === activePayout.payoutMethod)?.label || activePayout.payoutMethod : null;
 
   return (
     <div className="flex-1 overflow-y-auto p-8">
@@ -108,7 +166,15 @@ function PayoutTab({ user }: { user: any }) {
               <div>
                 <div className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1">Active Payout Request</div>
                 <div className="data-number text-3xl font-bold text-white">${activePayout.amount.toLocaleString('en-US', { minimumFractionDigits: 2 })}</div>
-                <div className="text-[10px] text-muted-foreground mt-1">Submitted {new Date(activePayout.requestedAt).toLocaleDateString()}</div>
+                <div className="text-[10px] text-muted-foreground mt-1">
+                  Submitted {new Date(activePayout.requestedAt).toLocaleDateString()}
+                  {activeMethodLabel && <> &middot; <span className="text-white">{activeMethodLabel}</span></>}
+                </div>
+                {activePayout.payoutAddress && (
+                  <div className="text-[10px] text-muted-foreground mt-0.5">
+                    To: <span className="text-white font-mono text-[9px]">{activePayout.payoutAddress}</span>
+                  </div>
+                )}
               </div>
               <div className="flex items-center gap-2 bg-gold/10 border border-gold/30 rounded px-3 py-1.5">
                 <AlertTriangle className="w-4 h-4 text-gold" />
@@ -158,14 +224,74 @@ function PayoutTab({ user }: { user: any }) {
           </div>
         )}
 
-        {!hasPending && (
+        {!hasPending && step === 'method' && (
           <div className="bg-s1 border border-b1 rounded-lg p-6">
             <div className="mb-6">
               <div className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1">Available Balance</div>
               <div className="data-number text-4xl font-bold text-white">${user.balance.toLocaleString('en-US', { minimumFractionDigits: 2 })}</div>
             </div>
 
+            <div className="text-[10px] text-muted-foreground uppercase tracking-wider mb-3">Choose Payout Method</div>
+            <div className="space-y-2">
+              {PAYOUT_METHODS.map(method => (
+                <button
+                  key={method.id}
+                  onClick={() => { setSelectedMethod(method.id); setStep('amount'); setError(''); }}
+                  className={`w-full flex items-center gap-4 bg-background border rounded-lg px-5 py-4 text-left transition-all hover:border-gold/50 hover:bg-s1 ${selectedMethod === method.id ? 'border-gold bg-gold/5' : 'border-b1'}`}
+                  data-testid={`method-${method.id}`}
+                >
+                  <div className="w-10 h-10 rounded-full bg-s3 flex items-center justify-center text-xl shrink-0">
+                    {method.icon}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="text-sm font-bold text-white">{method.label}</div>
+                    <div className={`text-[10px] font-bold uppercase tracking-wider ${method.speedColor}`}>{method.speed}</div>
+                  </div>
+                  <ArrowRight className="w-4 h-4 text-muted-foreground shrink-0" />
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {!hasPending && step === 'amount' && activeMethodConfig && (
+          <div className="bg-s1 border border-b1 rounded-lg p-6">
+            <button
+              onClick={() => { setStep('method'); setError(''); }}
+              className="flex items-center gap-2 text-xs text-muted-foreground hover:text-white transition-colors mb-4"
+              data-testid="btn-back-method"
+            >
+              <ArrowRight className="w-3 h-3 rotate-180" /> Change Method
+            </button>
+
+            <div className="flex items-center gap-3 mb-6 bg-background border border-b1 rounded-lg px-4 py-3">
+              <div className="w-8 h-8 rounded-full bg-s3 flex items-center justify-center text-lg shrink-0">
+                {activeMethodConfig.icon}
+              </div>
+              <div>
+                <div className="text-sm font-bold text-white">{activeMethodConfig.label}</div>
+                <div className={`text-[10px] font-bold uppercase tracking-wider ${activeMethodConfig.speedColor}`}>{activeMethodConfig.speed}</div>
+              </div>
+            </div>
+
+            <div className="mb-4">
+              <div className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1">Available Balance</div>
+              <div className="data-number text-4xl font-bold text-white">${user.balance.toLocaleString('en-US', { minimumFractionDigits: 2 })}</div>
+            </div>
+
             <form onSubmit={handleSubmit} className="space-y-4">
+              <div>
+                <label className="block text-[10px] text-muted-foreground uppercase tracking-wider mb-2">{activeMethodConfig.addressLabel}</label>
+                <input
+                  type="text"
+                  value={payoutAddress}
+                  onChange={e => setPayoutAddress(e.target.value)}
+                  placeholder={activeMethodConfig.placeholder}
+                  className="w-full bg-background border border-b1 rounded-lg px-4 py-3 text-sm text-white outline-none focus:border-gold transition-colors font-mono"
+                  data-testid="input-payout-address"
+                />
+              </div>
+
               <div>
                 <label className="block text-[10px] text-muted-foreground uppercase tracking-wider mb-2">Payout Amount ($)</label>
                 <div className="relative">
@@ -198,14 +324,15 @@ function PayoutTab({ user }: { user: any }) {
               )}
 
               <div className="bg-background border border-b1 rounded p-4 space-y-2 text-xs text-muted-foreground">
+                <div className="flex justify-between"><span>Method</span><span className="text-white font-bold">{activeMethodConfig.label}</span></div>
+                <div className="flex justify-between"><span>Processing</span><span className={`font-bold ${activeMethodConfig.speedColor}`}>{activeMethodConfig.speed}</span></div>
                 <div className="flex justify-between"><span>Trading Status</span><span className="text-gold font-bold">Will be paused</span></div>
                 <div className="flex justify-between"><span>Open Positions</span><span className="text-white">Must be closed first</span></div>
-                <div className="flex justify-between"><span>Processing</span><span className="text-white">Same day</span></div>
               </div>
 
               <button
                 type="submit"
-                disabled={requestPayout.isPending || !amount || parseFloat(amount) <= 0}
+                disabled={requestPayout.isPending || !amount || parseFloat(amount) <= 0 || !payoutAddress.trim()}
                 className="w-full bg-gold text-black font-heading text-lg font-bold py-4 rounded-lg hover:bg-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                 data-testid="btn-submit-payout"
               >
@@ -223,17 +350,21 @@ function PayoutTab({ user }: { user: any }) {
           <div>
             <h3 className="text-[10px] text-muted-foreground uppercase tracking-wider mb-3">Payout History</h3>
             <div className="space-y-2">
-              {payouts.filter((p: any) => p.status === "completed" || p.status === "rejected").map((p: any) => (
-                <div key={p.id} className="bg-s1 border border-b1 rounded-lg px-4 py-3 flex items-center justify-between" data-testid={`payout-${p.id}`}>
-                  <div>
-                    <span className="data-number text-sm font-bold text-white">${p.amount.toLocaleString('en-US', { minimumFractionDigits: 2 })}</span>
-                    <span className="text-[10px] text-muted-foreground ml-3">{new Date(p.requestedAt).toLocaleDateString()}</span>
+              {payouts.filter((p: any) => p.status === "completed" || p.status === "rejected").map((p: any) => {
+                const methodLabel = p.payoutMethod ? PAYOUT_METHODS.find(m => m.id === p.payoutMethod)?.label || p.payoutMethod : 'N/A';
+                return (
+                  <div key={p.id} className="bg-s1 border border-b1 rounded-lg px-4 py-3 flex items-center justify-between" data-testid={`payout-${p.id}`}>
+                    <div>
+                      <span className="data-number text-sm font-bold text-white">${p.amount.toLocaleString('en-US', { minimumFractionDigits: 2 })}</span>
+                      <span className="text-[10px] text-muted-foreground ml-3">{methodLabel}</span>
+                      <span className="text-[10px] text-muted-foreground ml-3">{new Date(p.requestedAt).toLocaleDateString()}</span>
+                    </div>
+                    <span className={`text-[10px] font-bold uppercase ${p.status === 'completed' ? 'text-green' : 'text-red'}`}>
+                      {p.status === 'completed' ? 'Paid' : 'Rejected'}
+                    </span>
                   </div>
-                  <span className={`text-[10px] font-bold uppercase ${p.status === 'completed' ? 'text-green' : 'text-red'}`}>
-                    {p.status === 'completed' ? 'Paid' : 'Rejected'}
-                  </span>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </div>
         )}

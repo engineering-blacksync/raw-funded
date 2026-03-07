@@ -45,6 +45,11 @@ A private prop trading platform where admin assigns funded accounts. Users get a
 - Only one active payout per user at a time
 - Server enforces strict state machine — no stage skipping or terminal state mutation
 - Dashboard shows progress tracker with 4 stages; admin panel has Payouts tab
+- **Payout Methods**: User selects method before entering amount
+  - Crypto (same day): USDT, Bitcoin, Ethereum — user provides wallet address
+  - Bank (1–3 business days): Wise, Rise — user provides email
+  - Schema fields: `payoutMethod` (text), `payoutAddress` (text) on withdrawals table
+  - Admin sees method + address in Payouts tab
 
 ## Admin System
 - `isAdmin` boolean on users table — only admin users can access `/admin` and `/api/admin/*` routes

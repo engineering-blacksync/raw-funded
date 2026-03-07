@@ -413,10 +413,14 @@ export default function Admin() {
                             <span className="font-bold text-white">{p.username}</span>
                             <span className="text-xs text-muted-foreground">{p.email}</span>
                           </div>
-                          <div className="flex items-center gap-4">
+                          <div className="flex items-center gap-4 flex-wrap">
                             <div>
                               <div className="text-[10px] text-muted-foreground uppercase">Amount</div>
                               <div className="data-number text-xl font-bold text-white">${p.amount.toLocaleString('en-US', { minimumFractionDigits: 2 })}</div>
+                            </div>
+                            <div>
+                              <div className="text-[10px] text-muted-foreground uppercase">Method</div>
+                              <div className="text-sm text-white font-bold">{p.payoutMethod ? p.payoutMethod.toUpperCase() : 'N/A'}</div>
                             </div>
                             <div>
                               <div className="text-[10px] text-muted-foreground uppercase">Requested</div>
@@ -429,6 +433,12 @@ export default function Admin() {
                               </span>
                             </div>
                           </div>
+                          {p.payoutAddress && (
+                            <div className="mt-2 text-xs text-muted-foreground">
+                              <span className="text-[10px] uppercase">Send to:</span>{' '}
+                              <span className="text-white font-mono text-[11px]">{p.payoutAddress}</span>
+                            </div>
+                          )}
                           {p.adminNotes && (
                             <div className="mt-2 text-xs text-muted-foreground bg-s2 rounded px-3 py-2 border border-b1">
                               <span className="text-[10px] uppercase text-muted-foreground">Notes:</span> {p.adminNotes}

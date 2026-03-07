@@ -65,6 +65,8 @@ export const withdrawals = pgTable("withdrawals", {
   amount: real("amount").notNull(),
   status: text("status").notNull().default("requested"),
   stage: text("stage").notNull().default("requested"),
+  payoutMethod: text("payout_method"),
+  payoutAddress: text("payout_address"),
   adminNotes: text("admin_notes"),
   requestedAt: timestamp("requested_at").defaultNow(),
   processedAt: timestamp("processed_at"),
@@ -101,6 +103,8 @@ export const insertVerificationSchema = createInsertSchema(verifications).pick({
 
 export const insertWithdrawalSchema = createInsertSchema(withdrawals).pick({
   amount: true,
+  payoutMethod: true,
+  payoutAddress: true,
 });
 
 export type InsertUser = z.infer<typeof insertUserSchema>;

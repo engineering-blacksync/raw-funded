@@ -591,6 +591,8 @@ export async function registerRoutes(
     return res.json(vers);
   });
 
+  const VALID_PAYOUT_METHODS = ['usdt', 'btc', 'eth', 'wise', 'rise'];
+
   app.post("/api/payouts", requireApproved, async (req: Request, res: Response) => {
     try {
       const parsed = insertWithdrawalSchema.safeParse(req.body);
@@ -599,6 +601,8 @@ export async function registerRoutes(
       const user = req.user!;
       if (parsed.data.amount <= 0) return res.status(400).json({ message: "Amount must be greater than zero" });
       if (parsed.data.amount > user.balance) return res.status(400).json({ message: "Insufficient balance" });
+      if (!parsed.data.payoutMethod || !VALID_PAYOUT_METHODS.includes(parsed.data.payoutMethod)) return res.status(400).json({ message: "Select a valid payout method" });
+      if (!parsed.data.payoutAddress?.trim()) return res.status(400).json({ message: "Payout address is required" });
 
       const hasPending = await storage.hasPendingPayout(user.id);
       if (hasPending) return res.status(400).json({ message: "You already have a pending payout request" });

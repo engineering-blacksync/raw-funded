@@ -800,6 +800,89 @@ export async function registerRoutes(
   app.post("/api/supabase/trades/update", requireApproved, async (req, res) => { const { supabaseId, pnl } = req.body; const supabaseUrl = process.env.SUPABASE_URL; const supabaseKey = process.env.SUPABASE_ANON_KEY; if (!supabaseUrl || !supabaseKey) return res.status(500).json({ message: "Supabase not configured" }); try { const response = await fetch(supabaseUrl + "/rest/v1/trades?id=eq." + supabaseId, { method: "PATCH", headers: { "Content-Type": "application/json", "apikey": supabaseKey, "Authorization": "Bearer " + supabaseKey, "Prefer": "return=minimal" }, body: JSON.stringify({ pnl, updated_at: new Date().toISOString() }) }); if (response.ok) return res.json({ success: true }); return res.status(500).json({ message: "Supabase update failed" }); } catch { return res.status(502).json({ message: "Connection failed" }); } });
 
   const priceCache: Record<string, { price: number; ts: number }> = {};
+  const priceSSEClients: Set<{ res: Response; instruments: string[] }> = new Set();
+
+  app.get("/api/prices/stream", (req: Request, res: Response) => {
+    const instruments = (req.query.instruments as string || '').split(',').filter(Boolean);
+    if (instruments.length === 0) return res.status(400).json({ message: "instruments required" });
+
+    res.writeHead(200, {
+      'Content-Type': 'text/event-stream',
+      'Cache-Control': 'no-cache',
+      'Connection': 'keep-alive',
+      'X-Accel-Buffering': 'no',
+    });
+    res.write(':\n\n');
+
+    const client = { res, instruments };
+    priceSSEClients.add(client);
+
+    const sendCurrent = () => {
+      const prices: Record<string, number> = {};
+      for (const inst of instruments) {
+        const c = priceCache[inst];
+        if (c) prices[inst] = c.price;
+      }
+      if (Object.keys(prices).length > 0) {
+        res.write(`data: ${JSON.stringify(prices)}\n\n`);
+      }
+    };
+    sendCurrent();
+
+    req.on('close', () => { priceSSEClients.delete(client); });
+  });
+
+  function broadcastPrices(updated: Record<string, number>) {
+    const msg = `data: ${JSON.stringify(updated)}\n\n`;
+    for (const client of priceSSEClients) {
+      const relevant: Record<string, number> = {};
+      for (const inst of client.instruments) {
+        if (updated[inst] !== undefined) relevant[inst] = updated[inst];
+      }
+      if (Object.keys(relevant).length > 0) {
+        try { client.res.write(`data: ${JSON.stringify(relevant)}\n\n`); } catch { priceSSEClients.delete(client); }
+      }
+    }
+  }
+
+  let pricePushInterval: ReturnType<typeof setInterval> | null = null;
+  function startPricePush() {
+    if (pricePushInterval) return;
+    const pushPrices = async () => {
+      const allInstruments = [...new Set(Array.from(priceSSEClients).flatMap(c => c.instruments))];
+      if (allInstruments.length === 0) return;
+
+      const exchangeGroups: Record<string, { inst: string; ticker: string }[]> = {};
+      for (const inst of allInstruments) {
+        const mapping = TV_INSTRUMENT_MAP[inst];
+        if (mapping) {
+          if (!exchangeGroups[mapping.exchange]) exchangeGroups[mapping.exchange] = [];
+          exchangeGroups[mapping.exchange].push({ inst, ticker: mapping.ticker });
+        }
+      }
+
+      const updated: Record<string, number> = {};
+      const fetches = Object.entries(exchangeGroups).map(async ([exchange, items]) => {
+        try {
+          const tickers = [...new Set(items.map(i => i.ticker))];
+          const prices = await fetchTvScannerPrices(exchange, tickers);
+          for (const item of items) {
+            const price = prices[item.ticker];
+            if (typeof price === 'number' && price > 0) {
+              const old = priceCache[item.inst]?.price;
+              priceCache[item.inst] = { price, ts: Date.now() };
+              if (price !== old) updated[item.inst] = price;
+            }
+          }
+        } catch {}
+      });
+      await Promise.allSettled(fetches);
+      if (Object.keys(updated).length > 0) broadcastPrices(updated);
+    };
+    pricePushInterval = setInterval(pushPrices, 300);
+    pushPrices();
+  }
+  startPricePush();
 
   const tvTickerCache: Record<string, { price: number; ts: number }> = {};
 
@@ -810,7 +893,7 @@ export async function registerRoutes(
 
     for (const t of tickers) {
       const c = tvTickerCache[t];
-      if (c && now - c.ts < 800) {
+      if (c && now - c.ts < 250) {
         results[t] = c.price;
       } else {
         uncached.push(t);
@@ -879,7 +962,7 @@ export async function registerRoutes(
 
     for (const inst of instruments) {
       const cached = priceCache[inst];
-      if (cached && now - cached.ts < 800) {
+      if (cached && now - cached.ts < 250) {
         results[inst] = cached.price;
       } else {
         const mapping = TV_INSTRUMENT_MAP[inst];
@@ -922,7 +1005,7 @@ export async function registerRoutes(
     if (!fetcher) return res.status(404).json({ message: "Unknown instrument" });
 
     const cached = priceCache[instrument];
-    if (cached && Date.now() - cached.ts < 800) {
+    if (cached && Date.now() - cached.ts < 250) {
       return res.json({ price: cached.price });
     }
 

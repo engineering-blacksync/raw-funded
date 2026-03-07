@@ -99,6 +99,7 @@ function useLivePrices(instruments: string[]) {
         setBinanceDebug({ ...globalBinanceDebug });
       };
 
+      let debugThrottle = 0;
       ws.onmessage = (event) => {
         try {
           const data = JSON.parse(event.data);
@@ -106,7 +107,11 @@ function useLivePrices(instruments: string[]) {
           if (isNaN(price) || price <= 0) return;
 
           globalBinanceDebug = { wsStatus: 'connected', lastPrice: price, lastUpdateTs: Date.now() };
-          setBinanceDebug({ ...globalBinanceDebug });
+          const now = Date.now();
+          if (now - debugThrottle > 1000) {
+            debugThrottle = now;
+            setBinanceDebug({ ...globalBinanceDebug });
+          }
 
           for (const inst of BTC_INSTRUMENTS) {
             if (instruments.includes(inst)) {
@@ -140,20 +145,19 @@ function useLivePrices(instruments: string[]) {
     };
   }, [hasBtc, instruments.join(','), updatePrice]);
 
+  const sseRef = useRef<EventSource | null>(null);
+
   useEffect(() => {
-    const allPolled = [...new Set([...nonBtcInstruments, ...instruments.filter(i => BTC_INSTRUMENTS.includes(i))])];
-    if (allPolled.length === 0) return;
-    let active = true;
-    const fetchAll = async () => {
+    const allStreamed = [...new Set([...nonBtcInstruments, ...instruments.filter(i => BTC_INSTRUMENTS.includes(i))])];
+    if (allStreamed.length === 0) return;
+
+    const sse = new EventSource(`/api/prices/stream?instruments=${encodeURIComponent(allStreamed.join(','))}`);
+    sseRef.current = sse;
+
+    sse.onmessage = (event) => {
       try {
-        const res = await fetch('/api/prices/batch', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ instruments: allPolled }),
-        });
-        if (!res.ok || !active) return;
-        const data = await res.json();
-        for (const [inst, price] of Object.entries(data.prices)) {
+        const prices = JSON.parse(event.data);
+        for (const [inst, price] of Object.entries(prices)) {
           if (typeof price === 'number' && price > 0) {
             if (BTC_INSTRUMENTS.includes(inst) && pricesRef.current[inst] && globalBinanceDebug.wsStatus === 'connected') continue;
             updatePrice(inst, price);
@@ -161,9 +165,11 @@ function useLivePrices(instruments: string[]) {
         }
       } catch {}
     };
-    fetchAll();
-    const interval = setInterval(fetchAll, 1000);
-    return () => { active = false; clearInterval(interval); };
+
+    return () => {
+      sse.close();
+      sseRef.current = null;
+    };
   }, [instruments.join(','), updatePrice]);
 
   return { prices, binanceDebug };

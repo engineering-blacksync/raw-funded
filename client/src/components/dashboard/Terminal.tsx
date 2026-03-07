@@ -225,6 +225,8 @@ export default function Terminal({ tier, userTierName, balance, onOpenPnlChange,
   const [activeInstrument, setActiveInstrument] = useState(defaultInstrument);
   const [quantity, setQuantity] = useState<number>(defaultInstrument.default);
   const [openTrades, setOpenTrades] = useState<Trade[]>([]);
+  const openTradesRef = useRef<Trade[]>([]);
+  useEffect(() => { openTradesRef.current = openTrades; }, [openTrades]);
   const [closedTrades, setClosedTrades] = useState<Trade[]>([]);
   const [viewMode, setViewMode] = useState<'simple' | 'pro'>('pro');
   const [tradeLoading, setTradeLoading] = useState<'BUY' | 'SELL' | null>(null);
@@ -463,18 +465,25 @@ export default function Terminal({ tier, userTierName, balance, onOpenPnlChange,
     if (tvLoaded) createChart();
   }, [tvLoaded, createChart]);
 
-  const pollSupabaseFillPrice = async (supabaseId: string, localTradeId: string, initialPrice: number) => {
-    const maxAttempts = 10;
-    const delayMs = 500;
+  const pollSupabaseFillPrice = async (supabaseId: string, localTradeId: string, _initialPrice: number) => {
+    const maxAttempts = 60;
+    const delayMs = 1000;
     for (let i = 0; i < maxAttempts; i++) {
       await new Promise(r => setTimeout(r, delayMs));
+      const stillOpen = openTradesRef.current.some(t => t.id === localTradeId && t.status === 'open');
+      if (!stillOpen) return;
       try {
         const res = await fetch(`/api/supabase/trades/${supabaseId}`);
         if (!res.ok) continue;
         const data = await res.json();
-        if (data.open_price && data.open_price !== initialPrice) {
+        if (data.status === 'failed') {
+          setOpenTrades(prev => prev.filter(t => t.id !== localTradeId));
+          console.log('Trade failed, removed:', localTradeId);
+          return;
+        }
+        if (data.status === 'executed' && data.open_price) {
           const fillPrice = data.open_price;
-          setOpenTrades(prev => prev.map(t => t.id === localTradeId ? { ...t, entryPrice: fillPrice } : t));
+          setOpenTrades(prev => prev.map(t => t.id === localTradeId ? { ...t, status: 'executed', entryPrice: fillPrice } : t));
           fetch(`/api/trades/${localTradeId}/entry-price`, {
             method: 'PATCH',
             headers: { 'Content-Type': 'application/json' },
@@ -843,9 +852,9 @@ export default function Terminal({ tier, userTierName, balance, onOpenPnlChange,
               </span>
 
               <span className="text-white font-bold text-xs shrink-0">{(() => { const inst = INSTRUMENTS.find(i => i.label === pos.instrument); return inst ? Math.round(pos.size / inst.lotSize) : pos.size; })()} {pos.instrument}</span>
-              {pos.status === 'open' && <span className="text-[8px] text-gold animate-pulse shrink-0">PENDING</span>}
+              {pos.status === 'open' && <span className="text-[8px] text-muted-foreground animate-pulse shrink-0">...</span>}
 
-              <span className="text-muted-foreground text-[11px] shrink-0">Entry <span className="text-gold data-number">{pos.status === 'open' ? '---' : formatPrice(pos.entryPrice, pos.instrument)}</span></span>
+              <span className="text-muted-foreground text-[11px] shrink-0">Entry <span className="text-gold data-number">{pos.status === 'open' ? <span className="animate-pulse">...</span> : formatPrice(pos.entryPrice, pos.instrument)}</span></span>
               <span className="text-muted-foreground text-[11px] shrink-0">Now <span className="text-white data-number">{pos.currentPrice ? formatPrice(pos.currentPrice, pos.instrument) : '---'}</span></span>
 
               <div className="ml-auto flex items-center gap-2">

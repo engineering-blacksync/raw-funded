@@ -162,6 +162,8 @@ export default function Terminal({ tier, userTierName, balance, onOpenPnlChange,
   const livePrices = useLivePrices(allInstruments);
 
   const supabaseChannelRef = useRef<RealtimeChannel | null>(null);
+  const supabaseTradeIdsRef = useRef<Record<string, string>>({});
+  useEffect(() => { supabaseTradeIdsRef.current = supabaseTradeIds; }, [supabaseTradeIds]);
 
   const loadTrades = useCallback(async () => {
     try {
@@ -177,6 +179,43 @@ export default function Terminal({ tier, userTierName, balance, onOpenPnlChange,
     } catch {}
   }, []);
 
+  const handleRealtimeChange = useCallback((payload: any) => {
+    const { eventType, new: row } = payload;
+    if (!row) return;
+
+    const sbId = row.id;
+    const idMap = supabaseTradeIdsRef.current;
+    const localId = Object.entries(idMap).find(([, v]) => v === sbId)?.[0];
+
+    if (eventType === 'UPDATE' && localId) {
+      const newStatus = row.status;
+
+      if (newStatus === 'closed' || newStatus === 'failed') {
+        setOpenTrades(prev => prev.filter(t => t.id !== localId));
+        if (newStatus === 'closed') loadTrades();
+        return;
+      }
+
+      if (newStatus === 'executed' && row.open_price) {
+        setOpenTrades(prev => prev.map(t => {
+          if (t.id !== localId) return t;
+          return { ...t, status: 'executed', entryPrice: row.open_price };
+        }));
+        fetch(`/api/trades/${localId}/entry-price`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ entryPrice: row.open_price }),
+        }).catch(() => {});
+        console.log('RT: status→executed, fill price:', row.open_price, 'for', localId);
+        return;
+      }
+
+      setOpenTrades(prev => prev.map(t => t.id === localId ? { ...t, status: newStatus } : t));
+    } else if (eventType === 'INSERT') {
+      loadTrades();
+    }
+  }, [loadTrades]);
+
   useEffect(() => {
     loadTrades();
 
@@ -189,8 +228,8 @@ export default function Terminal({ tier, userTierName, balance, onOpenPnlChange,
         const supabase = createClient(url, anonKey);
         channel = supabase
           .channel('trades-realtime')
-          .on('postgres_changes', { event: '*', schema: 'public', table: 'trades' }, () => {
-            loadTrades();
+          .on('postgres_changes', { event: '*', schema: 'public', table: 'trades' }, (payload) => {
+            handleRealtimeChange(payload);
           })
           .subscribe();
         supabaseChannelRef.current = channel;
@@ -200,7 +239,7 @@ export default function Terminal({ tier, userTierName, balance, onOpenPnlChange,
     return () => {
       if (channel) channel.unsubscribe();
     };
-  }, [loadTrades]);
+  }, [loadTrades, handleRealtimeChange]);
 
   const visibleOpenTrades = openTrades.filter(t => t.status === 'open' || t.status === 'executed');
 

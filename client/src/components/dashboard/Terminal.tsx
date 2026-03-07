@@ -852,9 +852,7 @@ export default function Terminal({ tier, userTierName, balance, onOpenPnlChange,
               </span>
 
               <span className="text-white font-bold text-xs shrink-0">{(() => { const inst = INSTRUMENTS.find(i => i.label === pos.instrument); return inst ? Math.round(pos.size / inst.lotSize) : pos.size; })()} {pos.instrument}</span>
-              {pos.status === 'open' && <span className="text-[8px] text-muted-foreground animate-pulse shrink-0">...</span>}
-
-              <span className="text-muted-foreground text-[11px] shrink-0">Entry <span className="text-gold data-number">{pos.status === 'open' ? <span className="animate-pulse">...</span> : formatPrice(pos.entryPrice, pos.instrument)}</span></span>
+              <span className="text-muted-foreground text-[11px] shrink-0">Entry <span className="text-gold data-number">{pos.entryPrice ? formatPrice(pos.entryPrice, pos.instrument) : ''}</span></span>
               <span className="text-muted-foreground text-[11px] shrink-0">Now <span className="text-white data-number">{pos.currentPrice ? formatPrice(pos.currentPrice, pos.instrument) : '---'}</span></span>
 
               <div className="ml-auto flex items-center gap-2">

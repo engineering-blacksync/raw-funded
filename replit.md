@@ -135,8 +135,9 @@ A private prop trading platform where admin assigns funded accounts. Users get a
 - Spreads: Gold/GC/MGC = $0.03, Silver/SIL = $0.008 (applied at entry only)
 - All trades persist in PostgreSQL; live P&L via price polling
 - Contract sizes: BTC=1, Gold(GC)=100oz, MGC=10oz, Silver/SIL=5000, Oil/MCL=1000, S&P/MES=50/5, Nasdaq/MNQ=20/2
-- Price sources: TradingView Scanner API (all instruments — same data feed as chart widget)
+- Price sources: Binance WebSocket (BTC/MBT — real-time, sub-second), TradingView Scanner API (all other instruments — 1s polling)
 - Chart symbols: COINBASE:BTCUSD, COMEX:GC1!, COMEX:SI1!, NYMEX:CL1!, CME_MINI:ES1!, CME_MINI:NQ1!, CME_MINI:MNQ1!, CME_MINI:MES1!, NYMEX:MCL1!
+- Debug panel: dev-only collapsible panel showing WS status, last price, update timestamp, and P&L verification per position
 
 ## Supabase Integration
 - POST `/api/supabase/trades` — Sync trade open to Supabase

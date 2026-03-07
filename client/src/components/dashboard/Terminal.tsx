@@ -56,15 +56,95 @@ function useTradingViewScript() {
 }
 
 
+const BTC_INSTRUMENTS = ['MBT', 'Bitcoin', 'BTCUSD'];
+
+interface BinanceDebugInfo {
+  wsStatus: 'connected' | 'disconnected' | 'connecting';
+  lastPrice: number | null;
+  lastUpdateTs: number | null;
+}
+
+let globalBinanceDebug: BinanceDebugInfo = { wsStatus: 'disconnected', lastPrice: null, lastUpdateTs: null };
+
 function useLivePrices(instruments: string[]) {
   const [prices, setPrices] = useState<Record<string, number>>({});
   const pricesRef = useRef<Record<string, number>>({});
+  const wsRef = useRef<WebSocket | null>(null);
+  const reconnectTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [binanceDebug, setBinanceDebug] = useState<BinanceDebugInfo>(globalBinanceDebug);
+
+  const hasBtc = instruments.some(i => BTC_INSTRUMENTS.includes(i));
+  const nonBtcInstruments = instruments.filter(i => !BTC_INSTRUMENTS.includes(i));
+
+  const updatePrice = useCallback((label: string, price: number) => {
+    if (price <= 0 || pricesRef.current[label] === price) return;
+    pricesRef.current = { ...pricesRef.current, [label]: price };
+    setPrices(prev => ({ ...prev, [label]: price }));
+  }, []);
 
   useEffect(() => {
-    if (instruments.length === 0) return;
+    if (!hasBtc) return;
+
+    const connect = () => {
+      if (wsRef.current && wsRef.current.readyState <= 1) return;
+
+      globalBinanceDebug = { ...globalBinanceDebug, wsStatus: 'connecting' };
+      setBinanceDebug({ ...globalBinanceDebug });
+
+      const ws = new WebSocket('wss://stream.binance.com:9443/ws/btcusdt@trade');
+      wsRef.current = ws;
+
+      ws.onopen = () => {
+        globalBinanceDebug = { ...globalBinanceDebug, wsStatus: 'connected' };
+        setBinanceDebug({ ...globalBinanceDebug });
+      };
+
+      ws.onmessage = (event) => {
+        try {
+          const data = JSON.parse(event.data);
+          const price = parseFloat(data.p);
+          if (isNaN(price) || price <= 0) return;
+
+          globalBinanceDebug = { wsStatus: 'connected', lastPrice: price, lastUpdateTs: Date.now() };
+          setBinanceDebug({ ...globalBinanceDebug });
+
+          for (const inst of BTC_INSTRUMENTS) {
+            if (instruments.includes(inst)) {
+              updatePrice(inst, price);
+            }
+          }
+        } catch {}
+      };
+
+      ws.onclose = () => {
+        globalBinanceDebug = { ...globalBinanceDebug, wsStatus: 'disconnected' };
+        setBinanceDebug({ ...globalBinanceDebug });
+        wsRef.current = null;
+        reconnectTimer.current = setTimeout(connect, 1000);
+      };
+
+      ws.onerror = () => {
+        ws.close();
+      };
+    };
+
+    connect();
+
+    return () => {
+      if (reconnectTimer.current) clearTimeout(reconnectTimer.current);
+      if (wsRef.current) {
+        wsRef.current.onclose = null;
+        wsRef.current.close();
+        wsRef.current = null;
+      }
+    };
+  }, [hasBtc, instruments.join(','), updatePrice]);
+
+  useEffect(() => {
+    if (nonBtcInstruments.length === 0) return;
     let active = true;
     const fetchAll = async () => {
-      const unique = [...new Set(instruments)];
+      const unique = [...new Set(nonBtcInstruments)];
       try {
         const res = await fetch('/api/prices/batch', {
           method: 'POST',
@@ -73,26 +153,19 @@ function useLivePrices(instruments: string[]) {
         });
         if (!res.ok || !active) return;
         const data = await res.json();
-        const updated = { ...pricesRef.current };
-        let changed = false;
         for (const [inst, price] of Object.entries(data.prices)) {
-          if (typeof price === 'number' && price > 0 && updated[inst] !== price) {
-            updated[inst] = price;
-            changed = true;
+          if (typeof price === 'number' && price > 0) {
+            updatePrice(inst, price);
           }
-        }
-        if (changed) {
-          pricesRef.current = updated;
-          setPrices({ ...updated });
         }
       } catch {}
     };
     fetchAll();
     const interval = setInterval(fetchAll, 1000);
     return () => { active = false; clearInterval(interval); };
-  }, [instruments.join(',')]);
+  }, [nonBtcInstruments.join(','), updatePrice]);
 
-  return prices;
+  return { prices, binanceDebug };
 }
 
 function getTickSize(instrument: string): number | undefined {
@@ -164,7 +237,7 @@ export default function Terminal({ tier, userTierName, balance, onOpenPnlChange,
 
   const openInstruments = openTrades.map(t => t.instrument);
   const allInstruments = [...new Set([activeInstrument.label, ...openInstruments])];
-  const livePrices = useLivePrices(allInstruments);
+  const { prices: livePrices, binanceDebug } = useLivePrices(allInstruments);
 
   const supabaseChannelRef = useRef<RealtimeChannel | null>(null);
   const supabaseTradeIdsRef = useRef<Record<string, string>>({});
@@ -534,6 +607,8 @@ export default function Terminal({ tier, userTierName, balance, onOpenPnlChange,
   };
 
   const [closingAll, setClosingAll] = useState(false);
+  const [showDebug, setShowDebug] = useState(false);
+  const isDev = import.meta.env.DEV;
   const handleCloseAll = async () => {
     if (closingAll || openTrades.length === 0) return;
     setClosingAll(true);
@@ -772,6 +847,67 @@ export default function Terminal({ tier, userTierName, balance, onOpenPnlChange,
           ))}
         </div>
       )}
+
+      {isDev && (
+        <div className="bg-[#0A0A0C] border-t border-b1">
+          <button
+            onClick={() => setShowDebug(!showDebug)}
+            className="w-full px-3 py-1 text-[9px] text-muted-foreground hover:text-white text-left font-mono uppercase tracking-wider"
+            data-testid="btn-toggle-debug"
+          >
+            {showDebug ? '▼' : '▶'} Debug Panel
+          </button>
+          {showDebug && (
+            <div className="px-3 pb-2 space-y-2 text-[10px] font-mono">
+              <div className="flex gap-4">
+                <span className="text-muted-foreground">WS Status:</span>
+                <span className={binanceDebug.wsStatus === 'connected' ? 'text-[#22C55E]' : binanceDebug.wsStatus === 'connecting' ? 'text-gold' : 'text-[#EF4444]'}>
+                  {binanceDebug.wsStatus.toUpperCase()}
+                </span>
+              </div>
+              <div className="flex gap-4">
+                <span className="text-muted-foreground">Last Price:</span>
+                <span className="text-white">{binanceDebug.lastPrice !== null ? `$${binanceDebug.lastPrice.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '---'}</span>
+              </div>
+              <div className="flex gap-4">
+                <span className="text-muted-foreground">Last Update:</span>
+                <DebugTimestamp ts={binanceDebug.lastUpdateTs} />
+              </div>
+              {positionsWithPnl.length > 0 && (
+                <div className="border-t border-b1 pt-2 space-y-1">
+                  <span className="text-muted-foreground uppercase tracking-wider">P&L Check</span>
+                  {positionsWithPnl.map(pos => {
+                    const expectedPnl = pos.currentPrice ? calcPnl(pos.side, pos.entryPrice, pos.currentPrice, pos.size) : 0;
+                    const match = Math.abs(expectedPnl - pos.livePnl) < 0.01;
+                    return (
+                      <div key={pos.id} className="grid grid-cols-6 gap-1 items-center text-[9px]" data-testid={`debug-row-${pos.id}`}>
+                        <span className="text-white">{pos.instrument}</span>
+                        <span className="text-muted-foreground">Entry: {pos.entryPrice.toFixed(2)}</span>
+                        <span className="text-muted-foreground">Now: {pos.currentPrice ? pos.currentPrice.toFixed(2) : '---'}</span>
+                        <span className="text-muted-foreground">Calc: ${expectedPnl.toFixed(2)}</span>
+                        <span className="text-muted-foreground">Disp: ${pos.livePnl.toFixed(2)}</span>
+                        <span className={match ? 'text-[#22C55E] font-bold' : 'text-[#EF4444] font-bold'}>{match ? 'PASS' : 'FAIL'}</span>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
+}
+
+function DebugTimestamp({ ts }: { ts: number | null }) {
+  const [ago, setAgo] = useState<string>('---');
+  useEffect(() => {
+    if (ts === null) { setAgo('---'); return; }
+    const update = () => setAgo(`${Date.now() - ts}ms ago`);
+    update();
+    const interval = setInterval(update, 100);
+    return () => clearInterval(interval);
+  }, [ts]);
+  return <span className="text-white">{ago}</span>;
 }

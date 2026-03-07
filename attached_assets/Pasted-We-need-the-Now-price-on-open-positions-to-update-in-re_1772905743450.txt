@@ -1,0 +1,51 @@
+We need the "Now" price on open positions to update in real time with no delay. Stop using any REST API or polling for price. The solution is a Binance WebSocket connection which streams live Bitcoin price directly into the browser for free with no API key and sub-second speed.
+
+---
+
+THE FIX — BINANCE WEBSOCKET FOR LIVE PRICE
+
+Open a WebSocket connection to Binance's live price stream:
+
+  wss://stream.binance.com:9443/ws/btcusdt@trade
+
+This stream fires on every single trade that happens on Binance. Each message contains:
+  - p: the trade price (use this as the "Now" price)
+  - T: the timestamp
+
+When a message comes in:
+1. Parse the price from the "p" field
+2. Update the "Now" price on all open Bitcoin positions immediately
+3. Recalculate P&L for all open positions at the same time
+
+For non-Bitcoin instruments, keep whatever price feed is currently being used until we address those separately.
+
+---
+
+RECONNECT LOGIC
+
+If the WebSocket disconnects for any reason, automatically reconnect after 1 second. The price feed must always be live.
+
+---
+
+SELF-TEST — ADD A DEBUG PANEL
+
+Add a small collapsible debug panel to the dashboard (visible in development, hidden in production) that shows:
+
+1. WebSocket status — Connected / Disconnected
+2. Last price received — the raw value from Binance
+3. Last update timestamp — how many milliseconds ago the last price came in
+4. P&L check — for each open position, show:
+   - The open_price from Supabase
+   - The current Now price
+   - The calculated P&L using the formula: (Now - open_price) × lot_size
+   - The P&L currently displayed on screen
+   - A PASS or FAIL indicator showing whether the displayed P&L matches the calculated P&L
+
+This lets us verify in real time that the price feed is working and the P&L math is correct without relying on visual inspection.
+
+---
+
+IMPORTANT
+
+For MBT trades, remember the lot size conversion: divide the MBT size by 10 before calculating P&L.
+Example: 3 MBT = 0.3 lots. P&L = (Now - open_price) × 0.3

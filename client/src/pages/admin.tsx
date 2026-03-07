@@ -8,7 +8,7 @@ import { Users, Plus, Edit2, Shield, X, Key, Check, XCircle, Eye, BarChart2, Clo
 type AdminTab = "queue" | "traders" | "create" | "payouts";
 
 const ALL_INSTRUMENTS = [
-  'Bitcoin', 'Gold (GC)', 'Silver', 'Oil (WTI)', 'S&P 500', 'Nasdaq',
+  'MBT', 'Gold (GC)', 'Silver', 'Oil (WTI)', 'S&P 500', 'Nasdaq',
   'MNQ', 'MES', 'MGC', 'SIL', 'MCL'
 ];
 

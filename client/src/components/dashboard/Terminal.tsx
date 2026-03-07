@@ -23,7 +23,7 @@ interface InstrumentConfig {
 }
 
 const INSTRUMENTS: InstrumentConfig[] = [
-  { label: 'Bitcoin', symbol: 'COINBASE:BTCUSD', default: 1, step: 1, min: 1, max: 100, lotSize: 0.01 },
+  { label: 'MBT', symbol: 'COINBASE:BTCUSD', default: 1, step: 1, min: 1, max: 20, lotSize: 0.10 },
   { label: 'Gold (GC)', symbol: 'OANDA:XAUUSD', default: 1, step: 1, min: 1, max: 10, lotSize: 1, spread: 0.30, tickSize: 0.10 },
   { label: 'Silver', symbol: 'OANDA:XAGUSD', default: 1, step: 1, min: 1, max: 10, lotSize: 1, spread: 0.008 },
   { label: 'Oil (WTI)', symbol: 'OANDA:WTICOUSD', default: 1, step: 1, min: 1, max: 20, lotSize: 1 },
@@ -37,7 +37,7 @@ const INSTRUMENTS: InstrumentConfig[] = [
 ];
 
 const CONTRACT_SIZES: Record<string, number> = {
-  'Bitcoin': 1, 'Gold (GC)': 100, 'Silver': 5000, 'Oil (WTI)': 1000,
+  'MBT': 10, 'Gold (GC)': 100, 'Silver': 5000, 'Oil (WTI)': 1000,
   'S&P 500': 50, 'Nasdaq': 20, 'MNQ': 2, 'MES': 5, 'MGC': 100, 'SIL': 5000, 'MCL': 1000,
 };
 
@@ -440,7 +440,7 @@ export default function Terminal({ tier, userTierName, balance, onOpenPnlChange,
   const formatPnl = (val: number) => `${val >= 0 ? '+' : ''}$${val.toFixed(2)}`;
 
   const formatPrice = (price: number, instrument: string) => {
-    if (['Bitcoin', 'Gold', 'S&P 500', 'Nasdaq', 'MNQ', 'MES'].includes(instrument)) {
+    if (['MBT', 'Gold', 'S&P 500', 'Nasdaq', 'MNQ', 'MES'].includes(instrument)) {
       return price.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
     }
     return price.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 4 });

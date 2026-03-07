@@ -24,7 +24,7 @@ interface InstrumentConfig {
 }
 
 const INSTRUMENTS: InstrumentConfig[] = [
-  { label: 'MBT', symbol: 'COINBASE:BTCUSD', default: 1, step: 1, min: 1, max: 20, lotSize: 0.10 },
+  { label: 'MBT', symbol: 'BINANCE:BTCUSDT', default: 1, step: 1, min: 1, max: 20, lotSize: 0.10 },
   { label: 'Gold (GC)', symbol: 'COMEX:GC1!', default: 1, step: 1, min: 1, max: 10, lotSize: 1, spread: 0.30, tickSize: 0.10 },
   { label: 'Silver', symbol: 'COMEX:SI1!', default: 1, step: 1, min: 1, max: 10, lotSize: 1, spread: 0.008 },
   { label: 'Oil (WTI)', symbol: 'NYMEX:CL1!', default: 1, step: 1, min: 1, max: 20, lotSize: 1 },

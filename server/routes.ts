@@ -820,8 +820,8 @@ export async function registerRoutes(
   }
 
   const TV_INSTRUMENT_MAP: Record<string, { exchange: string; ticker: string }> = {
-    'Bitcoin': { exchange: 'crypto', ticker: 'COINBASE:BTCUSD' },
-    'MBT': { exchange: 'crypto', ticker: 'COINBASE:BTCUSD' },
+    'Bitcoin': { exchange: 'crypto', ticker: 'BINANCE:BTCUSDT' },
+    'MBT': { exchange: 'crypto', ticker: 'BINANCE:BTCUSDT' },
     'Gold (GC)': { exchange: 'futures', ticker: 'COMEX:GC1!' },
     'Silver': { exchange: 'futures', ticker: 'COMEX:SI1!' },
     'Oil (WTI)': { exchange: 'futures', ticker: 'NYMEX:CL1!' },

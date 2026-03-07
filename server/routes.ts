@@ -3,6 +3,7 @@ import { createServer, type Server } from "http";
 import passport from "passport";
 import multer from "multer";
 import path from "path";
+import WebSocketWs from "ws";
 import { storage } from "./storage";
 import { setupAuth, requireAuth, requireApproved, hashPassword } from "./auth";
 import { sendApprovalEmail, sendRejectionEmail, sendWelcomeEmail, sendPayoutUpdateEmail, sendLiquidationEmail } from "./email";
@@ -883,89 +884,56 @@ export async function registerRoutes(
   app.post("/api/supabase/trades/update", requireApproved, async (req, res) => { const { supabaseId, pnl } = req.body; const supabaseUrl = process.env.SUPABASE_URL; const supabaseKey = process.env.SUPABASE_ANON_KEY; if (!supabaseUrl || !supabaseKey) return res.status(500).json({ message: "Supabase not configured" }); try { const response = await fetch(supabaseUrl + "/rest/v1/trades?id=eq." + supabaseId, { method: "PATCH", headers: { "Content-Type": "application/json", "apikey": supabaseKey, "Authorization": "Bearer " + supabaseKey, "Prefer": "return=minimal" }, body: JSON.stringify({ pnl, updated_at: new Date().toISOString() }) }); if (response.ok) return res.json({ success: true }); return res.status(500).json({ message: "Supabase update failed" }); } catch { return res.status(502).json({ message: "Connection failed" }); } });
 
   const priceCache: Record<string, { price: number; ts: number }> = {};
-  const priceSSEClients: Set<{ res: Response; instruments: string[] }> = new Set();
 
-  app.get("/api/prices/stream", (req: Request, res: Response) => {
-    const instruments = (req.query.instruments as string || '').split(',').filter(Boolean);
-    if (instruments.length === 0) return res.status(400).json({ message: "instruments required" });
-
-    res.writeHead(200, {
-      'Content-Type': 'text/event-stream',
-      'Cache-Control': 'no-cache',
-      'Connection': 'keep-alive',
-      'X-Accel-Buffering': 'no',
-    });
-    res.write(':\n\n');
-
-    const client = { res, instruments };
-    priceSSEClients.add(client);
-
-    const sendCurrent = () => {
-      const prices: Record<string, number> = {};
-      for (const inst of instruments) {
-        const c = priceCache[inst];
-        if (c) prices[inst] = c.price;
-      }
-      if (Object.keys(prices).length > 0) {
-        res.write(`data: ${JSON.stringify(prices)}\n\n`);
-      }
-    };
-    sendCurrent();
-
-    req.on('close', () => { priceSSEClients.delete(client); });
+  app.get("/api/config/finnhub", requireApproved, (_req: Request, res: Response) => {
+    const key = process.env.FINNHUB_API_KEY;
+    if (!key) return res.status(500).json({ message: "Finnhub not configured" });
+    return res.json({ key });
   });
 
-  function broadcastPrices(updated: Record<string, number>) {
-    const msg = `data: ${JSON.stringify(updated)}\n\n`;
-    for (const client of priceSSEClients) {
-      const relevant: Record<string, number> = {};
-      for (const inst of client.instruments) {
-        if (updated[inst] !== undefined) relevant[inst] = updated[inst];
-      }
-      if (Object.keys(relevant).length > 0) {
-        try { client.res.write(`data: ${JSON.stringify(relevant)}\n\n`); } catch { priceSSEClients.delete(client); }
-      }
-    }
-  }
+  const FINNHUB_TO_INSTRUMENTS: Record<string, string[]> = {
+    "BINANCE:BTCUSDT": ["MBT", "Bitcoin", "BTCUSD"],
+    "OANDA:XAU_USD": ["Gold (GC)", "MGC", "XAUUSD"],
+    "OANDA:XAG_USD": ["Silver", "SIL", "XAGUSD"],
+    "OANDA:BCO_USD": ["Oil (WTI)", "MCL", "WTIUSD"],
+    "FXCM:USA500.IDX/USD": ["S&P 500", "MES", "SPX"],
+    "FXCM:USATEC.IDX/USD": ["Nasdaq", "MNQ", "NDX"],
+  };
 
-  let pricePushInterval: ReturnType<typeof setInterval> | null = null;
-  function startPricePush() {
-    if (pricePushInterval) return;
-    const pushPrices = async () => {
-      const allInstruments = [...new Set(Array.from(priceSSEClients).flatMap(c => c.instruments))];
-      if (allInstruments.length === 0) return;
+  function startServerFinnhub() {
+    const key = process.env.FINNHUB_API_KEY;
+    if (!key) { console.log("[finnhub] No API key, server price cache disabled"); return; }
 
-      const exchangeGroups: Record<string, { inst: string; ticker: string }[]> = {};
-      for (const inst of allInstruments) {
-        const mapping = TV_INSTRUMENT_MAP[inst];
-        if (mapping) {
-          if (!exchangeGroups[mapping.exchange]) exchangeGroups[mapping.exchange] = [];
-          exchangeGroups[mapping.exchange].push({ inst, ticker: mapping.ticker });
-        }
-      }
+    let ws: any = null;
 
-      const updated: Record<string, number> = {};
-      const fetches = Object.entries(exchangeGroups).map(async ([exchange, items]) => {
+    const connect = () => {
+      ws = new WebSocketWs(`wss://ws.finnhub.io?token=${key}`);
+      ws.on('open', () => {
+        console.log("[finnhub] Server WS connected");
+        const symbols = Object.keys(FINNHUB_TO_INSTRUMENTS);
+        symbols.forEach((sym: string) => ws.send(JSON.stringify({ type: "subscribe", symbol: sym })));
+      });
+      ws.on('message', (raw: any) => {
         try {
-          const tickers = [...new Set(items.map(i => i.ticker))];
-          const prices = await fetchTvScannerPrices(exchange, tickers);
-          for (const item of items) {
-            const price = prices[item.ticker];
-            if (typeof price === 'number' && price > 0) {
-              const old = priceCache[item.inst]?.price;
-              priceCache[item.inst] = { price, ts: Date.now() };
-              if (price !== old) updated[item.inst] = price;
+          const data = JSON.parse(raw.toString());
+          if (data.type === "trade" && data.data) {
+            for (const tick of data.data) {
+              const instruments = FINNHUB_TO_INSTRUMENTS[tick.s];
+              if (instruments) {
+                for (const inst of instruments) {
+                  priceCache[inst] = { price: tick.p, ts: Date.now() };
+                }
+              }
             }
           }
         } catch {}
       });
-      await Promise.allSettled(fetches);
-      if (Object.keys(updated).length > 0) broadcastPrices(updated);
+      ws.on('error', (err: any) => console.error("[finnhub] Server WS error:", err.message));
+      ws.on('close', () => { console.log("[finnhub] Server WS closed, reconnecting..."); setTimeout(connect, 3000); });
     };
-    pricePushInterval = setInterval(pushPrices, 300);
-    pushPrices();
+    connect();
   }
-  startPricePush();
+  startServerFinnhub();
 
   const tvTickerCache: Record<string, { price: number; ts: number }> = {};
 
@@ -1023,7 +991,7 @@ export async function registerRoutes(
     'Oil (WTI)': { exchange: 'cfd', ticker: 'TVC:USOIL' },
     'S&P 500': { exchange: 'cfd', ticker: 'TVC:SPX' },
     'Nasdaq': { exchange: 'america', ticker: 'NASDAQ:NDX' },
-    'MNQ': { exchange: 'crypto', ticker: 'COINBASE:BTCUSD' },
+    'MNQ': { exchange: 'america', ticker: 'NASDAQ:NDX' },
     'MES': { exchange: 'cfd', ticker: 'TVC:SPX' },
     'MGC': { exchange: 'forex', ticker: 'OANDA:XAUUSD' },
     'SIL': { exchange: 'forex', ticker: 'OANDA:XAGUSD' },

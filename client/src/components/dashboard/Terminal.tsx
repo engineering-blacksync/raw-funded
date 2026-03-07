@@ -30,7 +30,7 @@ const INSTRUMENTS: InstrumentConfig[] = [
   { label: 'Oil (WTI)', symbol: 'TVC:USOIL', default: 1, step: 1, min: 1, max: 20, lotSize: 1 },
   { label: 'S&P 500', symbol: 'TVC:SPX', default: 1, step: 1, min: 1, max: 20, lotSize: 1 },
   { label: 'Nasdaq', symbol: 'NASDAQ:NDX', default: 1, step: 1, min: 1, max: 20, lotSize: 1 },
-  { label: 'MNQ', symbol: 'COINBASE:BTCUSD', default: 1, step: 1, min: 1, max: 20, lotSize: 0.10 },
+  { label: 'MNQ', symbol: 'NASDAQ:NDX', default: 1, step: 1, min: 1, max: 20, lotSize: 0.10 },
   { label: 'MES', symbol: 'TVC:SPX', default: 1, step: 1, min: 1, max: 20, lotSize: 0.10 },
   { label: 'MGC', symbol: 'OANDA:XAUUSD', default: 1, step: 1, min: 1, max: 20, lotSize: 0.10, spread: 0.03 },
   { label: 'SIL', symbol: 'OANDA:XAGUSD', default: 1, step: 1, min: 1, max: 20, lotSize: 0.10, spread: 0.008 },
@@ -56,25 +56,32 @@ function useTradingViewScript() {
 }
 
 
-const BTC_INSTRUMENTS = ['MBT', 'Bitcoin', 'BTCUSD'];
+const FINNHUB_TO_INSTRUMENTS: Record<string, string[]> = {
+  "BINANCE:BTCUSDT": ["MBT", "Bitcoin", "BTCUSD"],
+  "OANDA:XAU_USD": ["Gold (GC)", "MGC", "XAUUSD"],
+  "OANDA:XAG_USD": ["Silver", "SIL", "XAGUSD"],
+  "OANDA:BCO_USD": ["Oil (WTI)", "MCL", "WTIUSD"],
+  "FXCM:USA500.IDX/USD": ["S&P 500", "MES", "SPX"],
+  "FXCM:USATEC.IDX/USD": ["Nasdaq", "MNQ", "NDX"],
+};
 
-interface BinanceDebugInfo {
+const FINNHUB_SYMBOLS = Object.keys(FINNHUB_TO_INSTRUMENTS);
+
+interface FinnhubDebugInfo {
   wsStatus: 'connected' | 'disconnected' | 'connecting';
   lastPrice: number | null;
   lastUpdateTs: number | null;
 }
 
-let globalBinanceDebug: BinanceDebugInfo = { wsStatus: 'disconnected', lastPrice: null, lastUpdateTs: null };
+let globalFinnhubDebug: FinnhubDebugInfo = { wsStatus: 'disconnected', lastPrice: null, lastUpdateTs: null };
 
 function useLivePrices(instruments: string[]) {
   const [prices, setPrices] = useState<Record<string, number>>({});
   const pricesRef = useRef<Record<string, number>>({});
   const wsRef = useRef<WebSocket | null>(null);
   const reconnectTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const [binanceDebug, setBinanceDebug] = useState<BinanceDebugInfo>(globalBinanceDebug);
-
-  const hasBtc = instruments.some(i => BTC_INSTRUMENTS.includes(i));
-  const nonBtcInstruments = instruments.filter(i => !BTC_INSTRUMENTS.includes(i));
+  const apiKeyRef = useRef<string | null>(null);
+  const [finnhubDebug, setFinnhubDebug] = useState<FinnhubDebugInfo>(globalFinnhubDebug);
 
   const updatePrice = useCallback((label: string, price: number) => {
     if (price <= 0 || pricesRef.current[label] === price) return;
@@ -83,59 +90,76 @@ function useLivePrices(instruments: string[]) {
   }, []);
 
   useEffect(() => {
-    if (!hasBtc) return;
+    let cancelled = false;
 
-    const connect = () => {
+    const connect = async () => {
       if (wsRef.current && wsRef.current.readyState <= 1) return;
 
-      globalBinanceDebug = { ...globalBinanceDebug, wsStatus: 'connecting' };
-      setBinanceDebug({ ...globalBinanceDebug });
+      if (!apiKeyRef.current) {
+        try {
+          const res = await fetch('/api/config/finnhub');
+          if (res.ok) {
+            const data = await res.json();
+            apiKeyRef.current = data.key;
+          }
+        } catch {}
+        if (!apiKeyRef.current || cancelled) return;
+      }
 
-      const ws = new WebSocket('wss://stream.binance.com:9443/ws/btcusdt@trade');
+      globalFinnhubDebug = { ...globalFinnhubDebug, wsStatus: 'connecting' };
+      setFinnhubDebug({ ...globalFinnhubDebug });
+
+      const ws = new WebSocket(`wss://ws.finnhub.io?token=${apiKeyRef.current}`);
       wsRef.current = ws;
 
       ws.onopen = () => {
-        globalBinanceDebug = { ...globalBinanceDebug, wsStatus: 'connected' };
-        setBinanceDebug({ ...globalBinanceDebug });
+        globalFinnhubDebug = { ...globalFinnhubDebug, wsStatus: 'connected' };
+        setFinnhubDebug({ ...globalFinnhubDebug });
+        FINNHUB_SYMBOLS.forEach(sym => {
+          ws.send(JSON.stringify({ type: "subscribe", symbol: sym }));
+        });
       };
 
       let debugThrottle = 0;
       ws.onmessage = (event) => {
         try {
-          const data = JSON.parse(event.data);
-          const price = parseFloat(data.p);
-          if (isNaN(price) || price <= 0) return;
+          const data = JSON.parse(event.data as string);
+          if (data.type === "trade" && data.data) {
+            for (const tick of data.data) {
+              const mappedInstruments = FINNHUB_TO_INSTRUMENTS[tick.s];
+              if (mappedInstruments) {
+                for (const inst of mappedInstruments) {
+                  if (instruments.includes(inst)) {
+                    updatePrice(inst, tick.p);
+                  }
+                }
+              }
 
-          globalBinanceDebug = { wsStatus: 'connected', lastPrice: price, lastUpdateTs: Date.now() };
-          const now = Date.now();
-          if (now - debugThrottle > 1000) {
-            debugThrottle = now;
-            setBinanceDebug({ ...globalBinanceDebug });
-          }
-
-          for (const inst of BTC_INSTRUMENTS) {
-            if (instruments.includes(inst)) {
-              updatePrice(inst, price);
+              globalFinnhubDebug = { wsStatus: 'connected', lastPrice: tick.p, lastUpdateTs: Date.now() };
+              const now = Date.now();
+              if (now - debugThrottle > 1000) {
+                debugThrottle = now;
+                setFinnhubDebug({ ...globalFinnhubDebug });
+              }
             }
           }
         } catch {}
       };
 
       ws.onclose = () => {
-        globalBinanceDebug = { ...globalBinanceDebug, wsStatus: 'disconnected' };
-        setBinanceDebug({ ...globalBinanceDebug });
+        globalFinnhubDebug = { ...globalFinnhubDebug, wsStatus: 'disconnected' };
+        setFinnhubDebug({ ...globalFinnhubDebug });
         wsRef.current = null;
-        reconnectTimer.current = setTimeout(connect, 1000);
+        if (!cancelled) reconnectTimer.current = setTimeout(connect, 3000);
       };
 
-      ws.onerror = () => {
-        ws.close();
-      };
+      ws.onerror = () => { ws.close(); };
     };
 
     connect();
 
     return () => {
+      cancelled = true;
       if (reconnectTimer.current) clearTimeout(reconnectTimer.current);
       if (wsRef.current) {
         wsRef.current.onclose = null;
@@ -143,36 +167,9 @@ function useLivePrices(instruments: string[]) {
         wsRef.current = null;
       }
     };
-  }, [hasBtc, instruments.join(','), updatePrice]);
-
-  const sseRef = useRef<EventSource | null>(null);
-
-  useEffect(() => {
-    const allStreamed = [...new Set([...nonBtcInstruments, ...instruments.filter(i => BTC_INSTRUMENTS.includes(i))])];
-    if (allStreamed.length === 0) return;
-
-    const sse = new EventSource(`/api/prices/stream?instruments=${encodeURIComponent(allStreamed.join(','))}`);
-    sseRef.current = sse;
-
-    sse.onmessage = (event) => {
-      try {
-        const prices = JSON.parse(event.data);
-        for (const [inst, price] of Object.entries(prices)) {
-          if (typeof price === 'number' && price > 0) {
-            if (BTC_INSTRUMENTS.includes(inst) && pricesRef.current[inst] && globalBinanceDebug.wsStatus === 'connected') continue;
-            updatePrice(inst, price);
-          }
-        }
-      } catch {}
-    };
-
-    return () => {
-      sse.close();
-      sseRef.current = null;
-    };
   }, [instruments.join(','), updatePrice]);
 
-  return { prices, binanceDebug };
+  return { prices, finnhubDebug };
 }
 
 function getTickSize(instrument: string): number | undefined {
@@ -197,7 +194,7 @@ function isMarketOpen(instrument: string): boolean {
   const utcMinute = now.getUTCMinutes();
   const utcTime = utcHour * 60 + utcMinute;
 
-  const btcNames = ['MBT', 'Bitcoin', 'BTCUSD', 'MNQ'];
+  const btcNames = ['MBT', 'Bitcoin', 'BTCUSD'];
   if (btcNames.includes(instrument) || instrument.toLowerCase().includes('btc') || instrument.toLowerCase().includes('bitcoin')) {
     return true;
   }
@@ -247,7 +244,7 @@ export default function Terminal({ tier, userTierName, balance, onOpenPnlChange,
 
   const openInstruments = openTrades.map(t => t.instrument);
   const allInstruments = [...new Set([activeInstrument.label, ...openInstruments])];
-  const { prices: livePrices, binanceDebug } = useLivePrices(allInstruments);
+  const { prices: livePrices, finnhubDebug } = useLivePrices(allInstruments);
 
   const supabaseChannelRef = useRef<RealtimeChannel | null>(null);
   const supabaseTradeIdsRef = useRef<Record<string, string>>({});
@@ -360,7 +357,21 @@ export default function Terminal({ tier, userTierName, balance, onOpenPnlChange,
   const SPREAD_MAP: Record<string, number> = {
     BTCUSD: 20,
     XAUUSD: 0.30,
-    NAS100: 1.5,
+    XAGUSD: 0.03,
+    WTIUSD: 0.05,
+    SPX: 0.50,
+    NDX: 1.50,
+    MBT: 20,
+    MNQ: 1.50,
+    MES: 0.25,
+    MGC: 0.20,
+    MCL: 0.05,
+    SIL: 0.03,
+    'Gold (GC)': 0.30,
+    'Silver': 0.03,
+    'Oil (WTI)': 0.05,
+    'S&P 500': 0.50,
+    'Nasdaq': 1.50,
   };
 
   const getNowPrice = (symbol: string, side: string, tvPrice: number) => {
@@ -540,7 +551,7 @@ export default function Terminal({ tier, userTierName, balance, onOpenPnlChange,
     }
 
     let rawMidPrice = livePrices[activeInstrument.label];
-    if (!rawMidPrice && BTC_INSTRUMENTS.includes(activeInstrument.label)) {
+    if (!rawMidPrice) {
       try {
         const fallbackRes = await fetch('/api/prices/batch', {
           method: 'POST',
@@ -986,17 +997,17 @@ export default function Terminal({ tier, userTierName, balance, onOpenPnlChange,
             <div className="px-3 pb-2 space-y-2 text-[10px] font-mono">
               <div className="flex gap-4">
                 <span className="text-muted-foreground">WS Status:</span>
-                <span className={binanceDebug.wsStatus === 'connected' ? 'text-[#22C55E]' : binanceDebug.wsStatus === 'connecting' ? 'text-gold' : 'text-[#EF4444]'}>
-                  {binanceDebug.wsStatus.toUpperCase()}
+                <span className={finnhubDebug.wsStatus === 'connected' ? 'text-[#22C55E]' : finnhubDebug.wsStatus === 'connecting' ? 'text-gold' : 'text-[#EF4444]'}>
+                  {finnhubDebug.wsStatus.toUpperCase()}
                 </span>
               </div>
               <div className="flex gap-4">
                 <span className="text-muted-foreground">Last Price:</span>
-                <span className="text-white">{binanceDebug.lastPrice !== null ? `$${binanceDebug.lastPrice.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '---'}</span>
+                <span className="text-white">{finnhubDebug.lastPrice !== null ? `$${finnhubDebug.lastPrice.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '---'}</span>
               </div>
               <div className="flex gap-4">
                 <span className="text-muted-foreground">Last Update:</span>
-                <DebugTimestamp ts={binanceDebug.lastUpdateTs} />
+                <DebugTimestamp ts={finnhubDebug.lastUpdateTs} />
               </div>
               {positionsWithPnl.length > 0 && (
                 <div className="border-t border-b1 pt-2 space-y-1">

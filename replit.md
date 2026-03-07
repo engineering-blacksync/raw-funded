@@ -140,8 +140,11 @@ A private prop trading platform where admin assigns funded accounts. Users get a
 - Spreads: Gold/GC/MGC = $0.03, Silver/SIL = $0.008 (applied at entry only)
 - All trades persist in PostgreSQL; live P&L via price polling
 - Contract sizes: BTC=1, Gold(GC)=100oz, MGC=10oz, Silver/SIL=5000, Oil/MCL=1000, S&P/MES=50/5, Nasdaq/MNQ=20/2
-- Price sources: Binance WebSocket (BTC/MBT — real-time, sub-second), TradingView Scanner API (all other instruments — 1s polling)
+- Price sources: Finnhub WebSocket (all instruments — real-time tick-level, no polling). Client connects directly to `wss://ws.finnhub.io`, server also maintains a WS for price cache fallback.
+- Finnhub symbol map: BINANCE:BTCUSDT→MBT/MNQ/BTCUSD, OANDA:XAU_USD→Gold(GC)/MGC/XAUUSD, OANDA:XAG_USD→Silver/SIL/XAGUSD, OANDA:BCO_USD→Oil(WTI)/MCL/WTIUSD, FXCM:USA500.IDX/USD→S&P500/MES/SPX, FXCM:USATEC.IDX/USD→Nasdaq/NDX
+- Spread map: BTCUSD/MBT=20, XAUUSD/Gold(GC)=0.30, XAGUSD/Silver/SIL=0.03, WTIUSD/Oil(WTI)/MCL=0.05, SPX/S&P500=0.50, NDX/Nasdaq=1.50, MNQ=1.50, MES=0.25, MGC=0.20
 - Chart symbols: COINBASE:BTCUSD, OANDA:XAUUSD, OANDA:XAGUSD, TVC:USOIL, TVC:SPX, NASDAQ:NDX (free TradingView widget compatible — no COMEX/CME/NYMEX futures)
+- API key served via `GET /api/config/finnhub`; auto-reconnect on WS drop (3s delay); markets closed = last known price held
 - Debug panel: dev-only collapsible panel showing WS status, last price, update timestamp, and P&L verification per position
 
 ## Supabase Integration

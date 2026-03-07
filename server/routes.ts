@@ -771,40 +771,73 @@ export async function registerRoutes(
 
   const priceCache: Record<string, { price: number; ts: number }> = {};
 
-  async function fetchYahooPrice(symbol: string): Promise<number> {
-    const res = await fetch(
-      `https://query1.finance.yahoo.com/v8/finance/chart/${symbol}?interval=1m&range=1d`,
-      { headers: { 'User-Agent': 'Mozilla/5.0' } }
-    );
-    if (!res.ok) throw new Error(`Yahoo Finance returned ${res.status}`);
+  const tvTickerCache: Record<string, { price: number; ts: number }> = {};
+
+  async function fetchTvScannerPrices(exchange: string, tickers: string[]): Promise<Record<string, number>> {
+    const now = Date.now();
+    const results: Record<string, number> = {};
+    const uncached: string[] = [];
+
+    for (const t of tickers) {
+      const c = tvTickerCache[t];
+      if (c && now - c.ts < 800) {
+        results[t] = c.price;
+      } else {
+        uncached.push(t);
+      }
+    }
+
+    if (uncached.length === 0) return results;
+
+    const res = await fetch(`https://scanner.tradingview.com/${exchange}/scan`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'User-Agent': 'Mozilla/5.0' },
+      body: JSON.stringify({
+        symbols: { tickers: uncached },
+        columns: ['close', 'name']
+      })
+    });
+    if (!res.ok) throw new Error(`TV scanner returned ${res.status}`);
     const data = await res.json();
-    const price = data?.chart?.result?.[0]?.meta?.regularMarketPrice;
-    if (typeof price !== 'number' || isNaN(price) || price <= 0) throw new Error('Invalid price');
+    if (data?.data) {
+      for (const row of data.data) {
+        const ticker = row.s;
+        const closePrice = row.d?.[0];
+        if (typeof closePrice === 'number' && closePrice > 0) {
+          results[ticker] = closePrice;
+          tvTickerCache[ticker] = { price: closePrice, ts: Date.now() };
+        }
+      }
+    }
+    return results;
+  }
+
+  async function fetchTvPrice(exchange: string, ticker: string): Promise<number> {
+    const prices = await fetchTvScannerPrices(exchange, [ticker]);
+    const price = prices[ticker];
+    if (typeof price !== 'number' || price <= 0) throw new Error(`No price for ${ticker}`);
     return price;
   }
 
-  async function fetchCoinbasePrice(pair: string): Promise<number> {
-    const res = await fetch(`https://api.coinbase.com/v2/prices/${pair}/spot`);
-    if (!res.ok) throw new Error(`Coinbase returned ${res.status}`);
-    const data = await res.json();
-    const price = parseFloat(data?.data?.amount);
-    if (isNaN(price) || price <= 0) throw new Error('Invalid price');
-    return price;
-  }
-
-  const PRICE_SOURCES: Record<string, () => Promise<number>> = {
-    'MBT': () => fetchCoinbasePrice('BTC-USD'),
-    'Gold (GC)': () => fetchYahooPrice('GC=F'),
-    'Silver': () => fetchYahooPrice('SI=F'),
-    'Oil (WTI)': () => fetchYahooPrice('CL=F'),
-    'S&P 500': () => fetchYahooPrice('%5EGSPC'),
-    'Nasdaq': () => fetchYahooPrice('NQ=F'),
-    'MNQ': () => fetchYahooPrice('MNQ=F'),
-    'MES': () => fetchYahooPrice('MES=F'),
-    'MGC': () => fetchYahooPrice('GC=F'),
-    'SIL': () => fetchYahooPrice('SIL=F'),
-    'MCL': () => fetchYahooPrice('MCL=F'),
+  const TV_INSTRUMENT_MAP: Record<string, { exchange: string; ticker: string }> = {
+    'Bitcoin': { exchange: 'crypto', ticker: 'COINBASE:BTCUSD' },
+    'MBT': { exchange: 'crypto', ticker: 'COINBASE:BTCUSD' },
+    'Gold (GC)': { exchange: 'futures', ticker: 'COMEX:GC1!' },
+    'Silver': { exchange: 'futures', ticker: 'COMEX:SI1!' },
+    'Oil (WTI)': { exchange: 'futures', ticker: 'NYMEX:CL1!' },
+    'S&P 500': { exchange: 'futures', ticker: 'CME_MINI:ES1!' },
+    'Nasdaq': { exchange: 'futures', ticker: 'CME_MINI:NQ1!' },
+    'MNQ': { exchange: 'futures', ticker: 'CME_MINI:MNQ1!' },
+    'MES': { exchange: 'futures', ticker: 'CME_MINI:MES1!' },
+    'MGC': { exchange: 'futures', ticker: 'COMEX:GC1!' },
+    'SIL': { exchange: 'futures', ticker: 'COMEX:SI1!' },
+    'MCL': { exchange: 'futures', ticker: 'NYMEX:MCL1!' },
   };
+
+  const PRICE_SOURCES: Record<string, () => Promise<number>> = {};
+  for (const [inst, { exchange, ticker }] of Object.entries(TV_INSTRUMENT_MAP)) {
+    PRICE_SOURCES[inst] = () => fetchTvPrice(exchange, ticker);
+  }
 
   app.post("/api/prices/batch", async (req: Request, res: Response) => {
     const { instruments } = req.body;
@@ -812,36 +845,44 @@ export async function registerRoutes(
 
     const now = Date.now();
     const results: Record<string, number> = {};
-    const toFetch: string[] = [];
+    const exchangeGroups: Record<string, { inst: string; ticker: string }[]> = {};
 
     for (const inst of instruments) {
       const cached = priceCache[inst];
-      if (cached && now - cached.ts < 400) {
+      if (cached && now - cached.ts < 800) {
         results[inst] = cached.price;
-      } else if (PRICE_SOURCES[inst]) {
-        toFetch.push(inst);
-      }
-    }
-
-    if (toFetch.length > 0) {
-      const fetched = await Promise.allSettled(
-        toFetch.map(async (inst) => {
-          const price = await PRICE_SOURCES[inst]();
-          priceCache[inst] = { price, ts: Date.now() };
-          return { inst, price };
-        })
-      );
-      for (const r of fetched) {
-        if (r.status === 'fulfilled') {
-          results[r.value.inst] = r.value.price;
-        } else {
-          const inst = toFetch[fetched.indexOf(r)];
-          const cached = priceCache[inst];
-          if (cached) results[inst] = cached.price;
+      } else {
+        const mapping = TV_INSTRUMENT_MAP[inst];
+        if (mapping) {
+          if (!exchangeGroups[mapping.exchange]) exchangeGroups[mapping.exchange] = [];
+          exchangeGroups[mapping.exchange].push({ inst, ticker: mapping.ticker });
         }
       }
     }
 
+    const fetches = Object.entries(exchangeGroups).map(async ([exchange, items]) => {
+      try {
+        const tickers = [...new Set(items.map(i => i.ticker))];
+        const prices = await fetchTvScannerPrices(exchange, tickers);
+        for (const item of items) {
+          const price = prices[item.ticker];
+          if (typeof price === 'number' && price > 0) {
+            results[item.inst] = price;
+            priceCache[item.inst] = { price, ts: Date.now() };
+          } else {
+            const cached = priceCache[item.inst];
+            if (cached) results[item.inst] = cached.price;
+          }
+        }
+      } catch {
+        for (const item of items) {
+          const cached = priceCache[item.inst];
+          if (cached) results[item.inst] = cached.price;
+        }
+      }
+    });
+
+    await Promise.allSettled(fetches);
     return res.json({ prices: results });
   });
 
@@ -851,7 +892,7 @@ export async function registerRoutes(
     if (!fetcher) return res.status(404).json({ message: "Unknown instrument" });
 
     const cached = priceCache[instrument];
-    if (cached && Date.now() - cached.ts < 400) {
+    if (cached && Date.now() - cached.ts < 800) {
       return res.json({ price: cached.price });
     }
 

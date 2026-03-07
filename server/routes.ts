@@ -490,7 +490,7 @@ export async function registerRoutes(
   });
 
   const CONTRACT_SIZES: Record<string, number> = {
-    'MBT': 10,
+    'MBT': 0.1,
     'Gold (GC)': 100,
     'Silver': 5000,
     'Oil (WTI)': 1000,

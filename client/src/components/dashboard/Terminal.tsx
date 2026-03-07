@@ -37,7 +37,7 @@ const INSTRUMENTS: InstrumentConfig[] = [
 ];
 
 const CONTRACT_SIZES: Record<string, number> = {
-  'MBT': 10, 'Gold (GC)': 100, 'Silver': 5000, 'Oil (WTI)': 1000,
+  'MBT': 0.1, 'Gold (GC)': 100, 'Silver': 5000, 'Oil (WTI)': 1000,
   'S&P 500': 50, 'Nasdaq': 20, 'MNQ': 2, 'MES': 5, 'MGC': 100, 'SIL': 5000, 'MCL': 1000,
 };
 

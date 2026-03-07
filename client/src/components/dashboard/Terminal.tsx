@@ -150,7 +150,9 @@ export default function Terminal({ tier, userTierName, balance, onOpenPnlChange,
     } catch {}
   };
 
-  const positionsWithPnl = openTrades.map(trade => {
+  const executedTrades = openTrades.filter(t => t.status === 'executed');
+
+  const positionsWithPnl = executedTrades.map(trade => {
     const currentPrice = livePrices[trade.instrument];
     const pnl = currentPrice ? calcPnl(trade.side, trade.entryPrice, currentPrice, trade.size) : 0;
     return { ...trade, livePnl: pnl, currentPrice };
@@ -423,7 +425,7 @@ export default function Terminal({ tier, userTierName, balance, onOpenPnlChange,
   const handleCloseAll = async () => {
     if (closingAll || openTrades.length === 0) return;
     setClosingAll(true);
-    const tradesToClose = openTrades.filter(t => t.status === 'open' || t.status === 'executed');
+    const tradesToClose = openTrades.filter(t => t.status === 'executed');
     for (const trade of tradesToClose) {
       await handleClose(trade.id);
     }

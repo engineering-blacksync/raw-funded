@@ -129,7 +129,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getOpenTrades(userId: string): Promise<Trade[]> {
-    return db.select().from(trades).where(sql`${trades.userId} = ${userId} AND ${trades.status} = 'open'`);
+    return db.select().from(trades).where(sql`${trades.userId} = ${userId} AND (${trades.status} = 'open' OR ${trades.status} = 'executed')`);
   }
 
   async getTradeHistory(userId: string, limit = 50): Promise<Trade[]> {
@@ -160,7 +160,7 @@ export class DatabaseStorage implements IStorage {
   async getDetailedAnalytics(userId: string) {
     const allTrades = await db.select().from(trades).where(eq(trades.userId, userId)).orderBy(desc(trades.openedAt));
     const closedTrades = allTrades.filter(t => t.status === 'closed');
-    const openTrades = allTrades.filter(t => t.status === 'open');
+    const openTrades = allTrades.filter(t => t.status === 'open' || t.status === 'executed');
 
     const wins = closedTrades.filter(t => (t.pnl ?? 0) > 0);
     const losses = closedTrades.filter(t => (t.pnl ?? 0) < 0);

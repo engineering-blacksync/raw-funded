@@ -613,7 +613,8 @@ export default function Terminal({ tier, userTierName, balance, onOpenPnlChange,
 
     const tick = activeInstrument.tickSize;
     const midPrice = tick ? Math.round(rawMidPrice / tick) * tick : rawMidPrice;
-    const prelimPrice = midPrice;
+    const platformSpread = 2 * quantity;
+    const prelimPrice = side === 'BUY' ? midPrice + platformSpread : midPrice - platformSpread;
 
     setTradeLoading(side);
     setTradeStatus(null);

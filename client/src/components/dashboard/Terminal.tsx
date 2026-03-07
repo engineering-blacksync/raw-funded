@@ -59,31 +59,55 @@ const TV_SYMBOL_TO_INSTRUMENTS: Record<string, string[]> = {};
 for (const inst of INSTRUMENTS) {
   const sym = inst.symbol.split(':')[1] || inst.symbol;
   if (!TV_SYMBOL_TO_INSTRUMENTS[sym]) TV_SYMBOL_TO_INSTRUMENTS[sym] = [];
-  TV_SYMBOL_TO_INSTRUMENTS[sym].push(inst.label);
+  if (!TV_SYMBOL_TO_INSTRUMENTS[sym].includes(inst.label)) TV_SYMBOL_TO_INSTRUMENTS[sym].push(inst.label);
   if (!TV_SYMBOL_TO_INSTRUMENTS[inst.symbol]) TV_SYMBOL_TO_INSTRUMENTS[inst.symbol] = [];
-  TV_SYMBOL_TO_INSTRUMENTS[inst.symbol].push(inst.label);
+  if (!TV_SYMBOL_TO_INSTRUMENTS[inst.symbol].includes(inst.label)) TV_SYMBOL_TO_INSTRUMENTS[inst.symbol].push(inst.label);
 }
+
+type PriceCallback = (label: string, price: number) => void;
+let globalPriceCallback: PriceCallback | null = null;
+let activeChartSymbol: string = '';
 
 function useLivePrices(instruments: string[]) {
   const [prices, setPrices] = useState<Record<string, number>>({});
   const pricesRef = useRef<Record<string, number>>({});
 
   useEffect(() => {
+    globalPriceCallback = (label: string, price: number) => {
+      if (price <= 0) return;
+      if (pricesRef.current[label] === price) return;
+      pricesRef.current = { ...pricesRef.current, [label]: price };
+      setPrices({ ...pricesRef.current });
+    };
+    return () => { globalPriceCallback = null; };
+  }, []);
+
+  useEffect(() => {
     const handler = (event: MessageEvent) => {
-      if (!event.data || typeof event.data !== 'object') return;
-      const name = event.data.name;
-      if (name === 'quoteUpdate' && event.data.data) {
-        const d = event.data.data;
-        const lp = d.lp ?? d.last_price ?? d.close;
-        if (typeof lp !== 'number' || lp <= 0) return;
-        const sym = d.short_name || d.original_name || d.name || '';
-        const fullSym = d.original_name || d.name || '';
-        const labels = TV_SYMBOL_TO_INSTRUMENTS[sym] || TV_SYMBOL_TO_INSTRUMENTS[fullSym] || [];
-        if (labels.length === 0) return;
-        const updated = { ...pricesRef.current };
-        for (const label of labels) updated[label] = lp;
-        pricesRef.current = updated;
-        setPrices({ ...updated });
+      let msg = event.data;
+      if (typeof msg === 'string') {
+        try { msg = JSON.parse(msg); } catch { return; }
+      }
+      if (!msg || typeof msg !== 'object') return;
+
+      let price: number | null = null;
+
+      if (msg.name === 'quoteUpdate' && msg.data) {
+        const d = msg.data;
+        const v = d.v || d;
+        price = v.lp ?? v.last_price ?? v.close ?? d.lp ?? d.last_price ?? d.close ?? null;
+      }
+
+      if (price === null && msg.data && typeof msg.data === 'object') {
+        const d = msg.data;
+        price = d.lp ?? d.last_price ?? d.price ?? d.close ?? null;
+      }
+
+      if (typeof price === 'number' && price > 0 && activeChartSymbol) {
+        const labels = TV_SYMBOL_TO_INSTRUMENTS[activeChartSymbol] || TV_SYMBOL_TO_INSTRUMENTS[activeChartSymbol.split(':')[1]] || [];
+        for (const label of labels) {
+          if (globalPriceCallback) globalPriceCallback(label, price);
+        }
       }
     };
     window.addEventListener('message', handler);
@@ -112,11 +136,20 @@ function useLivePrices(instruments: string[]) {
       } catch {}
     };
     fetchAll();
-    const interval = setInterval(fetchAll, 2000);
+    const interval = setInterval(fetchAll, 1000);
     return () => { active = false; clearInterval(interval); };
   }, [instruments.join(',')]);
 
   return prices;
+}
+
+function pushTvPrice(symbol: string, price: number) {
+  if (!globalPriceCallback || price <= 0) return;
+  const labels = TV_SYMBOL_TO_INSTRUMENTS[symbol] || [];
+  const shortSym = symbol.includes(':') ? symbol.split(':')[1] : symbol;
+  const moreLabels = TV_SYMBOL_TO_INSTRUMENTS[shortSym] || [];
+  const allLabels = [...new Set([...labels, ...moreLabels])];
+  for (const label of allLabels) globalPriceCallback(label, price);
 }
 
 function getTickSize(instrument: string): number | undefined {
@@ -208,11 +241,17 @@ export default function Terminal({ tier, userTierName, balance, onOpenPnlChange,
     } catch {}
   }, []);
 
+  const rtProcessedRef = useRef<Record<string, string>>({});
+
   const handleRealtimeChange = useCallback((payload: any) => {
     const { eventType, new: row } = payload;
     if (!row) return;
 
     const sbId = row.id;
+    const dedupKey = `${sbId}:${row.status}:${row.open_price || ''}`;
+    if (rtProcessedRef.current[sbId] === dedupKey) return;
+    rtProcessedRef.current[sbId] = dedupKey;
+
     const idMap = supabaseTradeIdsRef.current;
     const localId = Object.entries(idMap).find(([, v]) => v === sbId)?.[0];
 
@@ -227,7 +266,7 @@ export default function Terminal({ tier, userTierName, balance, onOpenPnlChange,
 
       if (newStatus === 'executed' && row.open_price) {
         setOpenTrades(prev => prev.map(t => {
-          if (t.id !== localId) return t;
+          if (t.id !== localId || t.status === 'executed') return t;
           return { ...t, status: 'executed', entryPrice: row.open_price };
         }));
         fetch(`/api/trades/${localId}/entry-price`, {
@@ -283,7 +322,11 @@ export default function Terminal({ tier, userTierName, balance, onOpenPnlChange,
     onOpenPnlChange?.(totalOpenPnl);
   }, [totalOpenPnl, onOpenPnlChange]);
 
+  const lastPnlSyncRef = useRef<number>(0);
   useEffect(() => {
+    const now = Date.now();
+    if (now - lastPnlSyncRef.current < 3000) return;
+    lastPnlSyncRef.current = now;
     for (const pos of positionsWithPnl) {
       const sbId = supabaseTradeIds[pos.id];
       if (!sbId) continue;
@@ -375,7 +418,7 @@ export default function Terminal({ tier, userTierName, balance, onOpenPnlChange,
       ? { hide_side_toolbar: false, studies: [] as string[], withdateranges: true, save_image: true }
       : { hide_side_toolbar: true, studies: [] as string[], withdateranges: false, save_image: false };
 
-    new window.TradingView.widget({
+    const tvWidget = new window.TradingView.widget({
       symbol: activeInstrument.symbol,
       interval: "5",
       container_id: "tradingview-chart",
@@ -393,6 +436,33 @@ export default function Terminal({ tier, userTierName, balance, onOpenPnlChange,
       backgroundColor: "#09090B",
       gridColor: "#1C1C22",
     });
+    try {
+      tvWidget.onChartReady(() => {
+        try {
+          const sym = activeInstrument.symbol;
+          tvWidget.activeChart().onDataLoaded().subscribe(null, () => {});
+          tvWidget.subscribe('onTick', (tick: any) => {
+            if (tick && typeof tick.close === 'number') {
+              pushTvPrice(sym, tick.close);
+            }
+          });
+          const iframe = tvWidget.iframe;
+          if (iframe && iframe.contentWindow) {
+            const poll = () => {
+              try {
+                tvWidget.activeChart().exportData({ from: Math.floor(Date.now() / 1000) - 60, to: Math.floor(Date.now() / 1000) + 60 }).then((data: any) => {
+                  if (data && data.data && data.data.length > 0) {
+                    const last = data.data[data.data.length - 1];
+                    if (last && last[4] != null) pushTvPrice(sym, last[4]);
+                  }
+                }).catch(() => {});
+              } catch {}
+            };
+            setInterval(poll, 1000);
+          }
+        } catch {}
+      });
+    } catch {}
   }, [activeInstrument.symbol, viewMode]);
 
   useEffect(() => {

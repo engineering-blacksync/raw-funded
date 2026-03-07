@@ -253,7 +253,14 @@ export default function Terminal({ tier, userTierName, balance, onOpenPnlChange,
         fetch('/api/trades/open'),
         fetch('/api/trades'),
       ]);
-      if (openRes.ok) setOpenTrades(await openRes.json());
+      if (openRes.ok) {
+        const serverOpen: Trade[] = await openRes.json();
+        setOpenTrades(prev => {
+          const pendingLocal = prev.filter(t => t.status === 'open' && !serverOpen.some(s => s.id === t.id));
+          const merged = [...serverOpen, ...pendingLocal];
+          return merged;
+        });
+      }
       if (historyRes.ok) {
         const all: Trade[] = await historyRes.json();
         setClosedTrades(all.filter(t => t.status === 'closed'));

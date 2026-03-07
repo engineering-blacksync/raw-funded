@@ -247,6 +247,7 @@ export default function Terminal({ tier, userTierName, balance, onOpenPnlChange,
   const supabaseTradeIdsRef = useRef<Record<string, string>>({});
   useEffect(() => { supabaseTradeIdsRef.current = supabaseTradeIds; }, [supabaseTradeIds]);
 
+  const initialLoadDone = useRef(false);
   const loadTrades = useCallback(async () => {
     try {
       const [openRes, historyRes] = await Promise.all([
@@ -255,11 +256,16 @@ export default function Terminal({ tier, userTierName, balance, onOpenPnlChange,
       ]);
       if (openRes.ok) {
         const serverOpen: Trade[] = await openRes.json();
-        setOpenTrades(prev => {
-          const pendingLocal = prev.filter(t => t.status === 'open' && !serverOpen.some(s => s.id === t.id));
-          const merged = [...serverOpen, ...pendingLocal];
-          return merged;
-        });
+        if (!initialLoadDone.current) {
+          setOpenTrades(serverOpen);
+          initialLoadDone.current = true;
+        } else {
+          setOpenTrades(prev => {
+            const localOnly = prev.filter(t => !serverOpen.some(s => s.id === t.id) && !closingIdsRef.current.has(t.id));
+            const merged = [...serverOpen, ...localOnly];
+            return merged;
+          });
+        }
       }
       if (historyRes.ok) {
         const all: Trade[] = await historyRes.json();
@@ -286,8 +292,10 @@ export default function Terminal({ tier, userTierName, balance, onOpenPnlChange,
       const newStatus = row.status;
 
       if (newStatus === 'closed' || newStatus === 'failed') {
-        setOpenTrades(prev => prev.filter(t => t.id !== localId));
-        if (newStatus === 'closed') loadTrades();
+        if (closingIdsRef.current.has(localId)) {
+          setOpenTrades(prev => prev.filter(t => t.id !== localId));
+          if (newStatus === 'closed') loadTrades();
+        }
         return;
       }
 

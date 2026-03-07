@@ -102,6 +102,7 @@ A private prop trading platform where admin assigns funded accounts. Users get a
 - Rejected trades excluded from P&L totals; close button disabled for non-filled trades (tooltip: "This trade was not executed on MT5")
 - Close All only processes filled (or legacy executed) trades, skips pending/rejected
 - `LocalTrade` extends `Trade` with optional `mt5Status`/`rejectReason` — used only in Terminal component state
+- **Bridge status**: polls `GET /api/supabase/bridge-status` every 10s (reads `bridge_status` table row id=1); if `last_ping` >30s stale OR `status` != 'online', all Buy/Sell disabled + red banner; `handleTrade` also blocks submission
 - Legacy fallback: if `mt5_status` is null, falls back to checking `open_price` + `status` fields
 - Entry price displayed is always from Supabase `open_price` (MT5 source of truth), never from chart
 - P&L: BUY = (current - open_price) × lot_size; SELL = (open_price - current) × lot_size

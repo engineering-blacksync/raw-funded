@@ -587,8 +587,29 @@ export async function registerRoutes(
     return res.json(analytics);
   });
 
+  const checkBridgeOnline = async (): Promise<boolean> => {
+    const supabaseUrl = process.env.SUPABASE_URL;
+    const supabaseKey = process.env.SUPABASE_ANON_KEY;
+    if (!supabaseUrl || !supabaseKey) return false;
+    try {
+      const response = await fetch(`${supabaseUrl}/rest/v1/bridge_status?id=eq.1&select=last_ping,status`, {
+        headers: { 'apikey': supabaseKey, 'Authorization': `Bearer ${supabaseKey}` },
+      });
+      if (!response.ok) return false;
+      const data = await response.json();
+      if (!data.length) return false;
+      const row = data[0];
+      const lastPing = new Date(row.last_ping).getTime();
+      const stale = !Number.isFinite(lastPing) || Date.now() - lastPing > 30000;
+      return row.status === 'online' && !stale;
+    } catch { return false; }
+  };
+
   app.post("/api/trades", requireApproved, async (req: Request, res: Response) => {
     try {
+      const bridgeUp = await checkBridgeOnline();
+      if (!bridgeUp) return res.status(503).json({ message: "Trading unavailable — market is closed or bridge is offline." });
+
       const hasPending = await storage.hasPendingPayout(req.user!.id);
       if (hasPending) return res.status(403).json({ message: "Trading is paused while your payout is being processed" });
 
@@ -868,6 +889,27 @@ export async function registerRoutes(
       }
     } catch (err: any) {
       return res.status(502).json({ message: "Connection to Supabase failed" });
+    }
+  });
+
+  app.get("/api/supabase/bridge-status", requireApproved, async (req: Request, res: Response) => {
+    const supabaseUrl = process.env.SUPABASE_URL;
+    const supabaseKey = process.env.SUPABASE_ANON_KEY;
+    if (!supabaseUrl || !supabaseKey) return res.json({ online: false, reason: "Supabase not configured" });
+    try {
+      const response = await fetch(`${supabaseUrl}/rest/v1/bridge_status?id=eq.1&select=last_ping,status`, {
+        headers: { 'apikey': supabaseKey, 'Authorization': `Bearer ${supabaseKey}` },
+      });
+      if (!response.ok) return res.json({ online: false, reason: "Failed to fetch bridge status" });
+      const data = await response.json();
+      if (!data.length) return res.json({ online: false, reason: "No bridge status row" });
+      const row = data[0];
+      const lastPing = new Date(row.last_ping).getTime();
+      const stale = !Number.isFinite(lastPing) || Date.now() - lastPing > 30000;
+      const online = row.status === 'online' && !stale;
+      return res.json({ online, status: row.status, lastPing: row.last_ping, stale });
+    } catch {
+      return res.json({ online: false, reason: "Connection failed" });
     }
   });
 

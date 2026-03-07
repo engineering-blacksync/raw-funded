@@ -250,6 +250,26 @@ export default function Terminal({ tier, userTierName, balance, onOpenPnlChange,
   const [orderTp, setOrderTp] = useState('');
   const [showSltp, setShowSltp] = useState(false);
   const [supabaseTradeIds, setSupabaseTradeIds] = useState<Record<string, string>>({});
+  const [bridgeOnline, setBridgeOnline] = useState(false);
+
+  useEffect(() => {
+    const checkBridge = async () => {
+      try {
+        const res = await fetch('/api/supabase/bridge-status');
+        if (res.ok) {
+          const data = await res.json();
+          setBridgeOnline(!!data.online);
+        } else {
+          setBridgeOnline(false);
+        }
+      } catch {
+        setBridgeOnline(false);
+      }
+    };
+    checkBridge();
+    const interval = setInterval(checkBridge, 10000);
+    return () => clearInterval(interval);
+  }, []);
 
   const openInstruments = openTrades.map(t => t.instrument);
   const allInstruments = [...new Set([activeInstrument.label, ...openInstruments])];
@@ -637,6 +657,11 @@ export default function Terminal({ tier, userTierName, balance, onOpenPnlChange,
   };
 
   const handleTrade = async (side: 'BUY' | 'SELL') => {
+    if (!bridgeOnline) {
+      setTradeStatus({ type: 'error', message: 'Trading unavailable — market is closed or bridge is offline.' });
+      setTimeout(() => setTradeStatus(null), 5000);
+      return;
+    }
     if (!isMarketOpen(activeInstrument.label)) {
       setTradeStatus({ type: 'error', message: `Market closed for ${activeInstrument.label}` });
       setTimeout(() => setTradeStatus(null), 5000);
@@ -895,6 +920,11 @@ export default function Terminal({ tier, userTierName, balance, onOpenPnlChange,
   return (
     <div className="overflow-y-auto h-full">
       <div className="flex flex-col" style={{ height: '100vh' }}>
+        {!bridgeOnline && (
+          <div className="bg-[#EF4444] text-white text-center text-xs font-bold py-2 px-3 shrink-0" data-testid="banner-bridge-offline">
+            Trading unavailable — market is closed or bridge is offline.
+          </div>
+        )}
         <div className="flex items-center border-b border-b1 bg-s1 shrink-0">
           <div className="flex overflow-x-auto no-scrollbar flex-1">
             {visibleInstruments.map((inst) => (
@@ -946,7 +976,7 @@ export default function Terminal({ tier, userTierName, balance, onOpenPnlChange,
           <div className="w-14 shrink-0 border-l border-b1 bg-s1 flex flex-col items-center justify-center gap-1.5 py-2">
             <button
               onClick={() => handleTrade('BUY')}
-              disabled={tradeLoading !== null}
+              disabled={tradeLoading !== null || !bridgeOnline}
               className="w-11 py-2.5 bg-[#22C55E] hover:bg-[#16A34A] text-white rounded font-heading text-[11px] font-bold disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
               data-testid="btn-buy"
             >
@@ -981,7 +1011,7 @@ export default function Terminal({ tier, userTierName, balance, onOpenPnlChange,
 
             <button
               onClick={() => handleTrade('SELL')}
-              disabled={tradeLoading !== null}
+              disabled={tradeLoading !== null || !bridgeOnline}
               className="w-11 py-2.5 bg-[#EF4444] hover:bg-[#DC2626] text-white rounded font-heading text-[11px] font-bold disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
               data-testid="btn-sell"
             >

@@ -423,37 +423,9 @@ export default function Terminal({ tier, userTierName, balance, onOpenPnlChange,
   const handleCloseAll = async () => {
     if (closingAll || openTrades.length === 0) return;
     setClosingAll(true);
-    for (const trade of openTrades) {
-      const exitPrice = livePrices[trade.instrument];
-      if (!exitPrice) continue;
-      try {
-        const res = await fetch(`/api/trades/${trade.id}/close`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ exitPrice }),
-        });
-        if (res.ok) {
-          const closed: Trade = await res.json();
-          setOpenTrades(prev => prev.filter(t => t.id !== trade.id));
-          setClosedTrades(prev => [closed, ...prev]);
-          try {
-            const sbId = supabaseTradeIds[trade.id];
-            if (sbId) {
-              await fetch('/api/supabase/trades/close', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                  supabaseId: sbId,
-                  close_price: closed.exitPrice,
-                  pnl: closed.pnl,
-                  close_time: new Date().toISOString(),
-                  status: 'closed'
-                })
-              });
-            }
-          } catch {}
-        }
-      } catch {}
+    const tradesToClose = openTrades.filter(t => t.status === 'open' || t.status === 'executed');
+    for (const trade of tradesToClose) {
+      await handleClose(trade.id);
     }
     setClosingAll(false);
   };

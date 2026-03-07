@@ -55,9 +55,40 @@ function useTradingViewScript() {
   return loaded;
 }
 
+const TV_SYMBOL_TO_INSTRUMENTS: Record<string, string[]> = {};
+for (const inst of INSTRUMENTS) {
+  const sym = inst.symbol.split(':')[1] || inst.symbol;
+  if (!TV_SYMBOL_TO_INSTRUMENTS[sym]) TV_SYMBOL_TO_INSTRUMENTS[sym] = [];
+  TV_SYMBOL_TO_INSTRUMENTS[sym].push(inst.label);
+  if (!TV_SYMBOL_TO_INSTRUMENTS[inst.symbol]) TV_SYMBOL_TO_INSTRUMENTS[inst.symbol] = [];
+  TV_SYMBOL_TO_INSTRUMENTS[inst.symbol].push(inst.label);
+}
+
 function useLivePrices(instruments: string[]) {
   const [prices, setPrices] = useState<Record<string, number>>({});
   const pricesRef = useRef<Record<string, number>>({});
+
+  useEffect(() => {
+    const handler = (event: MessageEvent) => {
+      if (!event.data || typeof event.data !== 'object') return;
+      const name = event.data.name;
+      if (name === 'quoteUpdate' && event.data.data) {
+        const d = event.data.data;
+        const lp = d.lp ?? d.last_price ?? d.close;
+        if (typeof lp !== 'number' || lp <= 0) return;
+        const sym = d.short_name || d.original_name || d.name || '';
+        const fullSym = d.original_name || d.name || '';
+        const labels = TV_SYMBOL_TO_INSTRUMENTS[sym] || TV_SYMBOL_TO_INSTRUMENTS[fullSym] || [];
+        if (labels.length === 0) return;
+        const updated = { ...pricesRef.current };
+        for (const label of labels) updated[label] = lp;
+        pricesRef.current = updated;
+        setPrices({ ...updated });
+      }
+    };
+    window.addEventListener('message', handler);
+    return () => window.removeEventListener('message', handler);
+  }, []);
 
   useEffect(() => {
     if (instruments.length === 0) return;
@@ -81,7 +112,7 @@ function useLivePrices(instruments: string[]) {
       } catch {}
     };
     fetchAll();
-    const interval = setInterval(fetchAll, 500);
+    const interval = setInterval(fetchAll, 2000);
     return () => { active = false; clearInterval(interval); };
   }, [instruments.join(',')]);
 

@@ -97,7 +97,11 @@ A private prop trading platform where admin assigns funded accounts. Users get a
 - Supabase `mt5_status` column: `pending` → `filled` (with `open_price`) or `rejected` (with `reject_reason`)
 - Dashboard polls `GET /api/supabase/trades/:id` which returns `id,open_price,status,ticket,mt5_status,reject_reason`
 - Trade shows as live (P&L ticking) only when `mt5_status = 'filled'` and `open_price` is set
-- If `mt5_status = 'rejected'`: trade removed from open positions, reject_reason shown as error banner
+- If `mt5_status = 'rejected'`: trade kept visible but grayed out (opacity-40), reject_reason shown as error banner + inline red text, Dismiss button to remove
+- UI badges per trade: pending=yellow "Pending", filled=green "Live", rejected=red "Rejected"
+- Rejected trades excluded from P&L totals; close button disabled for non-filled trades (tooltip: "This trade was not executed on MT5")
+- Close All only processes filled (or legacy executed) trades, skips pending/rejected
+- `LocalTrade` extends `Trade` with optional `mt5Status`/`rejectReason` — used only in Terminal component state
 - Legacy fallback: if `mt5_status` is null, falls back to checking `open_price` + `status` fields
 - Entry price displayed is always from Supabase `open_price` (MT5 source of truth), never from chart
 - P&L: BUY = (current - open_price) × lot_size; SELL = (open_price - current) × lot_size

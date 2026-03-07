@@ -3,6 +3,12 @@ import { createClient, type RealtimeChannel } from '@supabase/supabase-js';
 import type { Trade } from '@shared/schema';
 import PositionLines from './PositionLines';
 
+type Mt5Status = 'pending' | 'filled' | 'rejected';
+interface LocalTrade extends Trade {
+  mt5Status?: Mt5Status;
+  rejectReason?: string;
+}
+
 interface TerminalProps {
   tier: any;
   userTierName: string;
@@ -230,10 +236,10 @@ export default function Terminal({ tier, userTierName, balance, onOpenPnlChange,
   const defaultInstrument = visibleInstruments.find(i => i.label === 'MGC') || visibleInstruments[0];
   const [activeInstrument, setActiveInstrument] = useState(defaultInstrument);
   const [quantity, setQuantity] = useState<number>(defaultInstrument.default);
-  const [openTrades, setOpenTrades] = useState<Trade[]>([]);
-  const openTradesRef = useRef<Trade[]>([]);
+  const [openTrades, setOpenTrades] = useState<LocalTrade[]>([]);
+  const openTradesRef = useRef<LocalTrade[]>([]);
   useEffect(() => { openTradesRef.current = openTrades; }, [openTrades]);
-  const [closedTrades, setClosedTrades] = useState<Trade[]>([]);
+  const [closedTrades, setClosedTrades] = useState<LocalTrade[]>([]);
   const [viewMode, setViewMode] = useState<'simple' | 'pro'>('pro');
   const [tradeLoading, setTradeLoading] = useState<'BUY' | 'SELL' | null>(null);
   const [tradeStatus, setTradeStatus] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
@@ -264,11 +270,11 @@ export default function Terminal({ tier, userTierName, balance, onOpenPnlChange,
       if (openRes.ok) {
         const trades: Trade[] = await openRes.json();
         const seen = new Set<string>();
-        const deduped = trades.filter(t => {
+        const deduped: LocalTrade[] = trades.filter(t => {
           if (seen.has(t.id)) return false;
           seen.add(t.id);
           return true;
-        });
+        }).map(t => ({ ...t, mt5Status: (t.status === 'executed' ? 'filled' : 'pending') as Mt5Status }));
         setOpenTrades(deduped);
       }
       if (historyRes.ok) {
@@ -312,8 +318,8 @@ export default function Terminal({ tier, userTierName, balance, onOpenPnlChange,
       const mt5Status = row.mt5_status;
 
       if (mt5Status === 'rejected') {
-        setOpenTrades(prev => prev.filter(t => t.id !== localId));
         const reason = row.reject_reason || 'Order rejected by MT5';
+        setOpenTrades(prev => prev.map(t => t.id === localId ? { ...t, mt5Status: 'rejected' as Mt5Status, rejectReason: reason } : t));
         setTradeStatus({ type: 'error', message: reason });
         setTimeout(() => setTradeStatus(null), 8000);
         fetch(`/api/trades/${localId}/status`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ status: 'closed' }) }).catch(() => {});
@@ -338,7 +344,7 @@ export default function Terminal({ tier, userTierName, balance, onOpenPnlChange,
       if (mt5Status === 'filled' && row.open_price) {
         setOpenTrades(prev => prev.map(t => {
           if (t.id !== localId || t.status === 'executed') return t;
-          return { ...t, status: 'executed', entryPrice: row.open_price };
+          return { ...t, status: 'executed', entryPrice: row.open_price, mt5Status: 'filled' as Mt5Status };
         }));
         fetch(`/api/trades/${localId}/entry-price`, {
           method: 'PATCH',
@@ -352,7 +358,7 @@ export default function Terminal({ tier, userTierName, balance, onOpenPnlChange,
       if (!mt5Status && row.open_price && (newStatus === 'executed' || newStatus === 'open')) {
         setOpenTrades(prev => prev.map(t => {
           if (t.id !== localId || t.status === 'executed') return t;
-          return { ...t, status: 'executed', entryPrice: row.open_price };
+          return { ...t, status: 'executed', entryPrice: row.open_price, mt5Status: 'filled' as Mt5Status };
         }));
         fetch(`/api/trades/${localId}/entry-price`, {
           method: 'PATCH',
@@ -411,7 +417,7 @@ export default function Terminal({ tier, userTierName, balance, onOpenPnlChange,
   }, [loadTrades, handleRealtimeChange]);
 
   const visibleOpenTrades = (() => {
-    const filtered = openTrades.filter(t => t.status === 'open' || t.status === 'executed');
+    const filtered = openTrades.filter(t => t.status === 'open' || t.status === 'executed' || t.mt5Status === 'rejected');
     const seen = new Set<string>();
     return filtered.filter(t => {
       if (seen.has(t.id)) return false;
@@ -448,11 +454,12 @@ export default function Terminal({ tier, userTierName, balance, onOpenPnlChange,
   const positionsWithPnl = visibleOpenTrades.map(trade => {
     const rawPrice = livePrices[trade.instrument];
     const currentPrice = rawPrice ? getNowPrice(trade.instrument, trade.side, rawPrice) : undefined;
-    const pnl = (currentPrice && trade.entryPrice > 0 && trade.status === 'executed') ? calcPnl(trade.side, trade.entryPrice, currentPrice, trade.size, trade.instrument) : 0;
+    const isRejected = trade.mt5Status === 'rejected';
+    const pnl = (!isRejected && currentPrice && trade.entryPrice > 0 && trade.status === 'executed') ? calcPnl(trade.side, trade.entryPrice, currentPrice, trade.size, trade.instrument) : 0;
     return { ...trade, livePnl: pnl, currentPrice };
   });
 
-  const totalOpenPnl = positionsWithPnl.reduce((sum, p) => sum + p.livePnl, 0);
+  const totalOpenPnl = positionsWithPnl.filter(p => p.mt5Status !== 'rejected').reduce((sum, p) => sum + p.livePnl, 0);
   useEffect(() => {
     onOpenPnlChange?.(totalOpenPnl);
   }, [totalOpenPnl, onOpenPnlChange]);
@@ -463,7 +470,7 @@ export default function Terminal({ tier, userTierName, balance, onOpenPnlChange,
     if (now - lastPnlSyncRef.current < 3000) return;
     lastPnlSyncRef.current = now;
     for (const pos of positionsWithPnl) {
-      if (pos.entryPrice === 0 || pos.status === 'open') continue;
+      if (pos.entryPrice === 0 || pos.status === 'open' || pos.mt5Status === 'rejected') continue;
       const sbId = supabaseTradeIds[pos.id];
       if (!sbId) continue;
       fetch('/api/supabase/trades/update', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ supabaseId: sbId, pnl: pos.livePnl }) }).catch(() => {});
@@ -590,8 +597,8 @@ export default function Terminal({ tier, userTierName, balance, onOpenPnlChange,
         if (!res.ok) continue;
         const data = await res.json();
         if (data.mt5_status === 'rejected') {
-          setOpenTrades(prev => prev.filter(t => t.id !== localTradeId));
           const reason = data.reject_reason || 'Order rejected by MT5';
+          setOpenTrades(prev => prev.map(t => t.id === localTradeId ? { ...t, mt5Status: 'rejected' as Mt5Status, rejectReason: reason } : t));
           setTradeStatus({ type: 'error', message: reason });
           setTimeout(() => setTradeStatus(null), 8000);
           fetch(`/api/trades/${localTradeId}/status`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ status: 'closed' }) }).catch(() => {});
@@ -605,7 +612,7 @@ export default function Terminal({ tier, userTierName, balance, onOpenPnlChange,
         }
         if (data.mt5_status === 'filled' && data.open_price) {
           const fillPrice = data.open_price;
-          setOpenTrades(prev => prev.map(t => t.id === localTradeId ? { ...t, status: 'executed', entryPrice: fillPrice } : t));
+          setOpenTrades(prev => prev.map(t => t.id === localTradeId ? { ...t, status: 'executed', entryPrice: fillPrice, mt5Status: 'filled' as Mt5Status } : t));
           fetch(`/api/trades/${localTradeId}/entry-price`, {
             method: 'PATCH',
             headers: { 'Content-Type': 'application/json' },
@@ -616,7 +623,7 @@ export default function Terminal({ tier, userTierName, balance, onOpenPnlChange,
         }
         if (!data.mt5_status && data.open_price && (data.status === 'executed' || data.status === 'open')) {
           const fillPrice = data.open_price;
-          setOpenTrades(prev => prev.map(t => t.id === localTradeId ? { ...t, status: 'executed', entryPrice: fillPrice } : t));
+          setOpenTrades(prev => prev.map(t => t.id === localTradeId ? { ...t, status: 'executed', entryPrice: fillPrice, mt5Status: 'filled' as Mt5Status } : t));
           fetch(`/api/trades/${localTradeId}/entry-price`, {
             method: 'PATCH',
             headers: { 'Content-Type': 'application/json' },
@@ -713,7 +720,7 @@ export default function Terminal({ tier, userTierName, balance, onOpenPnlChange,
 
       if (response.ok) {
         const trade: Trade = await response.json();
-        const pendingTrade = { ...trade, entryPrice: 0, status: 'open' as const };
+        const pendingTrade: LocalTrade = { ...trade, entryPrice: 0, status: 'open' as const, mt5Status: 'pending' };
         if (supabaseId) {
           setSupabaseTradeIds(prev => ({ ...prev, [trade.id]: supabaseId! }));
           console.log('Supabase trade ID mapped:', trade.id, '->', supabaseId);
@@ -761,10 +768,10 @@ export default function Terminal({ tier, userTierName, balance, onOpenPnlChange,
 
   const handleClose = async (tradeId: string, exitPriceOverride?: number) => {
     if (closingId === tradeId || closingIdsRef.current.has(tradeId)) return;
+    const localTrade = openTrades.find(t => t.id === tradeId);
+    if (localTrade && localTrade.mt5Status !== 'filled' && !(localTrade.mt5Status == null && localTrade.status === 'executed')) return;
     closingIdsRef.current.add(tradeId);
     setClosingId(tradeId);
-
-    const localTrade = openTrades.find(t => t.id === tradeId);
     let instrument = localTrade?.instrument;
     let sbId = supabaseTradeIds[tradeId] || null;
 
@@ -807,7 +814,7 @@ export default function Terminal({ tier, userTierName, balance, onOpenPnlChange,
 
     const sbTrades = await fetchSupabaseOpenTrades();
 
-    const localTrades = openTrades.filter(t => t.status === 'open' || t.status === 'executed');
+    const localTrades = openTrades.filter(t => (t.status === 'open' || t.status === 'executed') && (t.mt5Status === 'filled' || (!t.mt5Status && t.status === 'executed')));
     const processedSbIds = new Set<string>();
 
     for (const trade of localTrades) {
@@ -1042,35 +1049,58 @@ export default function Terminal({ tier, userTierName, balance, onOpenPnlChange,
               {closingAll ? 'Closing...' : 'Close All'}
             </button>
           </div>
-          {positionsWithPnl.map(pos => (
+          {positionsWithPnl.map(pos => {
+            const isRejected = pos.mt5Status === 'rejected';
+            const isPending = pos.mt5Status === 'pending';
+            const isFilled = pos.mt5Status === 'filled';
+            const canClose = isFilled || (!pos.mt5Status && pos.status === 'executed');
+            return (
             <div
               key={pos.id}
-              className="flex items-center gap-3 px-3 py-2 border-b border-b1 hover:bg-s2/50 transition-colors group"
+              className={`flex items-center gap-3 px-3 py-2 border-b border-b1 transition-colors group ${isRejected ? 'opacity-40' : 'hover:bg-s2/50'}`}
               data-testid={`position-row-${pos.id}`}
             >
               <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded shrink-0 ${pos.side === 'BUY' ? 'bg-[#22C55E] text-white' : 'bg-[#EF4444] text-white'}`}>
                 {pos.side}
               </span>
 
+              <span className={`text-[8px] font-bold px-1.5 py-0.5 rounded shrink-0 ${isFilled ? 'bg-[#22C55E]/20 text-[#22C55E]' : isPending ? 'bg-[#E8C547]/20 text-[#E8C547]' : isRejected ? 'bg-[#EF4444]/20 text-[#EF4444]' : 'bg-white/10 text-white/60'}`} data-testid={`badge-mt5-${pos.id}`}>
+                {isFilled ? 'Live' : isPending ? 'Pending' : isRejected ? 'Rejected' : '...'}
+              </span>
+
               <span className="text-white font-bold text-xs shrink-0">{(() => { const inst = INSTRUMENTS.find(i => i.label === pos.instrument); return inst ? Math.round(pos.size / inst.lotSize) : pos.size; })()} {pos.instrument}</span>
-              <span className="text-muted-foreground text-[11px] shrink-0">{pos.status === 'open' || !pos.entryPrice ? <span className="text-gold text-[8px] animate-pulse">Pending</span> : <>Entry <span className="text-gold data-number">{formatPrice(pos.entryPrice, pos.instrument)}</span></>}</span>
-              <span className="text-muted-foreground text-[11px] shrink-0">Now <span className="text-white data-number">{pos.currentPrice ? formatPrice(pos.currentPrice, pos.instrument) : '---'}</span></span>
+              <span className="text-muted-foreground text-[11px] shrink-0">{isRejected ? <span className="text-[#EF4444] text-[8px]">{pos.rejectReason || 'Rejected'}</span> : pos.status === 'open' || !pos.entryPrice ? <span className="text-gold text-[8px] animate-pulse">Awaiting fill...</span> : <>Entry <span className="text-gold data-number">{formatPrice(pos.entryPrice, pos.instrument)}</span></>}</span>
+              {!isRejected && <span className="text-muted-foreground text-[11px] shrink-0">Now <span className="text-white data-number">{pos.currentPrice ? formatPrice(pos.currentPrice, pos.instrument) : '---'}</span></span>}
 
               <div className="ml-auto flex items-center gap-2">
+                {!isRejected && (
                 <span className={`data-number font-bold text-sm ${pos.livePnl >= 0 ? 'text-[#22C55E]' : 'text-[#EF4444]'}`}>
                   {formatPnl(pos.livePnl)}
                 </span>
-                <button
-                  onClick={() => handleClose(pos.id)}
-                  disabled={closingId === pos.id}
-                  className="opacity-0 group-hover:opacity-100 text-[9px] text-muted-foreground hover:text-white bg-b1 border border-b2 px-1.5 py-0.5 rounded transition-all disabled:opacity-50"
-                  data-testid={`btn-close-${pos.id}`}
-                >
-                  {closingId === pos.id ? '...' : 'Close'}
-                </button>
+                )}
+                {isRejected ? (
+                  <button
+                    onClick={() => setOpenTrades(prev => prev.filter(t => t.id !== pos.id))}
+                    className="text-[9px] text-muted-foreground hover:text-white bg-b1 border border-b2 px-1.5 py-0.5 rounded transition-all"
+                    data-testid={`btn-dismiss-${pos.id}`}
+                  >
+                    Dismiss
+                  </button>
+                ) : (
+                  <button
+                    onClick={() => handleClose(pos.id)}
+                    disabled={closingId === pos.id || !canClose}
+                    className="opacity-0 group-hover:opacity-100 text-[9px] text-muted-foreground hover:text-white bg-b1 border border-b2 px-1.5 py-0.5 rounded transition-all disabled:opacity-50"
+                    data-testid={`btn-close-${pos.id}`}
+                    title={!canClose ? 'This trade was not executed on MT5' : undefined}
+                  >
+                    {closingId === pos.id ? '...' : 'Close'}
+                  </button>
+                )}
               </div>
             </div>
-          ))}
+            );
+          })}
         </div>
       )}
 

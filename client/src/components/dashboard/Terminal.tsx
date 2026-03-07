@@ -56,104 +56,97 @@ function useTradingViewScript() {
 }
 
 
-const FINNHUB_TO_INSTRUMENTS: Record<string, string[]> = {
-  "BINANCE:BTCUSDT": ["MBT", "Bitcoin", "BTCUSD"],
-  "OANDA:XAU_USD": ["Gold (GC)", "MGC", "XAUUSD"],
-  "OANDA:XAG_USD": ["Silver", "SIL", "XAGUSD"],
-  "OANDA:BCO_USD": ["Oil (WTI)", "MCL", "WTIUSD"],
-  "FXCM:USA500.IDX/USD": ["S&P 500", "MES", "SPX"],
-  "FXCM:USATEC.IDX/USD": ["Nasdaq", "MNQ", "NDX"],
-};
-
-const FINNHUB_SYMBOLS = Object.keys(FINNHUB_TO_INSTRUMENTS);
-
 interface FinnhubDebugInfo {
   wsStatus: 'connected' | 'disconnected' | 'connecting';
   lastPrice: number | null;
   lastUpdateTs: number | null;
+  tickCount: number;
 }
 
-let globalFinnhubDebug: FinnhubDebugInfo = { wsStatus: 'disconnected', lastPrice: null, lastUpdateTs: null };
+let globalFinnhubDebug: FinnhubDebugInfo = { wsStatus: 'disconnected', lastPrice: null, lastUpdateTs: null, tickCount: 0 };
 
 function useLivePrices(instruments: string[]) {
   const [prices, setPrices] = useState<Record<string, number>>({});
   const pricesRef = useRef<Record<string, number>>({});
-  const wsRef = useRef<WebSocket | null>(null);
+  const sseRef = useRef<EventSource | null>(null);
   const reconnectTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const apiKeyRef = useRef<string | null>(null);
   const [finnhubDebug, setFinnhubDebug] = useState<FinnhubDebugInfo>(globalFinnhubDebug);
-
-  const updatePrice = useCallback((label: string, price: number) => {
-    if (price <= 0 || pricesRef.current[label] === price) return;
-    pricesRef.current = { ...pricesRef.current, [label]: price };
-    setPrices(prev => ({ ...prev, [label]: price }));
-  }, []);
+  const instrumentsRef = useRef<string[]>(instruments);
+  instrumentsRef.current = instruments;
 
   useEffect(() => {
     let cancelled = false;
+    let retryCount = 0;
 
-    const connect = async () => {
-      if (wsRef.current && wsRef.current.readyState <= 1) return;
-
-      if (!apiKeyRef.current) {
-        try {
-          const res = await fetch('/api/config/finnhub');
-          if (res.ok) {
-            const data = await res.json();
-            apiKeyRef.current = data.key;
-          }
-        } catch {}
-        if (!apiKeyRef.current || cancelled) return;
-      }
+    const connect = () => {
+      if (cancelled) return;
+      if (sseRef.current) { sseRef.current.close(); sseRef.current = null; }
 
       globalFinnhubDebug = { ...globalFinnhubDebug, wsStatus: 'connecting' };
       setFinnhubDebug({ ...globalFinnhubDebug });
 
-      const ws = new WebSocket(`wss://ws.finnhub.io?token=${apiKeyRef.current}`);
-      wsRef.current = ws;
+      const sse = new EventSource('/api/prices/stream');
+      sseRef.current = sse;
 
-      ws.onopen = () => {
+      sse.onopen = () => {
+        retryCount = 0;
         globalFinnhubDebug = { ...globalFinnhubDebug, wsStatus: 'connected' };
         setFinnhubDebug({ ...globalFinnhubDebug });
-        FINNHUB_SYMBOLS.forEach(sym => {
-          ws.send(JSON.stringify({ type: "subscribe", symbol: sym }));
-        });
+        console.log('[price-feed] SSE connected to Finnhub relay');
       };
 
       let debugThrottle = 0;
-      ws.onmessage = (event) => {
+      sse.onmessage = (event) => {
         try {
-          const data = JSON.parse(event.data as string);
-          if (data.type === "trade" && data.data) {
-            for (const tick of data.data) {
-              const mappedInstruments = FINNHUB_TO_INSTRUMENTS[tick.s];
-              if (mappedInstruments) {
-                for (const inst of mappedInstruments) {
-                  if (instruments.includes(inst)) {
-                    updatePrice(inst, tick.p);
-                  }
-                }
-              }
+          const updatedPrices: Record<string, number> = JSON.parse(event.data);
+          const currentInstruments = instrumentsRef.current;
+          const newPrices = { ...pricesRef.current };
+          let anyUpdated = false;
 
-              globalFinnhubDebug = { wsStatus: 'connected', lastPrice: tick.p, lastUpdateTs: Date.now() };
-              const now = Date.now();
-              if (now - debugThrottle > 1000) {
-                debugThrottle = now;
-                setFinnhubDebug({ ...globalFinnhubDebug });
+          for (const [inst, price] of Object.entries(updatedPrices)) {
+            if (typeof price === 'number' && price > 0 && currentInstruments.includes(inst)) {
+              if (newPrices[inst] !== price) {
+                newPrices[inst] = price;
+                anyUpdated = true;
               }
+            }
+          }
+
+          if (anyUpdated) {
+            pricesRef.current = newPrices;
+            setPrices(newPrices);
+          }
+
+          const firstPrice = Object.values(updatedPrices)[0];
+          if (typeof firstPrice === 'number') {
+            globalFinnhubDebug = {
+              wsStatus: 'connected',
+              lastPrice: firstPrice,
+              lastUpdateTs: Date.now(),
+              tickCount: globalFinnhubDebug.tickCount + 1,
+            };
+            const now = Date.now();
+            if (now - debugThrottle > 1000) {
+              debugThrottle = now;
+              setFinnhubDebug({ ...globalFinnhubDebug });
+              console.log('[price-feed] tick', Object.entries(updatedPrices).map(([k, v]) => `${k}=${v}`).join(', '));
             }
           }
         } catch {}
       };
 
-      ws.onclose = () => {
+      sse.onerror = () => {
         globalFinnhubDebug = { ...globalFinnhubDebug, wsStatus: 'disconnected' };
         setFinnhubDebug({ ...globalFinnhubDebug });
-        wsRef.current = null;
-        if (!cancelled) reconnectTimer.current = setTimeout(connect, 3000);
+        sse.close();
+        sseRef.current = null;
+        if (!cancelled) {
+          retryCount++;
+          const delay = Math.min(3000 * retryCount, 15000);
+          console.log(`[price-feed] SSE disconnected, retry #${retryCount} in ${delay / 1000}s...`);
+          reconnectTimer.current = setTimeout(connect, delay);
+        }
       };
-
-      ws.onerror = () => { ws.close(); };
     };
 
     connect();
@@ -161,13 +154,12 @@ function useLivePrices(instruments: string[]) {
     return () => {
       cancelled = true;
       if (reconnectTimer.current) clearTimeout(reconnectTimer.current);
-      if (wsRef.current) {
-        wsRef.current.onclose = null;
-        wsRef.current.close();
-        wsRef.current = null;
+      if (sseRef.current) {
+        sseRef.current.close();
+        sseRef.current = null;
       }
     };
-  }, [instruments.join(','), updatePrice]);
+  }, []);
 
   return { prices, finnhubDebug };
 }

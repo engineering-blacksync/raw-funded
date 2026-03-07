@@ -885,12 +885,6 @@ export async function registerRoutes(
 
   const priceCache: Record<string, { price: number; ts: number }> = {};
 
-  app.get("/api/config/finnhub", requireApproved, (_req: Request, res: Response) => {
-    const key = process.env.FINNHUB_API_KEY;
-    if (!key) return res.status(500).json({ message: "Finnhub not configured" });
-    return res.json({ key });
-  });
-
   const FINNHUB_TO_INSTRUMENTS: Record<string, string[]> = {
     "BINANCE:BTCUSDT": ["MBT", "Bitcoin", "BTCUSD"],
     "OANDA:XAU_USD": ["Gold (GC)", "MGC", "XAUUSD"],
@@ -900,36 +894,84 @@ export async function registerRoutes(
     "FXCM:USATEC.IDX/USD": ["Nasdaq", "MNQ", "NDX"],
   };
 
+  const priceSSEClients: Set<Response> = new Set();
+
+  app.get("/api/prices/stream", requireApproved, (_req: Request, res: Response) => {
+    res.writeHead(200, {
+      'Content-Type': 'text/event-stream',
+      'Cache-Control': 'no-cache',
+      'Connection': 'keep-alive',
+      'X-Accel-Buffering': 'no',
+    });
+    res.write(':\n\n');
+
+    const currentPrices: Record<string, number> = {};
+    for (const [inst, cached] of Object.entries(priceCache)) {
+      currentPrices[inst] = cached.price;
+    }
+    if (Object.keys(currentPrices).length > 0) {
+      res.write(`data: ${JSON.stringify(currentPrices)}\n\n`);
+    }
+
+    priceSSEClients.add(res);
+    _req.on('close', () => { priceSSEClients.delete(res); });
+  });
+
+  function broadcastPriceUpdate(updated: Record<string, number>) {
+    if (Object.keys(updated).length === 0) return;
+    const msg = `data: ${JSON.stringify(updated)}\n\n`;
+    for (const client of priceSSEClients) {
+      try { client.write(msg); } catch { priceSSEClients.delete(client); }
+    }
+  }
+
   function startServerFinnhub() {
     const key = process.env.FINNHUB_API_KEY;
-    if (!key) { console.log("[finnhub] No API key, server price cache disabled"); return; }
+    if (!key) { console.log("[finnhub] No API key, price feed disabled"); return; }
 
     let ws: any = null;
+    let reconnectDelay = 3000;
 
     const connect = () => {
       ws = new WebSocketWs(`wss://ws.finnhub.io?token=${key}`);
       ws.on('open', () => {
-        console.log("[finnhub] Server WS connected");
+        console.log("[finnhub] WS connected, subscribing to symbols...");
+        reconnectDelay = 3000;
         const symbols = Object.keys(FINNHUB_TO_INSTRUMENTS);
         symbols.forEach((sym: string) => ws.send(JSON.stringify({ type: "subscribe", symbol: sym })));
       });
+      let tickLog = 0;
       ws.on('message', (raw: any) => {
         try {
           const data = JSON.parse(raw.toString());
           if (data.type === "trade" && data.data) {
+            const updated: Record<string, number> = {};
             for (const tick of data.data) {
               const instruments = FINNHUB_TO_INSTRUMENTS[tick.s];
               if (instruments) {
                 for (const inst of instruments) {
                   priceCache[inst] = { price: tick.p, ts: Date.now() };
+                  updated[inst] = tick.p;
                 }
               }
             }
+            const now = Date.now();
+            if (now - tickLog > 5000) {
+              tickLog = now;
+              console.log(`[finnhub] ticks: ${Object.entries(updated).map(([k, v]) => `${k}=${v}`).join(', ')} | SSE clients: ${priceSSEClients.size}`);
+            }
+            broadcastPriceUpdate(updated);
           }
         } catch {}
       });
-      ws.on('error', (err: any) => console.error("[finnhub] Server WS error:", err.message));
-      ws.on('close', () => { console.log("[finnhub] Server WS closed, reconnecting..."); setTimeout(connect, 3000); });
+      ws.on('error', (err: any) => {
+        console.error("[finnhub] WS error:", err.message);
+      });
+      ws.on('close', () => {
+        console.log(`[finnhub] WS closed, reconnecting in ${reconnectDelay / 1000}s...`);
+        setTimeout(connect, reconnectDelay);
+        reconnectDelay = Math.min(reconnectDelay * 1.5, 30000);
+      });
     };
     connect();
   }

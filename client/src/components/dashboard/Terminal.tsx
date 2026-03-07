@@ -351,8 +351,20 @@ export default function Terminal({ tier, userTierName, balance, onOpenPnlChange,
 
   const visibleOpenTrades = openTrades.filter(t => t.status === 'open' || t.status === 'executed');
 
+  const SPREAD_MAP: Record<string, number> = {
+    BTCUSD: 20,
+    XAUUSD: 0.30,
+    NAS100: 1.5,
+  };
+
+  const getNowPrice = (symbol: string, side: string, tvPrice: number) => {
+    const spread = SPREAD_MAP[symbol] ?? 10;
+    return side === 'BUY' ? tvPrice - spread / 2 : tvPrice + spread / 2;
+  };
+
   const positionsWithPnl = visibleOpenTrades.map(trade => {
-    const currentPrice = livePrices[trade.instrument];
+    const rawPrice = livePrices[trade.instrument];
+    const currentPrice = rawPrice ? getNowPrice(trade.instrument, trade.side, rawPrice) : undefined;
     const pnl = (currentPrice && trade.entryPrice > 0 && trade.status === 'executed') ? calcPnl(trade.side, trade.entryPrice, currentPrice, trade.size) : 0;
     return { ...trade, livePnl: pnl, currentPrice };
   });

@@ -3,9 +3,9 @@ import { useLocation } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/lib/auth";
 import { apiRequest } from "@/lib/queryClient";
-import { Users, Plus, Edit2, Shield, X, Key, Check, XCircle, Eye, BarChart2, Clock, UserPlus, DollarSign, ArrowRight, CheckCircle } from "lucide-react";
+import { Users, Plus, Edit2, Shield, X, Key, Check, XCircle, Eye, BarChart2, Clock, UserPlus, DollarSign, ArrowRight, CheckCircle, Activity, TrendingUp, TrendingDown } from "lucide-react";
 
-type AdminTab = "queue" | "traders" | "create" | "payouts";
+type AdminTab = "dashboard" | "queue" | "traders" | "create" | "payouts";
 
 const ALL_INSTRUMENTS = [
   'MBT', 'Gold (GC)', 'Silver', 'Oil (WTI)', 'S&P 500', 'Nasdaq',
@@ -16,7 +16,7 @@ export default function Admin() {
   const [, setLocation] = useLocation();
   const { user, isLoading } = useAuth();
   const queryClient = useQueryClient();
-  const [activeTab, setActiveTab] = useState<AdminTab>("queue");
+  const [activeTab, setActiveTab] = useState<AdminTab>("dashboard");
   const [editingUser, setEditingUser] = useState<any>(null);
   const [resetPasswordUser, setResetPasswordUser] = useState<any>(null);
   const [newPassword, setNewPassword] = useState("");
@@ -50,6 +50,12 @@ export default function Admin() {
     queryKey: ["/api/admin/stats"],
     enabled: !!isAdminUser,
     refetchInterval: 10000,
+  });
+
+  const { data: dashboard } = useQuery({
+    queryKey: ["/api/admin/dashboard"],
+    enabled: !!isAdminUser,
+    refetchInterval: 15000,
   });
 
   const { data: userTrades } = useQuery({
@@ -166,6 +172,7 @@ export default function Admin() {
   const pendingPayouts = allPayouts.filter((p: any) => p.status !== "completed" && p.status !== "rejected");
 
   const tabs = [
+    { id: "dashboard" as AdminTab, label: "Dashboard", icon: Activity },
     { id: "queue" as AdminTab, label: "Verification Queue", icon: Clock, count: pendingVerifications.length + stripePendingUsers.length },
     { id: "traders" as AdminTab, label: "All Traders", icon: Users, count: approvedUsers.length },
     { id: "payouts" as AdminTab, label: "Payouts", icon: DollarSign, count: pendingPayouts.length },
@@ -224,6 +231,216 @@ export default function Admin() {
             </button>
           ))}
         </div>
+
+        {activeTab === "dashboard" && dashboard && (
+          <div className="space-y-6">
+            <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3">
+              {[
+                { label: "Total Trades", value: dashboard.totalTrades, color: "text-white" },
+                { label: "Open Positions", value: dashboard.openPositions, color: "text-gold" },
+                { label: "Total Volume", value: `${dashboard.totalVolume.toLocaleString()} contracts`, color: "text-white" },
+                { label: "Platform P&L", value: `$${dashboard.totalPnl.toFixed(2)}`, color: dashboard.totalPnl >= 0 ? "text-green" : "text-red" },
+                { label: "Win Rate", value: `${dashboard.winRate.toFixed(1)}%`, color: "text-white" },
+                { label: "Profit Factor", value: dashboard.profitFactor === 0 ? "—" : dashboard.profitFactor.toFixed(2), color: "text-white" },
+              ].map((s, i) => (
+                <div key={i} className="bg-s1 border border-b1 rounded-lg p-4" data-testid={`dash-stat-${i}`}>
+                  <div className="text-[10px] uppercase text-muted-foreground tracking-wider mb-1">{s.label}</div>
+                  <div className={`data-number text-lg font-bold ${s.color}`}>{s.value}</div>
+                </div>
+              ))}
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="bg-s1 border border-b1 rounded-lg p-5">
+                <h3 className="font-heading text-sm uppercase tracking-wider text-gold mb-4">Traders Overview</h3>
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <TrendingUp className="w-4 h-4 text-green" />
+                      <span className="text-sm text-muted-foreground">Profitable</span>
+                    </div>
+                    <span className="data-number text-sm font-bold text-green" data-testid="dash-traders-up">{dashboard.tradersUp}</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <TrendingDown className="w-4 h-4 text-red" />
+                      <span className="text-sm text-muted-foreground">In Drawdown</span>
+                    </div>
+                    <span className="data-number text-sm font-bold text-red" data-testid="dash-traders-down">{dashboard.tradersDown}</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <span className="w-4 h-4 text-center text-muted-foreground">—</span>
+                      <span className="text-sm text-muted-foreground">Flat / No Trades</span>
+                    </div>
+                    <span className="data-number text-sm font-bold text-muted-foreground" data-testid="dash-traders-flat">{dashboard.tradersFlat}</span>
+                  </div>
+                </div>
+                {(dashboard.tradersUp + dashboard.tradersDown + dashboard.tradersFlat) > 0 && (
+                  <div className="mt-4 h-3 rounded-full bg-b1 overflow-hidden flex">
+                    {dashboard.tradersUp > 0 && <div className="bg-green h-full" style={{ width: `${(dashboard.tradersUp / (dashboard.tradersUp + dashboard.tradersDown + dashboard.tradersFlat)) * 100}%` }} />}
+                    {dashboard.tradersDown > 0 && <div className="bg-red h-full" style={{ width: `${(dashboard.tradersDown / (dashboard.tradersUp + dashboard.tradersDown + dashboard.tradersFlat)) * 100}%` }} />}
+                    {dashboard.tradersFlat > 0 && <div className="bg-b2 h-full" style={{ width: `${(dashboard.tradersFlat / (dashboard.tradersUp + dashboard.tradersDown + dashboard.tradersFlat)) * 100}%` }} />}
+                  </div>
+                )}
+              </div>
+
+              <div className="bg-s1 border border-b1 rounded-lg p-5">
+                <h3 className="font-heading text-sm uppercase tracking-wider text-gold mb-4">Buy vs Sell</h3>
+                <div className="space-y-3">
+                  <div>
+                    <div className="flex justify-between mb-1">
+                      <span className="text-sm text-muted-foreground">Buy Trades</span>
+                      <span className="data-number text-sm font-bold text-green">{dashboard.sideBreakdown.buyTrades}</span>
+                    </div>
+                    <div className="flex justify-between mb-1">
+                      <span className="text-sm text-muted-foreground">Buy P&L</span>
+                      <span className={`data-number text-sm font-bold ${dashboard.sideBreakdown.buyPnl >= 0 ? 'text-green' : 'text-red'}`}>${dashboard.sideBreakdown.buyPnl.toFixed(2)}</span>
+                    </div>
+                  </div>
+                  <div className="border-t border-b1 pt-3">
+                    <div className="flex justify-between mb-1">
+                      <span className="text-sm text-muted-foreground">Sell Trades</span>
+                      <span className="data-number text-sm font-bold text-red">{dashboard.sideBreakdown.sellTrades}</span>
+                    </div>
+                    <div className="flex justify-between mb-1">
+                      <span className="text-sm text-muted-foreground">Sell P&L</span>
+                      <span className={`data-number text-sm font-bold ${dashboard.sideBreakdown.sellPnl >= 0 ? 'text-green' : 'text-red'}`}>${dashboard.sideBreakdown.sellPnl.toFixed(2)}</span>
+                    </div>
+                  </div>
+                </div>
+                {(dashboard.sideBreakdown.buyTrades + dashboard.sideBreakdown.sellTrades) > 0 && (
+                  <div className="mt-4 h-3 rounded-full bg-b1 overflow-hidden flex">
+                    <div className="bg-green h-full" style={{ width: `${(dashboard.sideBreakdown.buyTrades / (dashboard.sideBreakdown.buyTrades + dashboard.sideBreakdown.sellTrades)) * 100}%` }} />
+                    <div className="bg-red h-full" style={{ width: `${(dashboard.sideBreakdown.sellTrades / (dashboard.sideBreakdown.buyTrades + dashboard.sideBreakdown.sellTrades)) * 100}%` }} />
+                  </div>
+                )}
+              </div>
+
+              <div className="bg-s1 border border-b1 rounded-lg p-5">
+                <h3 className="font-heading text-sm uppercase tracking-wider text-gold mb-4">Win / Loss Breakdown</h3>
+                <div className="space-y-3">
+                  <div className="flex justify-between">
+                    <span className="text-sm text-muted-foreground">Wins</span>
+                    <span className="data-number text-sm font-bold text-green">{dashboard.wins} (${dashboard.totalWinAmt.toFixed(2)})</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-sm text-muted-foreground">Losses</span>
+                    <span className="data-number text-sm font-bold text-red">{dashboard.losses} (-${dashboard.totalLossAmt.toFixed(2)})</span>
+                  </div>
+                  <div className="flex justify-between border-t border-b1 pt-3">
+                    <span className="text-sm text-muted-foreground">Net</span>
+                    <span className={`data-number text-sm font-bold ${dashboard.totalPnl >= 0 ? 'text-green' : 'text-red'}`}>${dashboard.totalPnl.toFixed(2)}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="bg-s1 border border-b1 rounded-lg p-5">
+              <h3 className="font-heading text-sm uppercase tracking-wider text-gold mb-4">Volume by Instrument</h3>
+              {Object.keys(dashboard.instrumentVolume).length === 0 ? (
+                <p className="text-sm text-muted-foreground">No trade data yet</p>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="border-b border-b1 text-muted-foreground text-[10px] uppercase tracking-wider">
+                        <th className="text-left py-2 px-3">Instrument</th>
+                        <th className="text-right py-2 px-3">Contracts</th>
+                        <th className="text-right py-2 px-3">Trades</th>
+                        <th className="text-right py-2 px-3">P&L</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {Object.entries(dashboard.instrumentVolume)
+                        .sort((a: any, b: any) => b[1].contracts - a[1].contracts)
+                        .map(([inst, data]: [string, any]) => (
+                          <tr key={inst} className="border-b border-b1/50 hover:bg-s3/30" data-testid={`dash-instrument-${inst}`}>
+                            <td className="py-2 px-3 font-bold">{inst}</td>
+                            <td className="py-2 px-3 text-right data-number">{data.contracts.toLocaleString()}</td>
+                            <td className="py-2 px-3 text-right data-number text-muted-foreground">{data.trades}</td>
+                            <td className={`py-2 px-3 text-right data-number font-bold ${data.pnl >= 0 ? 'text-green' : 'text-red'}`}>${data.pnl.toFixed(2)}</td>
+                          </tr>
+                        ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+
+            <div className="bg-s1 border border-b1 rounded-lg p-5">
+              <h3 className="font-heading text-sm uppercase tracking-wider text-gold mb-4">Trader Leaderboard</h3>
+              {dashboard.traderStats.length === 0 ? (
+                <p className="text-sm text-muted-foreground">No traders yet</p>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="border-b border-b1 text-muted-foreground text-[10px] uppercase tracking-wider">
+                        <th className="text-left py-2 px-3">#</th>
+                        <th className="text-left py-2 px-3">Trader</th>
+                        <th className="text-right py-2 px-3">P&L</th>
+                        <th className="text-right py-2 px-3">Win Rate</th>
+                        <th className="text-right py-2 px-3">Trades</th>
+                        <th className="text-right py-2 px-3">Open</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {dashboard.traderStats.map((t: any, i: number) => (
+                        <tr key={t.username} className="border-b border-b1/50 hover:bg-s3/30" data-testid={`dash-trader-${t.username}`}>
+                          <td className="py-2 px-3 text-muted-foreground data-number">{i + 1}</td>
+                          <td className="py-2 px-3 font-bold">{t.username}</td>
+                          <td className={`py-2 px-3 text-right data-number font-bold ${t.totalPnl >= 0 ? 'text-green' : 'text-red'}`}>${t.totalPnl.toFixed(2)}</td>
+                          <td className="py-2 px-3 text-right data-number">{t.winRate.toFixed(1)}%</td>
+                          <td className="py-2 px-3 text-right data-number text-muted-foreground">{t.totalTrades}</td>
+                          <td className="py-2 px-3 text-right data-number text-gold">{t.openPositions}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+
+            {Object.keys(dashboard.dailyVolume).length > 0 && (
+              <div className="bg-s1 border border-b1 rounded-lg p-5">
+                <h3 className="font-heading text-sm uppercase tracking-wider text-gold mb-4">Daily Activity</h3>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="border-b border-b1 text-muted-foreground text-[10px] uppercase tracking-wider">
+                        <th className="text-left py-2 px-3">Date</th>
+                        <th className="text-right py-2 px-3">Trades</th>
+                        <th className="text-right py-2 px-3">Volume</th>
+                        <th className="text-right py-2 px-3">P&L</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {Object.entries(dashboard.dailyVolume)
+                        .sort((a, b) => b[0].localeCompare(a[0]))
+                        .slice(0, 30)
+                        .map(([date, data]: [string, any]) => (
+                          <tr key={date} className="border-b border-b1/50 hover:bg-s3/30" data-testid={`dash-daily-${date}`}>
+                            <td className="py-2 px-3 font-bold">{date}</td>
+                            <td className="py-2 px-3 text-right data-number">{data.trades}</td>
+                            <td className="py-2 px-3 text-right data-number text-muted-foreground">{data.volume}</td>
+                            <td className={`py-2 px-3 text-right data-number font-bold ${data.pnl >= 0 ? 'text-green' : 'text-red'}`}>${data.pnl.toFixed(2)}</td>
+                          </tr>
+                        ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {activeTab === "dashboard" && !dashboard && (
+          <div className="text-center py-16 text-muted-foreground">
+            <Activity className="w-12 h-12 mx-auto mb-3 opacity-30 animate-pulse" />
+            <p className="text-sm">Loading dashboard data...</p>
+          </div>
+        )}
 
         {activeTab === "queue" && (
           <div>

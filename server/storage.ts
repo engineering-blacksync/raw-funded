@@ -40,6 +40,7 @@ export interface IStorage {
   updateWithdrawalStatus(id: string, stage: string, adminNotes?: string): Promise<Withdrawal | undefined>;
   hasPendingPayout(userId: string): Promise<boolean>;
 
+  getPlatformDashboard(): Promise<any>;
   getLeaderboard(): Promise<Array<User & { totalPnl: number; winRate: number; profitFactor: number; totalTrades: number }>>;
 }
 
@@ -334,6 +335,93 @@ export class DatabaseStorage implements IStorage {
       sql`${withdrawals.userId} = ${userId} AND ${withdrawals.status} != 'completed' AND ${withdrawals.status} != 'rejected'`
     );
     return pending.length > 0;
+  }
+
+  async getPlatformDashboard() {
+    const allUsers = await db.select().from(users);
+    const allTrades = await db.select().from(trades);
+    const closedTrades = allTrades.filter(t => t.status === 'closed');
+    const openTrades = allTrades.filter(t => t.status === 'open' || t.status === 'executed');
+
+    const totalVolume = closedTrades.reduce((s, t) => s + (t.size ?? 0), 0);
+    const openVolume = openTrades.reduce((s, t) => s + (t.size ?? 0), 0);
+    const totalPnl = closedTrades.reduce((s, t) => s + (t.pnl ?? 0), 0);
+    const wins = closedTrades.filter(t => (t.pnl ?? 0) > 0);
+    const losses = closedTrades.filter(t => (t.pnl ?? 0) < 0);
+    const totalWinAmt = wins.reduce((s, t) => s + (t.pnl ?? 0), 0);
+    const totalLossAmt = Math.abs(losses.reduce((s, t) => s + (t.pnl ?? 0), 0));
+
+    const instrumentVolume: Record<string, { contracts: number; pnl: number; trades: number }> = {};
+    for (const t of closedTrades) {
+      const inst = t.instrument;
+      if (!instrumentVolume[inst]) instrumentVolume[inst] = { contracts: 0, pnl: 0, trades: 0 };
+      instrumentVolume[inst].contracts += t.size ?? 0;
+      instrumentVolume[inst].pnl += t.pnl ?? 0;
+      instrumentVolume[inst].trades++;
+    }
+    for (const t of openTrades) {
+      const inst = t.instrument;
+      if (!instrumentVolume[inst]) instrumentVolume[inst] = { contracts: 0, pnl: 0, trades: 0 };
+      instrumentVolume[inst].contracts += t.size ?? 0;
+    }
+
+    const sideBreakdown = {
+      buyTrades: closedTrades.filter(t => t.side === 'BUY').length,
+      sellTrades: closedTrades.filter(t => t.side === 'SELL').length,
+      buyPnl: closedTrades.filter(t => t.side === 'BUY').reduce((s, t) => s + (t.pnl ?? 0), 0),
+      sellPnl: closedTrades.filter(t => t.side === 'SELL').reduce((s, t) => s + (t.pnl ?? 0), 0),
+    };
+
+    const traderStats: Array<{ username: string; totalPnl: number; winRate: number; totalTrades: number; openPositions: number }> = [];
+    const approvedUsers = allUsers.filter(u => u.status === 'approved');
+    for (const u of approvedUsers) {
+      const userClosed = closedTrades.filter(t => t.userId === u.id);
+      const userOpen = openTrades.filter(t => t.userId === u.id);
+      const uPnl = userClosed.reduce((s, t) => s + (t.pnl ?? 0), 0);
+      const uWins = userClosed.filter(t => (t.pnl ?? 0) > 0).length;
+      traderStats.push({
+        username: u.username,
+        totalPnl: uPnl,
+        winRate: userClosed.length > 0 ? (uWins / userClosed.length) * 100 : 0,
+        totalTrades: userClosed.length,
+        openPositions: userOpen.length,
+      });
+    }
+    traderStats.sort((a, b) => b.totalPnl - a.totalPnl);
+    const tradersUp = traderStats.filter(t => t.totalPnl > 0).length;
+    const tradersDown = traderStats.filter(t => t.totalPnl < 0).length;
+    const tradersFlat = traderStats.filter(t => t.totalPnl === 0).length;
+
+    const dailyVolume: Record<string, { trades: number; volume: number; pnl: number }> = {};
+    for (const t of closedTrades) {
+      const d = t.closedAt ? new Date(t.closedAt).toISOString().slice(0, 10) : null;
+      if (!d) continue;
+      if (!dailyVolume[d]) dailyVolume[d] = { trades: 0, volume: 0, pnl: 0 };
+      dailyVolume[d].trades++;
+      dailyVolume[d].volume += t.size ?? 0;
+      dailyVolume[d].pnl += t.pnl ?? 0;
+    }
+
+    return {
+      totalTrades: closedTrades.length,
+      openPositions: openTrades.length,
+      totalVolume,
+      openVolume,
+      totalPnl,
+      totalWinAmt,
+      totalLossAmt,
+      wins: wins.length,
+      losses: losses.length,
+      winRate: closedTrades.length > 0 ? (wins.length / closedTrades.length) * 100 : 0,
+      profitFactor: totalLossAmt > 0 ? totalWinAmt / totalLossAmt : 0,
+      instrumentVolume,
+      sideBreakdown,
+      traderStats,
+      tradersUp,
+      tradersDown,
+      tradersFlat,
+      dailyVolume,
+    };
   }
 
   async getLeaderboard() {

@@ -441,6 +441,15 @@ export async function registerRoutes(
     }
   });
 
+  app.get("/api/admin/dashboard", requireAdmin, async (_req: Request, res: Response) => {
+    try {
+      const data = await storage.getPlatformDashboard();
+      return res.json(data);
+    } catch (err: any) {
+      return res.status(500).json({ message: err.message });
+    }
+  });
+
   app.get("/api/admin/users/:id/trades", requireAdmin, async (req: Request, res: Response) => {
     try {
       const open = await storage.getOpenTrades(req.params.id);

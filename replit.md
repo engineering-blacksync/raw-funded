@@ -19,7 +19,7 @@ A private prop trading platform where admin assigns funded accounts. Users get a
 | `client/src/lib/auth.ts` | useAuth() hook — login, register, logout, session check |
 | `client/src/lib/constants.ts` | Tier definitions, leaderboard mock data |
 | `client/src/pages/dashboard.tsx` | Main dashboard with tabs (Terminal, Data, etc.) |
-| `client/src/pages/admin.tsx` | Admin panel — verification queue, all traders, create accounts |
+| `client/src/pages/admin.tsx` | Admin panel — platform dashboard, verification queue, all traders, create accounts |
 | `client/src/pages/pending.tsx` | Pending/rejected status page for non-approved users |
 | `client/src/pages/pricing.tsx` | Pricing page with 3 card tiers + Stripe checkout |
 | `client/src/pages/onboarding.tsx` | Post-payment registration page |

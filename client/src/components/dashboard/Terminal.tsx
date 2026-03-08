@@ -45,6 +45,16 @@ const INSTRUMENTS: InstrumentConfig[] = [
   { label: 'MCL', symbol: 'TVC:USOIL', default: 1, step: 1, min: 1, max: 20, lotSize: 0.10 },
 ];
 
+const PLATFORM_SPREAD_PER_CONTRACT = 2;
+const CLIENT_LOT_SIZE_MAP: Record<string, number> = Object.fromEntries(
+  INSTRUMENTS.map(i => [i.label, i.lotSize])
+);
+function getSpreadAdjustedEntry(instrument: string, side: string, size: number, fillPrice: number): number {
+  const lotSize = CLIENT_LOT_SIZE_MAP[instrument] || 1;
+  const contracts = Math.round(size / lotSize);
+  const spread = PLATFORM_SPREAD_PER_CONTRACT * contracts;
+  return side === 'BUY' ? fillPrice + spread : fillPrice - spread;
+}
 
 declare global {
   interface Window { TradingView: any; }
@@ -371,10 +381,11 @@ export default function Terminal({ tier, userTierName, balance, onOpenPnlChange,
   }, []);
 
   const addOrUpdateFilledTrade = useCallback((sbId: string, row: any) => {
+    const adjustedEntry = getSpreadAdjustedEntry(row.instrument, row.side, row.size, row.open_price);
     setOpenTrades(prev => {
       const exists = prev.some(t => t.supabaseId === sbId);
       if (exists) {
-        return prev.map(t => t.supabaseId === sbId ? { ...t, entryPrice: row.open_price } : t);
+        return prev.map(t => t.supabaseId === sbId ? { ...t, entryPrice: adjustedEntry } : t);
       }
       return [...prev, {
         id: sbId,
@@ -383,7 +394,7 @@ export default function Terminal({ tier, userTierName, balance, onOpenPnlChange,
         side: row.side,
         size: row.size,
         contracts: 1,
-        entryPrice: row.open_price,
+        entryPrice: adjustedEntry,
         exitPrice: null,
         pnl: null,
         stopLoss: row.stop_loss || null,

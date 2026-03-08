@@ -13,6 +13,20 @@ import {
 } from "@shared/schema";
 import { getUncachableStripeClient, getStripePublishableKey } from "./stripeClient";
 
+const PLATFORM_SPREAD_PER_CONTRACT = 2;
+const LOT_SIZE_MAP: Record<string, number> = {
+  MBT: 0.10, 'Gold (GC)': 1, Silver: 1, 'Oil (WTI)': 1,
+  'S&P 500': 1, Nasdaq: 1, MNQ: 0.10, MES: 0.10,
+  MGC: 0.10, SIL: 0.10, MCL: 0.10, Bitcoin: 0.10, BTCUSD: 0.10,
+  XAUUSD: 1, XAGUSD: 1, WTIUSD: 1, SPX: 1, NDX: 1,
+};
+function getSpreadAdjustedEntry(instrument: string, side: string, size: number, fillPrice: number): number {
+  const lotSize = LOT_SIZE_MAP[instrument] || 1;
+  const contracts = Math.round(size / lotSize);
+  const spread = PLATFORM_SPREAD_PER_CONTRACT * contracts;
+  return side === 'BUY' ? fillPrice + spread : fillPrice - spread;
+}
+
 const upload = multer({
   storage: multer.diskStorage({
     destination: "uploads/",
@@ -551,7 +565,7 @@ export async function registerRoutes(
             instrument: s.instrument,
             side: s.side,
             size: s.size,
-            entryPrice: s.open_price,
+            entryPrice: getSpreadAdjustedEntry(s.instrument, s.side, s.size, s.open_price),
             stopLoss: s.stop_loss || null,
             takeProfit: s.take_profit || null,
             openedAt: s.created_at,
@@ -574,7 +588,8 @@ export async function registerRoutes(
 
       if (trade) {
         const direction = trade.side === "BUY" ? 1 : -1;
-        const pnl = (exitPrice - trade.entryPrice) * direction * trade.size;
+        const adjustedEntry = getSpreadAdjustedEntry(trade.instrument, trade.side, trade.size, trade.entryPrice);
+        const pnl = (exitPrice - adjustedEntry) * direction * trade.size;
         const closedTrade = await storage.closeTrade(trade.id, exitPrice, pnl);
         const user = await storage.getUser(req.user!.id);
         if (user) await storage.updateUserBalance(user.id, user.balance + pnl);
@@ -606,7 +621,8 @@ export async function registerRoutes(
         if (!sbTrade) return res.status(404).json({ message: "Trade not found in Supabase" });
 
         const direction = sbTrade.side === "BUY" ? 1 : -1;
-        const entryPrice = sbTrade.open_price || 0;
+        const rawEntry = sbTrade.open_price || 0;
+        const entryPrice = rawEntry ? getSpreadAdjustedEntry(sbTrade.instrument, sbTrade.side, sbTrade.size, rawEntry) : 0;
         const pnl = entryPrice ? (exitPrice - entryPrice) * direction * sbTrade.size : 0;
 
         await fetch(`${supabaseUrl}/rest/v1/trades?id=eq.${supabaseId}&trader_username=eq.${encodeURIComponent(req.user!.username)}`, {
@@ -683,7 +699,8 @@ export async function registerRoutes(
       if (!trade) return res.status(404).json({ message: "Trade not found" });
 
       const direction = trade.side === "BUY" ? 1 : -1;
-      const pnl = (exitPrice - trade.entryPrice) * direction * trade.size;
+      const adjustedEntry = getSpreadAdjustedEntry(trade.instrument, trade.side, trade.size, trade.entryPrice);
+      const pnl = (exitPrice - adjustedEntry) * direction * trade.size;
 
       const closedTrade = await storage.closeTrade(trade.id, exitPrice, pnl);
 

@@ -110,7 +110,10 @@ A private prop trading platform where admin assigns funded accounts. Users get a
 - Entry price displayed is always from Supabase `open_price` (MT5 source of truth), never from chart
 - P&L: BUY = (current - open_price) × lot_size; SELL = (open_price - current) × lot_size
 - P&L tick rounding: MBT/Bitcoin/BTCUSD=$0.50, Gold(GC)=$10, MGC=$1 (uses Math.trunc)
-- $2 per-contract platform spread applied at trade entry (BUY adds, SELL subtracts)
+- $2 per-contract platform spread applied to BOTH BUY and SELL (BUY: entry + $2×contracts; SELL: entry - $2×contracts)
+  - Applied via `getSpreadAdjustedEntry()` on server (positions endpoint, both close paths) and client (RT handler)
+  - Local DB and Supabase always store raw MT5 fill price; spread is applied in view/calculation layer only
+  - Close P&L uses raw fill price + single spread application — never double-applied
 - lot_size = contracts × instrument.lotSize (MBT/MGC lotSize=0.10 so 1 contract = 0.1 lot; others lotSize=1)
 - No CONTRACT_SIZES multiplier — lot size conversion handled by instrument config lotSize field
 

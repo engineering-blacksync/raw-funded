@@ -20,6 +20,19 @@ const LOT_SIZE_MAP: Record<string, number> = {
   MGC: 0.10, SIL: 0.10, MCL: 0.10, Bitcoin: 0.10, BTCUSD: 0.10,
   XAUUSD: 1, XAGUSD: 1, WTIUSD: 1, SPX: 1, NDX: 1,
 };
+const TICK_MAP: Record<string, number> = {
+  MBT: 0.50, Bitcoin: 0.50, BTCUSD: 0.50,
+  'Gold (GC)': 10, XAUUSD: 10,
+  MGC: 1,
+  Silver: 0.50, SIL: 0.50, XAGUSD: 0.50,
+  'Oil (WTI)': 0.10, MCL: 0.10, WTIUSD: 0.10,
+  'S&P 500': 0.25, MES: 0.25, SPX: 0.25,
+  Nasdaq: 0.25, MNQ: 0.25, NDX: 0.25,
+};
+function roundToTick(price: number, instrument: string): number {
+  const tick = TICK_MAP[instrument] ?? 1;
+  return Math.floor(price / tick) * tick;
+}
 function getSpreadAdjustedEntry(instrument: string, side: string, size: number, fillPrice: number): number {
   const lotSize = LOT_SIZE_MAP[instrument] || 1;
   const contracts = Math.round(size / lotSize);
@@ -503,9 +516,10 @@ export async function registerRoutes(
                 continue;
               }
               if (match && match.open_price > 0 && (match.mt5_status === 'filled' || !match.mt5_status)) {
-                local.entryPrice = match.open_price;
+                const roundedPrice = roundToTick(match.open_price, local.instrument);
+                local.entryPrice = roundedPrice;
                 local.status = 'executed';
-                storage.updateTradeEntryPrice(local.id, match.open_price).catch(() => {});
+                storage.updateTradeEntryPrice(local.id, roundedPrice).catch(() => {});
                 storage.updateTradeStatus(local.id, 'executed').catch(() => {});
               }
             }
@@ -565,7 +579,8 @@ export async function registerRoutes(
           );
           if (localMatch) usedLocalIds.add(localMatch.id);
           if (localMatch && (localMatch.entryPrice !== s.open_price || localMatch.status !== 'executed')) {
-            storage.updateTradeEntryPrice(localMatch.id, s.open_price).catch(() => {});
+            const roundedPrice = roundToTick(s.open_price, s.instrument);
+            storage.updateTradeEntryPrice(localMatch.id, roundedPrice).catch(() => {});
             storage.updateTradeStatus(localMatch.id, 'executed').catch(() => {});
           }
           return {
@@ -700,13 +715,14 @@ export async function registerRoutes(
 
   app.post("/api/trades/:id/close", requireApproved, async (req: Request, res: Response) => {
     try {
-      const { exitPrice } = req.body;
-      if (typeof exitPrice !== "number") return res.status(400).json({ message: "exitPrice required" });
+      const { exitPrice: rawExitPrice } = req.body;
+      if (typeof rawExitPrice !== "number") return res.status(400).json({ message: "exitPrice required" });
 
       const openTrades = await storage.getOpenTrades(req.user!.id);
       const trade = openTrades.find(t => t.id === req.params.id);
       if (!trade) return res.status(404).json({ message: "Trade not found" });
 
+      const exitPrice = roundToTick(rawExitPrice, trade.instrument);
       const direction = trade.side === "BUY" ? 1 : -1;
       const adjustedEntry = getSpreadAdjustedEntry(trade.instrument, trade.side, trade.size, trade.entryPrice);
       const pnl = (exitPrice - adjustedEntry) * direction * trade.size;

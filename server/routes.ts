@@ -589,7 +589,7 @@ export async function registerRoutes(
             instrument: s.instrument,
             side: s.side,
             size: s.size,
-            entryPrice: getSpreadAdjustedEntry(s.instrument, s.side, s.size, s.open_price),
+            entryPrice: getSpreadAdjustedEntry(s.instrument, s.side, s.size, roundToTick(s.open_price, s.instrument)),
             stopLoss: s.stop_loss || null,
             takeProfit: s.take_profit || null,
             openedAt: s.created_at,
@@ -646,7 +646,8 @@ export async function registerRoutes(
 
         const direction = sbTrade.side === "BUY" ? 1 : -1;
         const rawEntry = sbTrade.open_price || 0;
-        const entryPrice = rawEntry ? getSpreadAdjustedEntry(sbTrade.instrument, sbTrade.side, sbTrade.size, rawEntry) : 0;
+        const roundedEntry = rawEntry ? roundToTick(rawEntry, sbTrade.instrument) : 0;
+        const entryPrice = roundedEntry ? getSpreadAdjustedEntry(sbTrade.instrument, sbTrade.side, sbTrade.size, roundedEntry) : 0;
         const pnl = entryPrice ? (exitPrice - entryPrice) * direction * sbTrade.size : 0;
 
         await fetch(`${supabaseUrl}/rest/v1/trades?id=eq.${supabaseId}&trader_username=eq.${encodeURIComponent(req.user!.username)}`, {

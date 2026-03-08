@@ -460,6 +460,8 @@ export default function Terminal({ tier, userTierName, balance, onOpenPnlChange,
     };
   }, [fetchPositionsFromSupabase, loadClosedTrades, handleRealtimeChange, username]);
 
+  const [positionSort, setPositionSort] = useState<'oldest' | 'newest' | 'loss'>('oldest');
+
   const visibleOpenTrades = (() => {
     const filtered = openTrades.filter(t => t.mt5Status === 'filled');
     const seen = new Set<string>();
@@ -496,12 +498,23 @@ export default function Terminal({ tier, userTierName, balance, onOpenPnlChange,
     return side === 'BUY' ? tvPrice - spread / 2 : tvPrice + spread / 2;
   };
 
-  const positionsWithPnl = visibleOpenTrades.map(trade => {
-    const rawPrice = livePrices[trade.instrument];
-    const currentPrice = rawPrice ? getNowPrice(trade.instrument, trade.side, rawPrice) : undefined;
-    const pnl = (currentPrice && trade.entryPrice > 0) ? calcPnl(trade.side, trade.entryPrice, currentPrice, trade.size, trade.instrument) : 0;
-    return { ...trade, livePnl: pnl, currentPrice };
-  });
+  const positionsWithPnl = (() => {
+    const mapped = visibleOpenTrades.map(trade => {
+      const rawPrice = livePrices[trade.instrument];
+      const currentPrice = rawPrice ? getNowPrice(trade.instrument, trade.side, rawPrice) : undefined;
+      const pnl = (currentPrice && trade.entryPrice > 0) ? calcPnl(trade.side, trade.entryPrice, currentPrice, trade.size, trade.instrument) : 0;
+      return { ...trade, livePnl: pnl, currentPrice };
+    });
+    const sorted = [...mapped];
+    if (positionSort === 'oldest') {
+      sorted.sort((a, b) => new Date(a.openedAt).getTime() - new Date(b.openedAt).getTime());
+    } else if (positionSort === 'newest') {
+      sorted.sort((a, b) => new Date(b.openedAt).getTime() - new Date(a.openedAt).getTime());
+    } else if (positionSort === 'loss') {
+      sorted.sort((a, b) => a.livePnl - b.livePnl);
+    }
+    return sorted;
+  })();
 
   const totalOpenPnl = positionsWithPnl.reduce((sum, p) => sum + p.livePnl, 0);
   useEffect(() => {
@@ -994,7 +1007,21 @@ export default function Terminal({ tier, userTierName, balance, onOpenPnlChange,
       {positionsWithPnl.length > 0 && (
         <div className="bg-[#0A0A0C]">
           <div className="px-3 py-2 border-b border-b1 flex items-center justify-between">
-            <span className="text-[10px] text-muted-foreground uppercase tracking-wider font-bold">Open Positions</span>
+            <div className="flex items-center gap-2">
+              <span className="text-[10px] text-muted-foreground uppercase tracking-wider font-bold">Open Positions</span>
+              <div className="flex items-center gap-0.5 bg-[#141418] rounded px-1 py-0.5" data-testid="sort-control">
+                {([['oldest', 'Old'], ['newest', 'New'], ['loss', 'Loss']] as const).map(([val, label]) => (
+                  <button
+                    key={val}
+                    onClick={() => setPositionSort(val)}
+                    className={`text-[8px] px-1.5 py-0.5 rounded transition-colors ${positionSort === val ? 'bg-[#222228] text-white font-bold' : 'text-muted-foreground hover:text-white'}`}
+                    data-testid={`sort-${val}`}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+            </div>
             <button
               onClick={handleCloseAll}
               disabled={closingAll}

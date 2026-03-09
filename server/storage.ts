@@ -13,7 +13,7 @@ export interface IStorage {
   getUserByStripeSessionId(sessionId: string): Promise<User | undefined>;
   createUser(user: InsertUser & { password: string }): Promise<User>;
   getAllUsers(): Promise<User[]>;
-  updateUser(id: string, data: Partial<Pick<User, 'tier' | 'status' | 'balance' | 'leverage' | 'maxContracts' | 'isActive' | 'propFirm' | 'payoutsReceived' | 'approvedBy' | 'adminNotes' | 'verifiedAt' | 'stripePaid' | 'amountPaid' | 'card' | 'stripeSessionId' | 'allowedInstruments'>>): Promise<User | undefined>;
+  updateUser(id: string, data: Partial<Pick<User, 'tier' | 'status' | 'balance' | 'leverage' | 'maxContracts' | 'isActive' | 'propFirm' | 'payoutsReceived' | 'approvedBy' | 'adminNotes' | 'verifiedAt' | 'stripePaid' | 'amountPaid' | 'card' | 'stripeSessionId' | 'allowedInstruments' | 'mt5Account'>>): Promise<User | undefined>;
   updateUserPassword(id: string, hashedPassword: string): Promise<User | undefined>;
   updateUserTier(id: string, tier: string): Promise<User | undefined>;
   updateUserBalance(id: string, balance: number): Promise<User | undefined>;

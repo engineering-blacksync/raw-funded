@@ -789,9 +789,11 @@ export async function registerRoutes(
 
       // Auto-populate mt5_account from user profile
       const user = await storage.getUser(req.user!.id);
+      const mt5Acc = user?.mt5Account || null;
+      
       const tradeData = {
         ...parsed.data,
-        mt5Account: user?.mt5Account || null
+        mt5Account: mt5Acc
       };
 
       const trade = await storage.createTrade(req.user!.id, tradeData);
@@ -813,7 +815,7 @@ export async function registerRoutes(
             entry_price: Number(trade.entryPrice),
             status: trade.status || 'open',
             opened_at: trade.openedAt?.toISOString(),
-            mt5_account: trade.mt5Account
+            mt5_account: mt5Acc // Use the looked up value
           };
 
           await fetch(`${supabaseUrl}/rest/v1/trades`, {

@@ -206,14 +206,17 @@ function calcPnl(side: string, entry: number, current: number, size: number, ins
   
   if (instrument === 'MGC') {
     // Every $0.10 move = $1.00 PnL (for 1 contract / 0.10 lot)
-    // Formula: (Price Diff / 0.10) * size / 0.10
-    return (priceDiff / 0.1) * (size / 0.1);
+    // Formula: (Price Diff / 0.10) * (size / 0.10)
+    // But size is already in lots (e.g. 0.1, 0.2), so we need to normalize it
+    const contracts = Math.round(size / 0.1);
+    return (priceDiff / 0.1) * contracts;
   }
   
   if (instrument === 'Gold (GC)' || instrument === 'XAUUSD') {
     // Every $0.10 move = $10.00 PnL (for 1 contract / 1.0 lot)
     // Formula: (Price Diff / 0.10) * 10 * size
-    return (priceDiff / 0.1) * 10 * size;
+    const contracts = Math.round(size / 1.0);
+    return (priceDiff / 0.1) * 10 * contracts;
   }
 
   const rawPnl = priceDiff * size;

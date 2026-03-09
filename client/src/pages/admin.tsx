@@ -923,8 +923,7 @@ export default function Admin() {
                   <label className="block text-[10px] text-muted-foreground uppercase mb-1">MT5 Account</label>
                   <select
                     value={editingUser.mt5Account || ""}
-                    onChange={(e) => setEditingUser((p: any) => ({ ...p, mt5Account: e.target.value }))}
-                    disabled={!!editingUser.mt5Account}
+                    onChange={(e) => setEditingUser((p: any) => ({ ...p, mt5Account: e.target.value || null }))}
                     className="w-full bg-s2 border border-b1 rounded px-3 py-2 text-sm text-white outline-none focus:border-gold disabled:opacity-50 disabled:cursor-not-allowed"
                     data-testid="admin-edit-mt5-account"
                   >

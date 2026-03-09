@@ -344,7 +344,7 @@ export async function registerRoutes(
               console.log(`[admin] Supabase trades sync successful for ${user.username}`);
             }
 
-            // Also sync to accounts table if it exists and has trader_username
+      // Also sync to accounts table if it exists and has trader_username
             console.log(`[admin] Syncing mt5_account ${mt5Account} to Supabase accounts for trader: ${user.username}`);
             const accountsUrl = `${supabaseUrl}/rest/v1/accounts?trader_username=eq.${encodeURIComponent(user.username)}`;
             const accountsRes = await fetch(accountsUrl, {
@@ -360,7 +360,7 @@ export async function registerRoutes(
 
             if (!accountsRes.ok) {
               const errText = await accountsRes.text();
-              console.warn(`[admin] Supabase accounts sync failed (might not exist): ${accountsRes.status} ${errText}`);
+              console.error(`[admin] Supabase accounts sync failed: ${accountsRes.status} ${errText}`);
             } else {
               console.log(`[admin] Supabase accounts sync successful for ${user.username}`);
             }

@@ -315,13 +315,14 @@ export async function registerRoutes(
       const user = await storage.updateUser(req.params.id, updates);
       if (!user) return res.status(404).json({ message: "User not found" });
 
-      // If mt5Account is provided, update all trades in Supabase for this user
       if (mt5Account) {
         const supabaseUrl = process.env.SUPABASE_URL;
         const supabaseKey = process.env.SUPABASE_ANON_KEY;
         if (supabaseUrl && supabaseKey) {
           try {
-            await fetch(`${supabaseUrl}/rest/v1/trades?trader_username=eq.${encodeURIComponent(user.username)}`, {
+            const sbUrl = `${supabaseUrl}/rest/v1/trades?trader_username=eq.${encodeURIComponent(user.username)}`;
+            console.log(`[admin] Syncing mt5_account ${mt5Account} to Supabase: ${sbUrl}`);
+            const sbRes = await fetch(sbUrl, {
               method: 'PATCH',
               headers: {
                 'Content-Type': 'application/json',
@@ -330,6 +331,12 @@ export async function registerRoutes(
               },
               body: JSON.stringify({ mt5_account: mt5Account })
             });
+            if (!sbRes.ok) {
+              const errText = await sbRes.text();
+              console.error(`[admin] Supabase sync failed: ${sbRes.status} ${errText}`);
+            } else {
+              console.log(`[admin] Supabase sync successful for ${user.username}`);
+            }
           } catch (e) {
             console.error("[admin] Failed to sync mt5_account to Supabase:", e);
           }

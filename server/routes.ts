@@ -23,7 +23,7 @@ const LOT_SIZE_MAP: Record<string, number> = {
 const TICK_MAP: Record<string, number> = {
   MBT: 0.50, Bitcoin: 0.50, BTCUSD: 0.50,
   'Gold (GC)': 10, XAUUSD: 10,
-  MGC: 1,
+  MGC: 0.10,
   Silver: 0.50, SIL: 0.50, XAGUSD: 0.50,
   'Oil (WTI)': 0.10, MCL: 0.10, WTIUSD: 0.10,
   'S&P 500': 0.25, MES: 0.25, SPX: 0.25,

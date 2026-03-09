@@ -197,7 +197,7 @@ const PNL_TICK_MAP: Record<string, number> = {
   'Bitcoin': 0.50,
   'BTCUSD': 0.50,
   'Gold (GC)': 10,
-  'MGC': 1,
+  'MGC': 10,
 };
 
 function calcPnl(side: string, entry: number, current: number, size: number, instrument?: string): number {

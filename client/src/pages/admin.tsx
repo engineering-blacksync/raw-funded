@@ -924,7 +924,8 @@ export default function Admin() {
                   <select
                     value={editingUser.mt5Account || ""}
                     onChange={(e) => setEditingUser((p: any) => ({ ...p, mt5Account: e.target.value }))}
-                    className="w-full bg-s2 border border-b1 rounded px-3 py-2 text-sm text-white outline-none focus:border-gold"
+                    disabled={!!editingUser.mt5Account}
+                    className="w-full bg-s2 border border-b1 rounded px-3 py-2 text-sm text-white outline-none focus:border-gold disabled:opacity-50 disabled:cursor-not-allowed"
                     data-testid="admin-edit-mt5-account"
                   >
                     <option value="">None</option>
@@ -933,7 +934,13 @@ export default function Admin() {
                         {acc.trader_username} - {acc.mt5_account}
                       </option>
                     ))}
+                    {editingUser.mt5Account && !mt5Accounts.find((a: any) => a.mt5_account === editingUser.mt5Account) && (
+                      <option value={editingUser.mt5Account}>{editingUser.mt5Account}</option>
+                    )}
                   </select>
+                  {editingUser.mt5Account && (
+                    <p className="text-[10px] text-muted-foreground mt-1 italic">Assignment cannot be changed once set.</p>
+                  )}
                 </div>
                 <div>
                   <label className="block text-[10px] text-muted-foreground uppercase mb-1">Prop Firm</label>

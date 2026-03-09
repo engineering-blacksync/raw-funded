@@ -21,6 +21,7 @@ export const users = pgTable("users", {
   approvedBy: text("approved_by"),
   adminNotes: text("admin_notes"),
   verifiedAt: timestamp("verified_at"),
+  mt5Account: text("mt5_account"),
   createdAt: timestamp("created_at").defaultNow(),
   stripePaid: boolean("stripe_paid").notNull().default(false),
   amountPaid: integer("amount_paid"),

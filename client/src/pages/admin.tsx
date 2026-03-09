@@ -18,6 +18,16 @@ export default function Admin() {
   const queryClient = useQueryClient();
   const [activeTab, setActiveTab] = useState<AdminTab>("dashboard");
   const [editingUser, setEditingUser] = useState<any>(null);
+  const [mt5Accounts, setMt5Accounts] = useState<any[]>([]);
+
+  useEffect(() => {
+    if (editingUser) {
+      fetch("/api/admin/supabase/accounts")
+        .then(res => res.json())
+        .then(data => setMt5Accounts(Array.isArray(data) ? data : []))
+        .catch(() => setMt5Accounts([]));
+    }
+  }, [editingUser]);
   const [resetPasswordUser, setResetPasswordUser] = useState<any>(null);
   const [newPassword, setNewPassword] = useState("");
   const [approveModal, setApproveModal] = useState<any>(null);
@@ -907,9 +917,33 @@ export default function Admin() {
                   <input type="number" value={editingUser.maxContracts} onChange={e => setEditingUser((p: any) => ({ ...p, maxContracts: parseInt(e.target.value) || 1 }))} className="w-full bg-s2 border border-b1 rounded px-3 py-2 text-sm text-white outline-none focus:border-gold data-number" data-testid="admin-edit-maxcontracts" />
                 </div>
               </div>
-              <div>
-                <label className="block text-[10px] text-muted-foreground uppercase mb-1">Internal Notes</label>
-                <textarea value={editingUser.adminNotes || ""} onChange={e => setEditingUser((p: any) => ({ ...p, adminNotes: e.target.value }))} rows={2} className="w-full bg-s2 border border-b1 rounded px-3 py-2 text-sm text-white outline-none focus:border-gold resize-none" data-testid="admin-edit-notes" />
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-[10px] text-muted-foreground uppercase mb-1">MT5 Account</label>
+                  <select
+                    value={editingUser.mt5Account || ""}
+                    onChange={(e) => setEditingUser((p: any) => ({ ...p, mt5Account: e.target.value }))}
+                    className="w-full bg-s2 border border-b1 rounded px-3 py-2 text-sm text-white outline-none focus:border-gold"
+                    data-testid="admin-edit-mt5-account"
+                  >
+                    <option value="">None</option>
+                    {mt5Accounts.map((acc: any) => (
+                      <option key={acc.mt5_account} value={acc.mt5_account}>
+                        {acc.trader_username} - {acc.mt5_account}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-[10px] text-muted-foreground uppercase mb-1">Prop Firm</label>
+                  <input type="text" value={editingUser.propFirm || ""} onChange={e => setEditingUser((p: any) => ({ ...p, propFirm: e.target.value }))} className="w-full bg-s2 border border-b1 rounded px-3 py-2 text-sm text-white outline-none focus:border-gold" data-testid="admin-edit-propfirm" />
+                </div>
+              </div>
+              <div className="grid grid-cols-1 gap-3">
+                <div>
+                  <label className="block text-[10px] text-muted-foreground uppercase mb-1">Internal Notes</label>
+                  <textarea value={editingUser.adminNotes || ""} onChange={e => setEditingUser((p: any) => ({ ...p, adminNotes: e.target.value }))} rows={2} className="w-full bg-s2 border border-b1 rounded px-3 py-2 text-sm text-white outline-none focus:border-gold resize-none" data-testid="admin-edit-notes" />
+                </div>
               </div>
               <div>
                 <div className="flex items-center justify-between mb-2">

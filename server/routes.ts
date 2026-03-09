@@ -297,7 +297,7 @@ export async function registerRoutes(
 
   app.patch("/api/admin/users/:id", requireAdmin, async (req: Request, res: Response) => {
     try {
-      const { tier, balance, leverage, maxContracts, isActive, propFirm, payoutsReceived, status, adminNotes, card, allowedInstruments } = req.body;
+      const { tier, balance, leverage, maxContracts, isActive, propFirm, payoutsReceived, status, adminNotes, card, allowedInstruments, mt5Account } = req.body;
       const updates: any = {};
       if (tier !== undefined) updates.tier = tier;
       if (balance !== undefined) updates.balance = balance;
@@ -310,14 +310,54 @@ export async function registerRoutes(
       if (adminNotes !== undefined) updates.adminNotes = adminNotes;
       if (card !== undefined) updates.card = card;
       if (allowedInstruments !== undefined) updates.allowedInstruments = allowedInstruments;
+      if (mt5Account !== undefined) updates.mt5Account = mt5Account;
 
       const user = await storage.updateUser(req.params.id, updates);
       if (!user) return res.status(404).json({ message: "User not found" });
+
+      // If mt5Account is provided, update all trades in Supabase for this user
+      if (mt5Account) {
+        const supabaseUrl = process.env.SUPABASE_URL;
+        const supabaseKey = process.env.SUPABASE_ANON_KEY;
+        if (supabaseUrl && supabaseKey) {
+          try {
+            await fetch(`${supabaseUrl}/rest/v1/trades?trader_username=eq.${encodeURIComponent(user.username)}`, {
+              method: 'PATCH',
+              headers: {
+                'Content-Type': 'application/json',
+                'apikey': supabaseKey,
+                'Authorization': `Bearer ${supabaseKey}`
+              },
+              body: JSON.stringify({ mt5_account: mt5Account })
+            });
+          } catch (e) {
+            console.error("[admin] Failed to sync mt5_account to Supabase:", e);
+          }
+        }
+      }
 
       const { password, ...safeUser } = user;
       return res.json(safeUser);
     } catch (err: any) {
       return res.status(500).json({ message: err.message });
+    }
+  });
+
+  app.get("/api/admin/supabase/accounts", requireAdmin, async (req: Request, res: Response) => {
+    const supabaseUrl = process.env.SUPABASE_URL;
+    const supabaseKey = process.env.SUPABASE_ANON_KEY;
+    if (!supabaseUrl || !supabaseKey) return res.status(500).json({ message: "Supabase not configured" });
+    try {
+      const response = await fetch(`${supabaseUrl}/rest/v1/accounts?select=trader_username,mt5_account`, {
+        headers: { 'apikey': supabaseKey, 'Authorization': `Bearer ${supabaseKey}` },
+      });
+      if (response.ok) {
+        const data = await response.json();
+        return res.json(data);
+      }
+      return res.status(response.status).json({ message: "Supabase fetch failed" });
+    } catch {
+      return res.status(502).json({ message: "Connection failed" });
     }
   });
 

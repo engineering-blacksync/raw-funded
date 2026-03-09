@@ -315,37 +315,67 @@ export async function registerRoutes(
       const user = await storage.updateUser(req.params.id, updates);
       if (!user) return res.status(404).json({ message: "User not found" });
 
+      // If mt5Account is provided, update all trades in Supabase for this user
       if (mt5Account) {
         const supabaseUrl = process.env.SUPABASE_URL;
         const supabaseKey = process.env.SUPABASE_ANON_KEY;
         if (supabaseUrl && supabaseKey) {
           try {
-            const sbUrl = `${supabaseUrl}/rest/v1/trades?trader_username=eq.${encodeURIComponent(user.username)}`;
-            console.log(`[admin] Syncing mt5_account ${mt5Account} to Supabase: ${sbUrl}`);
-            const sbRes = await fetch(sbUrl, {
+            // Log exactly what we are doing
+            console.log(`[admin] Syncing mt5_account ${mt5Account} to Supabase trades for trader: ${user.username}`);
+            
+            // Sync to trades table where trader_username matches
+            const tradesUrl = `${supabaseUrl}/rest/v1/trades?trader_username=eq.${encodeURIComponent(user.username)}`;
+            const tradesRes = await fetch(tradesUrl, {
               method: 'PATCH',
               headers: {
                 'Content-Type': 'application/json',
                 'apikey': supabaseKey,
-                'Authorization': `Bearer ${supabaseKey}`
+                'Authorization': `Bearer ${supabaseKey}`,
+                'Prefer': 'return=minimal'
               },
               body: JSON.stringify({ mt5_account: mt5Account })
             });
-            if (!sbRes.ok) {
-              const errText = await sbRes.text();
-              console.error(`[admin] Supabase sync failed: ${sbRes.status} ${errText}`);
+
+            if (!tradesRes.ok) {
+              const errText = await tradesRes.text();
+              console.error(`[admin] Supabase trades sync failed: ${tradesRes.status} ${errText}`);
             } else {
-              console.log(`[admin] Supabase sync successful for ${user.username}`);
+              console.log(`[admin] Supabase trades sync successful for ${user.username}`);
+            }
+
+            // Also sync to accounts table if it exists and has trader_username
+            console.log(`[admin] Syncing mt5_account ${mt5Account} to Supabase accounts for trader: ${user.username}`);
+            const accountsUrl = `${supabaseUrl}/rest/v1/accounts?trader_username=eq.${encodeURIComponent(user.username)}`;
+            const accountsRes = await fetch(accountsUrl, {
+              method: 'PATCH',
+              headers: {
+                'Content-Type': 'application/json',
+                'apikey': supabaseKey,
+                'Authorization': `Bearer ${supabaseKey}`,
+                'Prefer': 'return=minimal'
+              },
+              body: JSON.stringify({ mt5_account: mt5Account })
+            });
+
+            if (!accountsRes.ok) {
+              const errText = await accountsRes.text();
+              console.warn(`[admin] Supabase accounts sync failed (might not exist): ${accountsRes.status} ${errText}`);
+            } else {
+              console.log(`[admin] Supabase accounts sync successful for ${user.username}`);
             }
           } catch (e) {
             console.error("[admin] Failed to sync mt5_account to Supabase:", e);
           }
+        } else {
+          console.error("[admin] Supabase credentials missing during sync");
         }
       }
 
       const { password, ...safeUser } = user;
       return res.json(safeUser);
     } catch (err: any) {
+      console.error("[admin] User update error:", err);
       return res.status(500).json({ message: err.message });
     }
   });

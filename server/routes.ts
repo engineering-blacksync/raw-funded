@@ -788,9 +788,10 @@ export async function registerRoutes(
       if (!parsed.success) return res.status(400).json({ message: "Invalid trade data" });
 
       // Auto-populate mt5_account from user profile
+      const user = await storage.getUser(req.user!.id);
       const tradeData = {
         ...parsed.data,
-        mt5Account: req.user!.mt5Account || null
+        mt5Account: user?.mt5Account || null
       };
 
       const trade = await storage.createTrade(req.user!.id, tradeData);

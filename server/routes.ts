@@ -36,7 +36,15 @@ function roundToTick(price: number, instrument: string): number {
 function getSpreadAdjustedEntry(instrument: string, side: string, size: number, fillPrice: number): number {
   const lotSize = LOT_SIZE_MAP[instrument] || 1;
   const contracts = Math.round(size / lotSize);
-  const spread = PLATFORM_SPREAD_PER_CONTRACT * contracts;
+  let spreadPerContract = PLATFORM_SPREAD_PER_CONTRACT;
+  
+  if (instrument === 'MGC') {
+    spreadPerContract = 0.15; // results in -$1.50 start, total -$3.00 with frontend spread
+  } else if (instrument === 'Gold (GC)' || instrument === 'XAUUSD') {
+    spreadPerContract = 0.15; // results in -$15.00 start, total -$30.00 with frontend spread
+  }
+  
+  const spread = spreadPerContract * contracts;
   return side === 'BUY' ? fillPrice + spread : fillPrice - spread;
 }
 

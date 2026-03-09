@@ -52,7 +52,15 @@ const CLIENT_LOT_SIZE_MAP: Record<string, number> = Object.fromEntries(
 function getSpreadAdjustedEntry(instrument: string, side: string, size: number, fillPrice: number): number {
   const lotSize = CLIENT_LOT_SIZE_MAP[instrument] || 1;
   const contracts = Math.round(size / lotSize);
-  const spread = PLATFORM_SPREAD_PER_CONTRACT * contracts;
+  let spreadPerContract = PLATFORM_SPREAD_PER_CONTRACT;
+  
+  if (instrument === 'MGC') {
+    spreadPerContract = 0.15;
+  } else if (instrument === 'Gold (GC)' || instrument === 'XAUUSD') {
+    spreadPerContract = 0.15;
+  }
+  
+  const spread = spreadPerContract * contracts;
   return side === 'BUY' ? fillPrice + spread : fillPrice - spread;
 }
 
@@ -209,7 +217,8 @@ function calcPnl(side: string, entry: number, current: number, size: number, ins
     // size is in lots (e.g., 0.1, 0.2). 0.1 lot = 1 contract.
     const contracts = Math.round(size / 0.1);
     // (priceDiff / 0.1) gives number of ticks. each tick is $1.
-    return (priceDiff / 0.1) * contracts;
+    const pnl = (priceDiff / 0.1) * contracts;
+    return Math.trunc(pnl);
   }
   
   if (instrument === 'Gold (GC)' || instrument === 'XAUUSD' || instrument === 'Gold') {
@@ -217,7 +226,8 @@ function calcPnl(side: string, entry: number, current: number, size: number, ins
     // size is in lots (e.g., 1.0, 2.0). 1.0 lot = 1 contract.
     const contracts = Math.round(size / 1.0);
     // (priceDiff / 0.1) gives number of ticks. each tick is $10.
-    return (priceDiff / 0.1) * 10 * contracts;
+    const pnl = (priceDiff / 0.1) * 10 * contracts;
+    return Math.trunc(pnl / 10) * 10;
   }
 
   const rawPnl = priceDiff * size;
@@ -501,7 +511,7 @@ export default function Terminal({ tier, userTierName, balance, onOpenPnlChange,
     MBT: 20,
     MNQ: 1.50,
     MES: 0.25,
-    MGC: 0.60,
+    MGC: 0.30,
     MCL: 0.05,
     SIL: 0.03,
     'Gold (GC)': 0.30,

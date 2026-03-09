@@ -500,7 +500,7 @@ export default function Terminal({ tier, userTierName, balance, onOpenPnlChange,
     MBT: 20,
     MNQ: 1.50,
     MES: 0.25,
-    MGC: 0.30,
+    MGC: 0.60,
     MCL: 0.05,
     SIL: 0.03,
     'Gold (GC)': 0.30,
@@ -511,7 +511,7 @@ export default function Terminal({ tier, userTierName, balance, onOpenPnlChange,
   };
 
   const getNowPrice = (symbol: string, side: string, tvPrice: number) => {
-    const spread = SPREAD_MAP[symbol] ?? 10;
+    const spread = SPREAD_MAP[symbol] ?? 0;
     return side === 'BUY' ? tvPrice - spread / 2 : tvPrice + spread / 2;
   };
 

@@ -344,9 +344,9 @@ export async function registerRoutes(
               console.log(`[admin] Supabase trades sync successful for ${user.username}`);
             }
 
-      // Also sync to accounts table if it exists and has trader_username
-            console.log(`[admin] Syncing mt5_account ${mt5Account} to Supabase accounts for trader: ${user.username}`);
-            const accountsUrl = `${supabaseUrl}/rest/v1/accounts?trader_username=eq.${encodeURIComponent(user.username)}`;
+            // Also sync to accounts table: set trader_username for the selected MT5 account
+            console.log(`[admin] Assigning trader ${user.username} to MT5 account ${mt5Account} in Supabase`);
+            const accountsUrl = `${supabaseUrl}/rest/v1/accounts?mt5_account=eq.${encodeURIComponent(mt5Account)}`;
             const accountsRes = await fetch(accountsUrl, {
               method: 'PATCH',
               headers: {
@@ -355,14 +355,14 @@ export async function registerRoutes(
                 'Authorization': `Bearer ${supabaseKey}`,
                 'Prefer': 'return=minimal'
               },
-              body: JSON.stringify({ mt5_account: mt5Account })
+              body: JSON.stringify({ trader_username: user.username })
             });
 
             if (!accountsRes.ok) {
               const errText = await accountsRes.text();
-              console.error(`[admin] Supabase accounts sync failed: ${accountsRes.status} ${errText}`);
+              console.error(`[admin] Supabase accounts assignment failed: ${accountsRes.status} ${errText}`);
             } else {
-              console.log(`[admin] Supabase accounts sync successful for ${user.username}`);
+              console.log(`[admin] Supabase accounts assignment successful for ${user.username} on account ${mt5Account}`);
             }
           } catch (e) {
             console.error("[admin] Failed to sync mt5_account to Supabase:", e);

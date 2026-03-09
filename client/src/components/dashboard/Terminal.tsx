@@ -911,7 +911,7 @@ export default function Terminal({ tier, userTierName, balance, onOpenPnlChange,
             />
           </div>
 
-          <div className="w-14 shrink-0 border-l border-b1 bg-s1 flex flex-col items-center justify-center gap-1.5 py-2">
+          <div className="w-14 shrink-0 border-l border-b1 bg-s1 flex flex-col items-center justify-center gap-1.5 py-2 text-[17px] text-[#f4f4f5] text-left">
             <button
               onClick={() => handleTrade('BUY')}
               disabled={tradeLoading !== null || !bridgeOnline}
@@ -1003,7 +1003,6 @@ export default function Terminal({ tier, userTierName, balance, onOpenPnlChange,
           </div>
         )}
       </div>
-
       {positionsWithPnl.length > 0 && (
         <div className="bg-[#0A0A0C]">
           <div className="px-3 py-2 border-b border-b1 flex items-center justify-between">
@@ -1066,7 +1065,6 @@ export default function Terminal({ tier, userTierName, balance, onOpenPnlChange,
           ))}
         </div>
       )}
-
       {isDev && (
         <div className="bg-[#0A0A0C] border-t border-b1">
           <button

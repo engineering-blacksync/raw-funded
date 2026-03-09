@@ -213,23 +213,18 @@ function calcPnl(side: string, entry: number, current: number, size: number, ins
   const priceDiff = (current - entry) * direction;
   
   if (instrument === 'MGC') {
-    // Every $0.10 move = $1.00 PnL (for 1 contract / 0.10 lot)
-    // size is in lots (e.g., 0.1, 0.2). 0.1 lot = 1 contract.
     const contracts = Math.round(size / 0.1);
-    // Round priceDiff down to nearest $0.10 (tick) before calculation
-    const snappedDiff = Math.floor(priceDiff / 0.1) * 0.1;
-    const pnl = (snappedDiff / 0.1) * contracts;
-    return Math.trunc(pnl);
+    // User wants clean $1 increments per $0.10. 
+    // Round priceDiff DOWN for BUY, UP for SELL (to be conservative/clean)
+    // Actually "round down" usually means floor for the final value.
+    const ticks = Math.floor(priceDiff * 10); 
+    return ticks * contracts;
   }
   
   if (instrument === 'Gold (GC)' || instrument === 'XAUUSD' || instrument === 'Gold') {
-    // Every $0.10 move = $10.00 PnL (for 1 contract / 1.0 lot)
-    // size is in lots (e.g., 1.0, 2.0). 1.0 lot = 1 contract.
     const contracts = Math.round(size / 1.0);
-    // Round priceDiff down to nearest $0.10 (tick) before calculation
-    const snappedDiff = Math.floor(priceDiff / 0.1) * 0.1;
-    const pnl = (snappedDiff / 0.1) * 10 * contracts;
-    return Math.trunc(pnl / 10) * 10;
+    const ticks = Math.floor(priceDiff * 10);
+    return ticks * 10 * contracts;
   }
 
   const rawPnl = priceDiff * size;

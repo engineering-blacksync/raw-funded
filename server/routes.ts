@@ -787,10 +787,46 @@ export async function registerRoutes(
       const parsed = insertTradeSchema.safeParse(req.body);
       if (!parsed.success) return res.status(400).json({ message: "Invalid trade data" });
 
-      const trade = await storage.createTrade(req.user!.id, parsed.data);
+      // Auto-populate mt5_account from user profile
+      const tradeData = {
+        ...parsed.data,
+        mt5Account: req.user!.mt5Account || null
+      };
+
+      const trade = await storage.createTrade(req.user!.id, tradeData);
 
       if (req.user!.tier === "unverified") {
         await storage.incrementTriesUsed(req.user!.id);
+      }
+
+      // Sync to Supabase
+      const supabaseUrl = process.env.SUPABASE_URL;
+      const supabaseKey = process.env.SUPABASE_ANON_KEY;
+      if (supabaseUrl && supabaseKey) {
+        try {
+          const sbTrade = {
+            trader_username: req.user!.username,
+            instrument: trade.instrument,
+            side: trade.side,
+            size: Number(trade.size),
+            entry_price: Number(trade.entryPrice),
+            status: trade.status || 'open',
+            opened_at: trade.openedAt?.toISOString(),
+            mt5_account: trade.mt5Account
+          };
+
+          await fetch(`${supabaseUrl}/rest/v1/trades`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'apikey': supabaseKey,
+              'Authorization': `Bearer ${supabaseKey}`,
+            },
+            body: JSON.stringify(sbTrade)
+          });
+        } catch (e) {
+          console.error("[trades] Supabase sync failed:", e);
+        }
       }
 
       return res.status(201).json(trade);

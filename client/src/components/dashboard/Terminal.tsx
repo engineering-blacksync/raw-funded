@@ -202,7 +202,21 @@ const PNL_TICK_MAP: Record<string, number> = {
 
 function calcPnl(side: string, entry: number, current: number, size: number, instrument?: string): number {
   const direction = side === 'BUY' ? 1 : -1;
-  const rawPnl = (current - entry) * direction * size;
+  const priceDiff = (current - entry) * direction;
+  
+  if (instrument === 'MGC') {
+    // Every $0.10 move = $1.00 PnL (for 1 contract / 0.10 lot)
+    // Formula: (Price Diff / 0.10) * size / 0.10
+    return (priceDiff / 0.1) * (size / 0.1);
+  }
+  
+  if (instrument === 'Gold (GC)' || instrument === 'XAUUSD') {
+    // Every $0.10 move = $10.00 PnL (for 1 contract / 1.0 lot)
+    // Formula: (Price Diff / 0.10) * 10 * size
+    return (priceDiff / 0.1) * 10 * size;
+  }
+
+  const rawPnl = priceDiff * size;
   const tick = instrument ? PNL_TICK_MAP[instrument] : undefined;
   if (!tick) return rawPnl;
   return Math.trunc(rawPnl / tick) * tick;

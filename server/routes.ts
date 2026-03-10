@@ -37,13 +37,13 @@ function getSpreadAdjustedEntry(instrument: string, side: string, size: number, 
   const lotSize = LOT_SIZE_MAP[instrument] || 1;
   const contracts = Math.round(size / lotSize);
   let spreadPerContract = PLATFORM_SPREAD_PER_CONTRACT;
-  
+
   if (instrument === 'MGC') {
     spreadPerContract = 0.15; // results in -$1.50 start, total -$3.00 with frontend spread
   } else if (instrument === 'Gold (GC)' || instrument === 'XAUUSD') {
     spreadPerContract = 0.15; // results in -$15.00 start, total -$30.00 with frontend spread
   }
-  
+
   const spread = spreadPerContract * contracts;
   return side === 'BUY' ? fillPrice + spread : fillPrice - spread;
 }
@@ -394,6 +394,41 @@ export async function registerRoutes(
       return res.status(response.status).json({ message: "Supabase fetch failed" });
     } catch {
       return res.status(502).json({ message: "Connection failed" });
+    }
+  });
+
+  app.post("/api/admin/supabase/accounts", requireAdmin, async (req: Request, res: Response) => {
+    const supabaseUrl = process.env.SUPABASE_URL;
+    const supabaseKey = process.env.SUPABASE_ANON_KEY;
+    if (!supabaseUrl || !supabaseKey) return res.status(500).json({ message: "Supabase not configured" });
+
+    const { trader_username, mt5_account, mt5_password, mt5_server } = req.body;
+    if (!trader_username || !mt5_account || !mt5_password || !mt5_server) {
+      return res.status(400).json({ message: "All fields required" });
+    }
+
+    try {
+      const response = await fetch(`${supabaseUrl}/rest/v1/rpc/create_mt5_account`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "apikey": supabaseKey,
+          "Authorization": `Bearer ${supabaseKey}`,
+        },
+        body: JSON.stringify({
+          p_trader_username: trader_username,
+          p_mt5_account: parseInt(mt5_account),
+          p_mt5_password: mt5_password,
+          p_mt5_server: mt5_server,
+        }),
+      });
+      if (!response.ok) {
+        const err = await response.text();
+        return res.status(500).json({ message: err });
+      }
+      return res.json({ success: true });
+    } catch (e: any) {
+      return res.status(500).json({ message: e.message });
     }
   });
 
@@ -789,7 +824,7 @@ export async function registerRoutes(
       // Auto-populate mt5_account from user profile
       const user = await storage.getUser(req.user!.id);
       const mt5Acc = user?.mt5Account || null;
-      
+
       const tradeData = {
         ...parsed.data,
         mt5Account: mt5Acc

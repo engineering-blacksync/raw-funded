@@ -38,6 +38,8 @@ export default function Admin() {
   const [viewTradesUser, setViewTradesUser] = useState<any>(null);
   const [assignCardUser, setAssignCardUser] = useState<any>(null);
   const [assignCard, setAssignCard] = useState("bronze");
+  const [addMt5Modal, setAddMt5Modal] = useState(false);
+  const [newMt5Creds, setNewMt5Creds] = useState({ trader_username: "", mt5_account: "", mt5_password: "", mt5_server: "JustMarkets-Live" });
 
   const [newUser, setNewUser] = useState({
     username: "", email: "", password: "",
@@ -161,6 +163,17 @@ export default function Admin() {
       queryClient.invalidateQueries({ queryKey: ["/api/admin/users"] });
       queryClient.invalidateQueries({ queryKey: ["/api/admin/stats"] });
       setAssignCardUser(null);
+    },
+  });
+
+  const addMt5AccountMutation = useMutation({
+    mutationFn: async (data: any) => {
+      const res = await apiRequest("POST", "/api/admin/supabase/accounts", data);
+      return res.json();
+    },
+    onSuccess: () => {
+      setAddMt5Modal(false);
+      setNewMt5Creds({ trader_username: "", mt5_account: "", mt5_password: "", mt5_server: "JustMarkets-Live" });
     },
   });
 
@@ -540,6 +553,13 @@ export default function Admin() {
         )}
 
         {activeTab === "traders" && (
+          <div>
+            <div className="flex justify-end mb-3">
+              <button onClick={() => setAddMt5Modal(true)} className="flex items-center gap-2 text-xs bg-gold text-black font-bold px-4 py-2 rounded hover:bg-white transition-colors">
+                <Key className="w-3.5 h-3.5" />
+                Add MT5 Account
+              </button>
+            </div>
           <div className="border border-b1 rounded-lg overflow-hidden">
             <table className="w-full">
               <thead>
@@ -597,7 +617,45 @@ export default function Admin() {
               </tbody>
             </table>
           </div>
+          </div>
         )}
+
+      {addMt5Modal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm" onClick={() => setAddMt5Modal(false)}>
+          <div className="bg-card border border-b1 rounded-xl p-6 max-w-sm w-full mx-4" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-6">
+              <div>
+                <h3 className="font-heading text-xl font-bold uppercase">Add MT5 Account</h3>
+                <p className="text-xs text-muted-foreground mt-1">Credentials are encrypted on save</p>
+              </div>
+              <button onClick={() => setAddMt5Modal(false)} className="text-muted-foreground hover:text-white"><X className="w-5 h-5" /></button>
+            </div>
+            <form onSubmit={e => { e.preventDefault(); addMt5AccountMutation.mutate(newMt5Creds); }} className="space-y-4">
+              <div>
+                <label className="block text-[10px] text-muted-foreground uppercase mb-1">Trader Username</label>
+                <input required type="text" value={newMt5Creds.trader_username} onChange={e => setNewMt5Creds(p => ({ ...p, trader_username: e.target.value }))} className="w-full bg-s2 border border-b1 rounded px-3 py-2 text-sm text-white outline-none focus:border-gold" placeholder="rookie" />
+              </div>
+              <div>
+                <label className="block text-[10px] text-muted-foreground uppercase mb-1">MT5 Account Number</label>
+                <input required type="number" value={newMt5Creds.mt5_account} onChange={e => setNewMt5Creds(p => ({ ...p, mt5_account: e.target.value }))} className="w-full bg-s2 border border-b1 rounded px-3 py-2 text-sm text-white outline-none focus:border-gold data-number" placeholder="2001915796" />
+              </div>
+              <div>
+                <label className="block text-[10px] text-muted-foreground uppercase mb-1">MT5 Password</label>
+                <input required type="password" value={newMt5Creds.mt5_password} onChange={e => setNewMt5Creds(p => ({ ...p, mt5_password: e.target.value }))} className="w-full bg-s2 border border-b1 rounded px-3 py-2 text-sm text-white outline-none focus:border-gold" placeholder="••••••••" />
+              </div>
+              <div>
+                <label className="block text-[10px] text-muted-foreground uppercase mb-1">MT5 Server</label>
+                <input required type="text" value={newMt5Creds.mt5_server} onChange={e => setNewMt5Creds(p => ({ ...p, mt5_server: e.target.value }))} className="w-full bg-s2 border border-b1 rounded px-3 py-2 text-sm text-white outline-none focus:border-gold" placeholder="JustMarkets-Live" />
+              </div>
+              <button type="submit" disabled={addMt5AccountMutation.isPending} className="w-full bg-gold text-black font-bold py-3 rounded text-sm hover:bg-white transition-colors disabled:opacity-50">
+                {addMt5AccountMutation.isPending ? "Saving..." : "Save Account"}
+              </button>
+              {addMt5AccountMutation.isSuccess && <p className="text-green text-xs text-center">Account saved successfully</p>}
+              {addMt5AccountMutation.isError && <p className="text-red text-xs text-center">Failed to save — check credentials</p>}
+            </form>
+          </div>
+        </div>
+      )}
 
         {activeTab === "payouts" && (
           <div className="space-y-4">
@@ -933,7 +991,7 @@ export default function Admin() {
                         u.mt5Account === acc.mt5_account && u.id !== editingUser.id
                       );
                       const isCurrentlyAssignedToThis = editingUser.mt5Account === acc.mt5_account;
-                      
+
                       return (
                         <option 
                           key={acc.mt5_account} 

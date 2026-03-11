@@ -888,30 +888,43 @@ export default function Terminal({ tier, userTierName, balance, onOpenPnlChange,
             Trading unavailable — market is closed or bridge is offline.
           </div>
         )}
-        <div className="flex items-center border-b border-b1 bg-s1 shrink-0">
-          <div className="flex overflow-x-auto no-scrollbar flex-1">
+        <div
+          className="flex items-center justify-between shrink-0 backdrop-blur-md mx-2 mt-2"
+          style={{
+            height: '32px',
+            background: 'rgba(40, 40, 40, 0.65)',
+            border: '1px solid rgba(255, 255, 255, 0.12)',
+            borderRadius: '8px',
+            boxShadow: '0 2px 8px rgba(0, 0, 0, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.12)',
+          }}
+          data-testid="instrument-menu-bar"
+        >
+          <div className="flex items-center overflow-x-auto no-scrollbar px-4 space-x-5">
             {visibleInstruments.map((inst) => (
               <button
                 key={inst.label}
                 onClick={() => handleInstrumentChange(inst)}
-                className={`px-3 py-2 text-[11px] font-medium whitespace-nowrap transition-colors border-b-2 ${activeInstrument.label === inst.label ? 'border-gold text-white bg-s2' : 'border-transparent text-muted-foreground hover:text-white hover:bg-s2/50'}`}
+                className={`text-[13px] whitespace-nowrap transition-all duration-150 relative pb-0.5 ${activeInstrument.label === inst.label ? 'text-white font-semibold' : 'text-white/50 hover:text-white/80 font-normal'}`}
                 data-testid={`instrument-${inst.label}`}
               >
                 {inst.label}
+                {activeInstrument.label === inst.label && (
+                  <span className="absolute bottom-0 left-0 right-0 h-[2px] rounded-full" style={{ background: '#E8C547' }} />
+                )}
               </button>
             ))}
           </div>
-          <div className="flex items-center gap-1 px-3 border-l border-b1 shrink-0">
+          <div className="flex items-center gap-3 px-4 shrink-0">
             <button
               onClick={() => setViewMode('simple')}
-              className={`px-2 py-1 text-[10px] font-bold uppercase rounded transition-colors ${viewMode === 'simple' ? 'text-gold border border-gold/50 bg-gold/10' : 'text-muted-foreground hover:text-white'}`}
+              className={`text-[12px] uppercase tracking-wide transition-all duration-150 ${viewMode === 'simple' ? 'text-white font-semibold' : 'text-white/50 hover:text-white/80 font-normal'}`}
               data-testid="btn-simple-mode"
             >
               Simple
             </button>
             <button
               onClick={() => setViewMode('pro')}
-              className={`px-2 py-1 text-[10px] font-bold uppercase rounded transition-colors ${viewMode === 'pro' ? 'text-gold border border-gold/50 bg-gold/10' : 'text-muted-foreground hover:text-white'}`}
+              className={`text-[12px] uppercase tracking-wide transition-all duration-150 px-3 py-0.5 rounded-full ${viewMode === 'pro' ? 'text-white font-semibold border border-white/30 bg-white/10' : 'text-white/50 hover:text-white/80 font-normal border border-white/15 bg-transparent'}`}
               data-testid="btn-pro-mode"
             >
               Pro

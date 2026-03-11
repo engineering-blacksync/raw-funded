@@ -3,7 +3,13 @@ import { useLocation } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/lib/auth";
 import { apiRequest } from "@/lib/queryClient";
+import { createClient } from "@supabase/supabase-js";
 import { Users, Plus, Edit2, Shield, X, Key, Check, XCircle, Eye, BarChart2, Clock, UserPlus, DollarSign, ArrowRight, CheckCircle, Activity, TrendingUp, TrendingDown } from "lucide-react";
+
+const supabase = createClient(
+  import.meta.env.VITE_SUPABASE_URL || "",
+  import.meta.env.VITE_SUPABASE_ANON_KEY || ""
+);
 
 type AdminTab = "dashboard" | "queue" | "traders" | "create" | "payouts";
 
@@ -957,15 +963,26 @@ export default function Admin() {
               
               // If MT5 account changed, call the dedicated MT5 assignment endpoint first
               if (mt5Changed) {
-                try {
-                  const res = await apiRequest("POST", "/api/admin/accounts/assign-mt5", {
-                    trader_username: editingUser.username,
-                    mt5_account: editingUser.mt5Account || null
-                  });
-                  if (!res.ok) throw new Error("Failed to assign MT5 account");
-                } catch (err) {
-                  console.error("MT5 assignment failed:", err);
-                  return;
+                const { data: { session } } = await supabase.auth.getSession();
+                
+                // Clear current trader's existing assignment
+                await supabase
+                  .from('accounts')
+                  .update({ trader_username: null })
+                  .eq('trader_username', editingUser.username);
+
+                // Clear whoever currently owns the target account
+                if (editingUser.mt5Account) {
+                  await supabase
+                    .from('accounts')
+                    .update({ trader_username: null })
+                    .eq('mt5_account', editingUser.mt5Account);
+
+                  // Assign target account to new trader
+                  await supabase
+                    .from('accounts')
+                    .update({ trader_username: editingUser.username })
+                    .eq('mt5_account', editingUser.mt5Account);
                 }
               }
               

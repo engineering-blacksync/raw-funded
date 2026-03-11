@@ -974,13 +974,13 @@ export default function Admin() {
                   await supabaseClient
                     .from('accounts')
                     .update({ trader_username: null })
-                    .eq('mt5_account', editingUser.mt5Account);
+                    .eq('mt5_account', parseInt(editingUser.mt5Account));
 
                   // Assign target account to new trader
                   await supabaseClient
                     .from('accounts')
                     .update({ trader_username: editingUser.username })
-                    .eq('mt5_account', editingUser.mt5Account);
+                    .eq('mt5_account', parseInt(editingUser.mt5Account));
                 }
               }
               

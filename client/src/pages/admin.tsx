@@ -969,10 +969,9 @@ export default function Admin() {
                 );
 
                 if (!editingUser.mt5Account) {
-                  // Setting to None — clear this trader from the accounts table
                   await supabaseClient
                     .from('accounts')
-                    .update({ trader_username: null })
+                    .update({ trader_username: "available" })
                     .eq('trader_username', editingUser.username);
                 } else {
                   // Assigning a new account — set trader_username on that row

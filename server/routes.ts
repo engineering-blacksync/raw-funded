@@ -459,7 +459,7 @@ export async function registerRoutes(
     }
 
     try {
-      // Step 1: Clear all rows where mt5_account equals the selected number (set trader_username to null)
+      // Step 1: Clear all rows where mt5_account equals the selected number (set mt5_account to null)
       console.log(`[admin] Clearing any assignment for MT5 account ${mt5_account}`);
       await fetch(`${supabaseUrl}/rest/v1/accounts?mt5_account=eq.${encodeURIComponent(mt5_account)}`, {
         method: 'PATCH',
@@ -469,7 +469,7 @@ export async function registerRoutes(
           'Authorization': `Bearer ${supabaseKey}`,
           'Prefer': 'return=minimal'
         },
-        body: JSON.stringify({ trader_username: null })
+        body: JSON.stringify({ mt5_account: null })
       });
 
       // Step 2: Update the current trader's row to set mt5_account to the selected number

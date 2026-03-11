@@ -25,10 +25,15 @@ export default function Admin() {
     if (editingUser) {
       fetch("/api/admin/supabase/accounts")
         .then(res => res.json())
-        .then(data => setMt5Accounts(Array.isArray(data) ? data : []))
+        .then(async (data) => {
+          setMt5Accounts(Array.isArray(data) ? data : []);
+          // Find this trader's current assignment directly from accounts table
+          const assigned = Array.isArray(data) ? data.find((a: any) => a.trader_username === editingUser.username) : null;
+          setEditingUser((p: any) => ({ ...p, mt5Account: assigned ? String(assigned.mt5_account) : null }));
+        })
         .catch(() => setMt5Accounts([]));
     }
-  }, [editingUser]);
+  }, [editingUser?.id]);
   const [resetPasswordUser, setResetPasswordUser] = useState<any>(null);
   const [newPassword, setNewPassword] = useState("");
   const [approveModal, setApproveModal] = useState<any>(null);

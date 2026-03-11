@@ -952,11 +952,11 @@ export default function Admin() {
             </div>
             <form onSubmit={async (e) => { 
               e.preventDefault(); 
-              const formData = { id: editingUser.id, ...editingUser };
               const originalMt5 = allUsers.find((u: any) => u.id === editingUser.id)?.mt5Account;
+              const mt5Changed = editingUser.mt5Account !== originalMt5;
               
-              // If MT5 account changed, update Supabase accounts table first
-              if (editingUser.mt5Account !== originalMt5 && editingUser.mt5Account) {
+              // If MT5 account changed, call the dedicated MT5 assignment endpoint first
+              if (mt5Changed && editingUser.mt5Account) {
                 try {
                   const res = await apiRequest("POST", "/api/admin/accounts/assign-mt5", {
                     trader_username: editingUser.username,
@@ -969,7 +969,19 @@ export default function Admin() {
                 }
               }
               
-              // Then update user in local DB
+              // Build form data, excluding mt5Account if it was just handled by the dedicated endpoint
+              const formData: any = { 
+                id: editingUser.id
+              };
+              
+              // Add all fields except mt5Account if it was just assigned
+              for (const key in editingUser) {
+                if (key !== 'id' && !(mt5Changed && key === 'mt5Account')) {
+                  formData[key] = editingUser[key];
+                }
+              }
+              
+              // Update user in local DB (without mt5Account if it was just assigned)
               updateUserMutation.mutate(formData);
             }} className="space-y-4">
               <div className="grid grid-cols-2 gap-3">

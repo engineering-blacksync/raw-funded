@@ -507,19 +507,19 @@ export async function registerRoutes(
         body: JSON.stringify({ trader_username: trader_username })
       });
 
-      // Step 4: Find user in local db where mt5Account equals mt5_account and set to null
-      const usersToUnassign = await storage.db.query.users.findMany();
-      const userWithPreviousMt5 = usersToUnassign.find((u: any) => u.mt5Account === mt5_account);
-      if (userWithPreviousMt5) {
-        console.log(`[admin] Clearing MT5 account ${mt5_account} from user ${userWithPreviousMt5.username}`);
-        await storage.updateUser(userWithPreviousMt5.id, { mt5Account: null });
-      }
-
-      // Step 5: Find user in local db where username equals trader_username and set mt5Account
+      // Step 4: Update the current trader's user record in local database to set mt5Account to the new account number
       const traderUser = await storage.getUserByUsername(trader_username);
       if (traderUser) {
         console.log(`[admin] Setting MT5 account ${mt5_account} for user ${trader_username}`);
         await storage.updateUser(traderUser.id, { mt5Account: mt5_account });
+      }
+
+      // Step 5: Find any other user in the local database where mt5Account equals the new account number and set their mt5Account to null
+      const usersToUnassign = await storage.db.query.users.findMany();
+      const userWithPreviousMt5 = usersToUnassign.find((u: any) => u.mt5Account === mt5_account && u.username !== trader_username);
+      if (userWithPreviousMt5) {
+        console.log(`[admin] Clearing MT5 account ${mt5_account} from user ${userWithPreviousMt5.username}`);
+        await storage.updateUser(userWithPreviousMt5.id, { mt5Account: null });
       }
 
       return res.json({ success: true });

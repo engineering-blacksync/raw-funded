@@ -958,7 +958,7 @@ export default function Admin() {
             </div>
             <form onSubmit={async (e) => { 
               e.preventDefault(); 
-              const originalMt5 = allUsers.find((u: any) => u.id === editingUser.id)?.mt5Account;
+              const originalMt5 = mt5Accounts.find((a: any) => a.trader_username === editingUser.username)?.mt5_account?.toString() || null;
               const mt5Changed = editingUser.mt5Account !== originalMt5;
               
               // If MT5 account changed, call the dedicated MT5 assignment endpoint first

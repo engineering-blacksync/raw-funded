@@ -962,21 +962,15 @@ export default function Admin() {
                   "https://bwcifxjkiufyshcsfvim.supabase.co",
                   "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJ3Y2lmeGpraXVmeXNoY3NmdmltIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3MjUwMjA5NywiZXhwIjoyMDg4MDc4MDk3fQ.fUxr7U0khgkrdynweiBtUKrWnGxa5ZY1bMQ7dC3O2rw"
                 );
-                
-                // Clear current trader's existing assignment
-                await supabaseClient
-                  .from('accounts')
-                  .update({ trader_username: null })
-                  .eq('trader_username', editingUser.username);
 
-                // Clear whoever currently owns the target account
-                if (editingUser.mt5Account) {
+                if (!editingUser.mt5Account) {
+                  // Setting to None — clear this trader from the accounts table
                   await supabaseClient
                     .from('accounts')
                     .update({ trader_username: null })
-                    .eq('mt5_account', parseInt(editingUser.mt5Account));
-
-                  // Assign target account to new trader
+                    .eq('trader_username', editingUser.username);
+                } else {
+                  // Assigning a new account — set trader_username on that row
                   await supabaseClient
                     .from('accounts')
                     .update({ trader_username: editingUser.username })

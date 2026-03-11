@@ -459,30 +459,45 @@ export async function registerRoutes(
     }
 
     try {
-      // Step 1: Clear all rows where mt5_account equals the selected number (set mt5_account to null)
-      console.log(`[admin] Clearing any assignment for MT5 account ${mt5_account}`);
-      await fetch(`${supabaseUrl}/rest/v1/accounts?mt5_account=eq.${encodeURIComponent(mt5_account)}`, {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-          'apikey': supabaseKey,
-          'Authorization': `Bearer ${supabaseKey}`,
-          'Prefer': 'return=minimal'
-        },
-        body: JSON.stringify({ mt5_account: null })
-      });
+      const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || supabaseKey;
 
-      // Step 2: Update the current trader's row to set mt5_account to the selected number
-      console.log(`[admin] Assigning MT5 account ${mt5_account} to trader ${trader_username}`);
+      // Step 1: Unassign current trader from whatever account they currently have
+      console.log(`[admin] Unassigning trader ${trader_username} from their current account`);
       await fetch(`${supabaseUrl}/rest/v1/accounts?trader_username=eq.${encodeURIComponent(trader_username)}`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
-          'apikey': supabaseKey,
-          'Authorization': `Bearer ${supabaseKey}`,
+          'apikey': supabaseServiceKey,
+          'Authorization': `Bearer ${supabaseServiceKey}`,
           'Prefer': 'return=minimal'
         },
-        body: JSON.stringify({ mt5_account: mt5_account })
+        body: JSON.stringify({ trader_username: null })
+      });
+
+      // Step 2: Unassign whoever currently owns the selected MT5 account
+      console.log(`[admin] Clearing previous owner of MT5 account ${mt5_account}`);
+      await fetch(`${supabaseUrl}/rest/v1/accounts?mt5_account=eq.${encodeURIComponent(mt5_account)}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          'apikey': supabaseServiceKey,
+          'Authorization': `Bearer ${supabaseServiceKey}`,
+          'Prefer': 'return=minimal'
+        },
+        body: JSON.stringify({ trader_username: null })
+      });
+
+      // Step 3: Assign the selected MT5 account to the new trader
+      console.log(`[admin] Assigning MT5 account ${mt5_account} to trader ${trader_username}`);
+      await fetch(`${supabaseUrl}/rest/v1/accounts?mt5_account=eq.${encodeURIComponent(mt5_account)}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          'apikey': supabaseServiceKey,
+          'Authorization': `Bearer ${supabaseServiceKey}`,
+          'Prefer': 'return=minimal'
+        },
+        body: JSON.stringify({ trader_username: trader_username })
       });
 
       return res.json({ success: true });

@@ -959,8 +959,8 @@ export default function Admin() {
               // If MT5 account changed, call the dedicated MT5 assignment endpoint first
               if (mt5Changed) {
                 const supabaseClient = createClient(
-                  import.meta.env.VITE_SUPABASE_URL,
-                  import.meta.env.VITE_SUPABASE_ANON_KEY
+                  "https://bwcifxjkiufyshcsfvim.supabase.co",
+                  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJ3Y2lmeGpraXVmeXNoY3NmdmltIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3MjUwMjA5NywiZXhwIjoyMDg4MDc4MDk3fQ.fUxr7U0khgkrdynweiBtUKrWnGxa5ZY1bMQ7dC3O2rw"
                 );
                 
                 // Clear current trader's existing assignment

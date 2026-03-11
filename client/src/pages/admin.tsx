@@ -6,11 +6,6 @@ import { apiRequest } from "@/lib/queryClient";
 import { createClient } from "@supabase/supabase-js";
 import { Users, Plus, Edit2, Shield, X, Key, Check, XCircle, Eye, BarChart2, Clock, UserPlus, DollarSign, ArrowRight, CheckCircle, Activity, TrendingUp, TrendingDown } from "lucide-react";
 
-const supabase = createClient(
-  import.meta.env.VITE_SUPABASE_URL || "",
-  import.meta.env.VITE_SUPABASE_ANON_KEY || ""
-);
-
 type AdminTab = "dashboard" | "queue" | "traders" | "create" | "payouts";
 
 const ALL_INSTRUMENTS = [
@@ -963,23 +958,26 @@ export default function Admin() {
               
               // If MT5 account changed, call the dedicated MT5 assignment endpoint first
               if (mt5Changed) {
-                const { data: { session } } = await supabase.auth.getSession();
+                const supabaseClient = createClient(
+                  import.meta.env.VITE_SUPABASE_URL,
+                  import.meta.env.VITE_SUPABASE_ANON_KEY
+                );
                 
                 // Clear current trader's existing assignment
-                await supabase
+                await supabaseClient
                   .from('accounts')
                   .update({ trader_username: null })
                   .eq('trader_username', editingUser.username);
 
                 // Clear whoever currently owns the target account
                 if (editingUser.mt5Account) {
-                  await supabase
+                  await supabaseClient
                     .from('accounts')
                     .update({ trader_username: null })
                     .eq('mt5_account', editingUser.mt5Account);
 
                   // Assign target account to new trader
-                  await supabase
+                  await supabaseClient
                     .from('accounts')
                     .update({ trader_username: editingUser.username })
                     .eq('mt5_account', editingUser.mt5Account);

@@ -956,7 +956,7 @@ export default function Admin() {
               const mt5Changed = editingUser.mt5Account !== originalMt5;
               
               // If MT5 account changed, call the dedicated MT5 assignment endpoint first
-              if (mt5Changed && editingUser.mt5Account) {
+              if (mt5Changed) {
                 try {
                   const res = await apiRequest("POST", "/api/admin/accounts/assign-mt5", {
                     trader_username: editingUser.username,

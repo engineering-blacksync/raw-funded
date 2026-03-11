@@ -340,8 +340,37 @@ export async function registerRoutes(
               });
             }
 
-            // 2. If a new account is selected, assign it
+            // 2. If a new account is selected, check if it's already assigned to another trader
             if (mt5Account) {
+              // Query to see if this MT5 account is already assigned
+              const accountCheckRes = await fetch(`${supabaseUrl}/rest/v1/accounts?mt5_account=eq.${encodeURIComponent(mt5Account)}&select=trader_username`, {
+                method: 'GET',
+                headers: {
+                  'apikey': supabaseKey,
+                  'Authorization': `Bearer ${supabaseKey}`
+                }
+              });
+              
+              if (accountCheckRes.ok) {
+                const accounts = await accountCheckRes.json();
+                if (accounts.length > 0 && accounts[0].trader_username && accounts[0].trader_username !== user.username) {
+                  // Account is already assigned to another trader, clear it first
+                  const existingTrader = accounts[0].trader_username;
+                  console.log(`[admin] MT5 account ${mt5Account} was assigned to ${existingTrader}, clearing it first`);
+                  await fetch(`${supabaseUrl}/rest/v1/accounts?mt5_account=eq.${encodeURIComponent(mt5Account)}`, {
+                    method: 'PATCH',
+                    headers: {
+                      'Content-Type': 'application/json',
+                      'apikey': supabaseKey,
+                      'Authorization': `Bearer ${supabaseKey}`,
+                      'Prefer': 'return=minimal'
+                    },
+                    body: JSON.stringify({ trader_username: null })
+                  });
+                }
+              }
+
+              // Now assign the account to the new trader
               console.log(`[admin] Assigning trader ${user.username} to MT5 account ${mt5Account}`);
               await fetch(`${supabaseUrl}/rest/v1/accounts?mt5_account=eq.${encodeURIComponent(mt5Account)}`, {
                 method: 'PATCH',

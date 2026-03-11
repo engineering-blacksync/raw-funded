@@ -442,6 +442,13 @@ export async function registerRoutes(
         const err = await response.text();
         return res.status(500).json({ message: err });
       }
+
+      // Update the user in local database with the new mt5Account
+      const user = await storage.getUserByUsername(trader_username);
+      if (user) {
+        await storage.updateUser(user.id, { mt5Account: mt5_account });
+      }
+
       return res.json({ success: true });
     } catch (e: any) {
       return res.status(500).json({ message: e.message });

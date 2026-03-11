@@ -25,6 +25,9 @@ A private prop trading platform where admin assigns funded accounts. Users get a
 | `client/src/pages/onboarding.tsx` | Post-payment registration page |
 | `server/stripeClient.ts` | Replit connector-based Stripe client |
 | `server/seed-products.ts` | Seeds 3 products in Stripe (run once) |
+| `server/ai.ts` | OpenAI-powered AI trading analyst (Blacksync Colleague) — trade analysis, system prompt |
+| `client/src/pages/ai.tsx` | AI chat page with quick actions, macOS menu bar |
+| `client/src/components/ui/mac-os-menu-bar.tsx` | macOS-style glassmorphic menu bar component |
 
 ## Access Control System
 - **User statuses**: `pending` (default), `approved`, `rejected`, `banned`

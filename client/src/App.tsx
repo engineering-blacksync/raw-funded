@@ -13,6 +13,7 @@ import Admin from "@/pages/admin";
 import Pending from "@/pages/pending";
 import Pricing from "@/pages/pricing";
 import Onboarding from "@/pages/onboarding";
+import AIPage from "@/pages/ai";
 import NotFound from "@/pages/not-found";
 
 function Router() {
@@ -27,6 +28,7 @@ function Router() {
       <Route path="/pending" component={Pending}/>
       <Route path="/pricing" component={Pricing}/>
       <Route path="/onboarding" component={Onboarding}/>
+      <Route path="/ai" component={AIPage}/>
       <Route component={NotFound} />
     </Switch>
   );

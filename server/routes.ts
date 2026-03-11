@@ -12,6 +12,7 @@ import {
   insertVerificationSchema, insertWithdrawalSchema,
 } from "@shared/schema";
 import { getUncachableStripeClient, getStripePublishableKey } from "./stripeClient";
+import { getChatResponse } from "./ai";
 
 const PLATFORM_SPREAD_PER_CONTRACT = 2;
 const LOT_SIZE_MAP: Record<string, number> = {
@@ -1419,6 +1420,31 @@ export async function registerRoutes(
     } catch {
       if (cached) return res.json({ price: cached.price });
       return res.status(502).json({ message: "Price fetch failed" });
+    }
+  });
+
+  app.post("/api/ai/chat", requireApproved, async (req: Request, res: Response) => {
+    try {
+      const { messages } = req.body;
+      if (!messages || !Array.isArray(messages) || messages.length === 0) {
+        return res.status(400).json({ message: "Messages array required" });
+      }
+      if (messages.length > 50) {
+        return res.status(400).json({ message: "Too many messages. Start a new conversation." });
+      }
+      for (const msg of messages) {
+        if (!msg.role || !msg.content || !['user', 'assistant'].includes(msg.role) || typeof msg.content !== 'string' || msg.content.length > 5000) {
+          return res.status(400).json({ message: "Invalid message format" });
+        }
+      }
+
+      const userId = req.user!.id;
+      const allTrades = await storage.getTradeHistory(userId, 500);
+      const response = await getChatResponse(messages, allTrades, req.user!);
+      return res.json({ response });
+    } catch (err: any) {
+      console.error("[ai] Chat endpoint error:", err.message);
+      return res.status(500).json({ message: "AI chat failed" });
     }
   });
 

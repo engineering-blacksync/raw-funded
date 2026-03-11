@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import { Link, useLocation } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
-import { LogOut, Activity, BarChart2, Shield, Check, CreditCard, ChevronDown, Settings, Clock, Lock, DollarSign, ArrowRight, AlertTriangle, CheckCircle, Loader2 } from "lucide-react";
+import { LogOut, Activity, BarChart2, Shield, Check, CreditCard, ChevronDown, Settings, Clock, Lock, DollarSign, ArrowRight, AlertTriangle, CheckCircle, Loader2, Bot } from "lucide-react";
 import Terminal from "@/components/dashboard/Terminal";
 import { BalanceCard } from "@/components/ui/analytics-bento";
 import { StatCard, CalendarGrid } from "@/components/ui/data-components";
@@ -520,6 +520,9 @@ export default function Dashboard() {
           </nav>
           
           <div className="flex flex-col items-center gap-1 mt-auto pt-3 border-t border-b1">
+            <button onClick={() => setLocation("/ai")} title="AI Colleague" className="w-10 h-10 flex items-center justify-center rounded text-gold/70 hover:bg-gold/10 hover:text-gold transition-colors" data-testid="btn-ai-colleague">
+              <Bot className="w-5 h-5" />
+            </button>
             {user?.isAdmin && (
               <button onClick={() => setLocation("/admin")} title="Admin Panel" className="w-10 h-10 flex items-center justify-center rounded text-gold/70 hover:bg-gold/10 hover:text-gold transition-colors" data-testid="btn-admin-panel">
                 <Lock className="w-5 h-5" />

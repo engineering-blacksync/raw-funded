@@ -448,6 +448,50 @@ export async function registerRoutes(
     }
   });
 
+  app.post("/api/admin/accounts/assign-mt5", requireAdmin, async (req: Request, res: Response) => {
+    const supabaseUrl = process.env.SUPABASE_URL;
+    const supabaseKey = process.env.SUPABASE_ANON_KEY;
+    if (!supabaseUrl || !supabaseKey) return res.status(500).json({ message: "Supabase not configured" });
+
+    const { trader_username, mt5_account } = req.body;
+    if (!trader_username || !mt5_account) {
+      return res.status(400).json({ message: "trader_username and mt5_account required" });
+    }
+
+    try {
+      // Step 1: Clear all rows where mt5_account equals the selected number (set trader_username to null)
+      console.log(`[admin] Clearing any assignment for MT5 account ${mt5_account}`);
+      await fetch(`${supabaseUrl}/rest/v1/accounts?mt5_account=eq.${encodeURIComponent(mt5_account)}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          'apikey': supabaseKey,
+          'Authorization': `Bearer ${supabaseKey}`,
+          'Prefer': 'return=minimal'
+        },
+        body: JSON.stringify({ trader_username: null })
+      });
+
+      // Step 2: Update the current trader's row to set mt5_account to the selected number
+      console.log(`[admin] Assigning MT5 account ${mt5_account} to trader ${trader_username}`);
+      await fetch(`${supabaseUrl}/rest/v1/accounts?trader_username=eq.${encodeURIComponent(trader_username)}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          'apikey': supabaseKey,
+          'Authorization': `Bearer ${supabaseKey}`,
+          'Prefer': 'return=minimal'
+        },
+        body: JSON.stringify({ mt5_account: mt5_account })
+      });
+
+      return res.json({ success: true });
+    } catch (e: any) {
+      console.error("[admin] Failed to assign MT5 account:", e);
+      return res.status(500).json({ message: e.message });
+    }
+  });
+
   app.post("/api/admin/users/:id/assign-card", requireAdmin, async (req: Request, res: Response) => {
     try {
       const { card: cardTier } = req.body;

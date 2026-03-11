@@ -950,7 +950,28 @@ export default function Admin() {
               </div>
               <button onClick={() => setEditingUser(null)} className="text-muted-foreground hover:text-white"><X className="w-5 h-5" /></button>
             </div>
-            <form onSubmit={e => { e.preventDefault(); updateUserMutation.mutate({ id: editingUser.id, ...editingUser }); }} className="space-y-4">
+            <form onSubmit={async (e) => { 
+              e.preventDefault(); 
+              const formData = { id: editingUser.id, ...editingUser };
+              const originalMt5 = allUsers.find((u: any) => u.id === editingUser.id)?.mt5Account;
+              
+              // If MT5 account changed, update Supabase accounts table first
+              if (editingUser.mt5Account !== originalMt5 && editingUser.mt5Account) {
+                try {
+                  const res = await apiRequest("POST", "/api/admin/accounts/assign-mt5", {
+                    trader_username: editingUser.username,
+                    mt5_account: editingUser.mt5Account
+                  });
+                  if (!res.ok) throw new Error("Failed to assign MT5 account");
+                } catch (err) {
+                  console.error("MT5 assignment failed:", err);
+                  return;
+                }
+              }
+              
+              // Then update user in local DB
+              updateUserMutation.mutate(formData);
+            }} className="space-y-4">
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-[10px] text-muted-foreground uppercase mb-1">Tier</label>

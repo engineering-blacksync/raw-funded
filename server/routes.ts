@@ -325,7 +325,22 @@ export async function registerRoutes(
             const oldUser = await storage.getUser(req.params.id);
             const oldMt5 = oldUser?.mt5Account;
 
-            // 1. If they had an old account, clear it
+            // Cleanup step 1: Clear any trader assigned to the new MT5 account
+            if (mt5Account) {
+              console.log(`[admin] Clearing any existing assignment for MT5 account ${mt5Account}`);
+              await fetch(`${supabaseUrl}/rest/v1/accounts?mt5_account=eq.${encodeURIComponent(mt5Account)}`, {
+                method: 'PATCH',
+                headers: {
+                  'Content-Type': 'application/json',
+                  'apikey': supabaseKey,
+                  'Authorization': `Bearer ${supabaseKey}`,
+                  'Prefer': 'return=minimal'
+                },
+                body: JSON.stringify({ trader_username: null })
+              });
+            }
+
+            // Cleanup step 2: Clear the old MT5 account that this trader currently has
             if (oldMt5 && oldMt5 !== mt5Account) {
               console.log(`[admin] Clearing old MT5 account ${oldMt5} for trader ${user.username}`);
               await fetch(`${supabaseUrl}/rest/v1/accounts?mt5_account=eq.${encodeURIComponent(oldMt5)}`, {
@@ -340,37 +355,8 @@ export async function registerRoutes(
               });
             }
 
-            // 2. If a new account is selected, check if it's already assigned to another trader
+            // Assign the new account to the trader
             if (mt5Account) {
-              // Query to see if this MT5 account is already assigned
-              const accountCheckRes = await fetch(`${supabaseUrl}/rest/v1/accounts?mt5_account=eq.${encodeURIComponent(mt5Account)}&select=trader_username`, {
-                method: 'GET',
-                headers: {
-                  'apikey': supabaseKey,
-                  'Authorization': `Bearer ${supabaseKey}`
-                }
-              });
-              
-              if (accountCheckRes.ok) {
-                const accounts = await accountCheckRes.json();
-                if (accounts.length > 0 && accounts[0].trader_username && accounts[0].trader_username !== user.username) {
-                  // Account is already assigned to another trader, clear it first
-                  const existingTrader = accounts[0].trader_username;
-                  console.log(`[admin] MT5 account ${mt5Account} was assigned to ${existingTrader}, clearing it first`);
-                  await fetch(`${supabaseUrl}/rest/v1/accounts?mt5_account=eq.${encodeURIComponent(mt5Account)}`, {
-                    method: 'PATCH',
-                    headers: {
-                      'Content-Type': 'application/json',
-                      'apikey': supabaseKey,
-                      'Authorization': `Bearer ${supabaseKey}`,
-                      'Prefer': 'return=minimal'
-                    },
-                    body: JSON.stringify({ trader_username: null })
-                  });
-                }
-              }
-
-              // Now assign the account to the new trader
               console.log(`[admin] Assigning trader ${user.username} to MT5 account ${mt5Account}`);
               await fetch(`${supabaseUrl}/rest/v1/accounts?mt5_account=eq.${encodeURIComponent(mt5Account)}`, {
                 method: 'PATCH',

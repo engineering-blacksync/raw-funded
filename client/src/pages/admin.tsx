@@ -969,19 +969,25 @@ export default function Admin() {
                 }
               }
               
-              // Build form data, excluding mt5Account if it was just handled by the dedicated endpoint
-              const formData: any = { 
-                id: editingUser.id
+              // Build form data with all fields except mt5Account if it was just handled
+              const formData: any = {
+                id: editingUser.id,
+                tier: editingUser.tier,
+                balance: editingUser.balance,
+                leverage: editingUser.leverage,
+                maxContracts: editingUser.maxContracts,
+                isActive: editingUser.isActive,
+                propFirm: editingUser.propFirm,
+                adminNotes: editingUser.adminNotes,
+                allowedInstruments: editingUser.allowedInstruments
               };
               
-              // Add all fields except mt5Account if it was just assigned
-              for (const key in editingUser) {
-                if (key !== 'id' && !(mt5Changed && key === 'mt5Account')) {
-                  formData[key] = editingUser[key];
-                }
+              // Only include mt5Account if it wasn't just changed
+              if (!mt5Changed) {
+                formData.mt5Account = editingUser.mt5Account;
               }
               
-              // Update user in local DB (without mt5Account if it was just assigned)
+              // Update user in local DB
               updateUserMutation.mutate(formData);
             }} className="space-y-4">
               <div className="grid grid-cols-2 gap-3">

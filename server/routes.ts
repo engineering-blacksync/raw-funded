@@ -461,16 +461,45 @@ export async function registerRoutes(
     if (!supabaseUrl || !supabaseKey) return res.status(500).json({ message: "Supabase not configured" });
 
     const { trader_username, mt5_account } = req.body;
-    if (!trader_username || !mt5_account) {
-      return res.status(400).json({ message: "trader_username and mt5_account required" });
+    if (!trader_username) {
+      return res.status(400).json({ message: "trader_username required" });
     }
 
     try {
       const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || supabaseKey;
 
+      // Handle unassignment case (mt5_account is null/empty)
+      if (!mt5_account) {
+        console.log(`[admin] Unassigning trader ${trader_username} from all accounts`);
+        // Find and clear the account where this trader is assigned
+        const unassignResponse = await fetch(`${supabaseUrl}/rest/v1/accounts?trader_username=eq.${encodeURIComponent(trader_username)}`, {
+          method: 'PATCH',
+          headers: {
+            'Content-Type': 'application/json',
+            'apikey': supabaseServiceKey,
+            'Authorization': `Bearer ${supabaseServiceKey}`,
+            'Prefer': 'return=minimal'
+          },
+          body: JSON.stringify({ trader_username: null })
+        });
+        if (!unassignResponse.ok) {
+          throw new Error(`Failed to unassign trader from Supabase: ${unassignResponse.statusText}`);
+        }
+
+        // Update local database to clear mt5Account
+        const traderUser = await storage.getUserByUsername(trader_username);
+        if (traderUser) {
+          console.log(`[admin] Clearing MT5 account for user ${trader_username}`);
+          await storage.updateUser(traderUser.id, { mt5Account: null });
+        }
+
+        return res.json({ success: true });
+      }
+
+      // Assignment case (mt5_account is provided)
       // Step 1: Unassign current trader from whatever account they currently have
       console.log(`[admin] Unassigning trader ${trader_username} from their current account`);
-      await fetch(`${supabaseUrl}/rest/v1/accounts?trader_username=eq.${encodeURIComponent(trader_username)}`, {
+      const step1Response = await fetch(`${supabaseUrl}/rest/v1/accounts?trader_username=eq.${encodeURIComponent(trader_username)}`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
@@ -480,10 +509,13 @@ export async function registerRoutes(
         },
         body: JSON.stringify({ trader_username: null })
       });
+      if (!step1Response.ok) {
+        throw new Error(`Step 1 failed: ${step1Response.statusText}`);
+      }
 
       // Step 2: Unassign whoever currently owns the selected MT5 account
       console.log(`[admin] Clearing previous owner of MT5 account ${mt5_account}`);
-      await fetch(`${supabaseUrl}/rest/v1/accounts?mt5_account=eq.${encodeURIComponent(mt5_account)}`, {
+      const step2Response = await fetch(`${supabaseUrl}/rest/v1/accounts?mt5_account=eq.${encodeURIComponent(mt5_account)}`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
@@ -493,10 +525,13 @@ export async function registerRoutes(
         },
         body: JSON.stringify({ trader_username: null })
       });
+      if (!step2Response.ok) {
+        throw new Error(`Step 2 failed: ${step2Response.statusText}`);
+      }
 
       // Step 3: Assign the selected MT5 account to the new trader
       console.log(`[admin] Assigning MT5 account ${mt5_account} to trader ${trader_username}`);
-      await fetch(`${supabaseUrl}/rest/v1/accounts?mt5_account=eq.${encodeURIComponent(mt5_account)}`, {
+      const step3Response = await fetch(`${supabaseUrl}/rest/v1/accounts?mt5_account=eq.${encodeURIComponent(mt5_account)}`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
@@ -506,6 +541,9 @@ export async function registerRoutes(
         },
         body: JSON.stringify({ trader_username: trader_username })
       });
+      if (!step3Response.ok) {
+        throw new Error(`Step 3 failed: ${step3Response.statusText}`);
+      }
 
       // Step 4: Update the current trader's user record in local database to set mt5Account to the new account number
       const traderUser = await storage.getUserByUsername(trader_username);

@@ -1036,6 +1036,7 @@ export default function Admin() {
                       </option>
                     ))}
                   </select>
+                  <p className="text-[10px] text-muted-foreground mt-1">To switch accounts, set to None first, save, then assign a new account.</p>
                 </div>
                 <div>
                   <label className="block text-[10px] text-muted-foreground uppercase mb-1">Prop Firm</label>

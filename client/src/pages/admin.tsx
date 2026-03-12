@@ -964,27 +964,14 @@ export default function Admin() {
                 "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJ3Y2lmeGpraXVmeXNoY3NmdmltIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3MjUwMjA5NywiZXhwIjoyMDg4MDc4MDk3fQ.fUxr7U0khgkrdynweiBtUKrWnGxa5ZY1bMQ7dC3O2rw"
               );
 
-              // Always sync Supabase accounts table on save
               if (!editingUser.mt5Account) {
-                // None selected — clear this trader from accounts table
-                await supabaseClient
-                  .from('accounts')
-                  .update({ trader_username: null })
-                  .eq('trader_username', editingUser.username);
+                await supabaseClient.from('accounts').update({ trader_username: null }).eq('trader_username', editingUser.username);
               } else {
-                // Account selected — clear old owner first, then assign to this trader
-                await supabaseClient
-                  .from('accounts')
-                  .update({ trader_username: null })
-                  .eq('trader_username', editingUser.username);
-                await supabaseClient
-                  .from('accounts')
-                  .update({ trader_username: editingUser.username })
-                  .eq('mt5_account', parseInt(editingUser.mt5Account));
+                await supabaseClient.from('accounts').update({ trader_username: null }).eq('trader_username', editingUser.username);
+                await supabaseClient.from('accounts').update({ trader_username: editingUser.username }).eq('mt5_account', parseInt(editingUser.mt5Account));
               }
 
-              // Update user in local DB
-              const formData: any = {
+              updateUserMutation.mutate({
                 id: editingUser.id,
                 tier: editingUser.tier,
                 balance: editingUser.balance,
@@ -995,9 +982,7 @@ export default function Admin() {
                 adminNotes: editingUser.adminNotes,
                 allowedInstruments: editingUser.allowedInstruments,
                 mt5Account: editingUser.mt5Account || null,
-              };
-
-              updateUserMutation.mutate(formData);
+              });
             }} className="space-y-4">
               <div className="grid grid-cols-2 gap-3">
                 <div>

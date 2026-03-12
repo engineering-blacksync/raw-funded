@@ -932,6 +932,51 @@ export default function Terminal({ tier, userTierName, balance, onOpenPnlChange,
           </div>
         </div>
 
+        {/* Quick Trading Controls */}
+        <div className="flex items-center justify-between shrink-0 px-4 py-3 border-b border-b1 bg-s1/50">
+          <div className="flex items-center gap-4">
+            <div className="flex items-center gap-2">
+              <span className="text-[11px] text-muted-foreground uppercase tracking-wider">Quick Trade</span>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => handleTrade('BUY')}
+                  disabled={tradeLoading !== null || !bridgeOnline}
+                  className={`px-4 py-1.5 rounded text-xs font-bold uppercase tracking-wider transition-all ${
+                    bridgeOnline 
+                      ? 'bg-green/20 text-green border border-green/30 hover:bg-green/30' 
+                      : 'bg-s2 text-muted-foreground border border-b2 opacity-50 cursor-not-allowed'
+                  }`}
+                  data-testid="btn-buy-mkt-top"
+                >
+                  {tradeLoading === 'BUY' ? '...' : 'Buy Mkt'}
+                </button>
+                <button
+                  onClick={() => handleTrade('SELL')}
+                  disabled={tradeLoading !== null || !bridgeOnline}
+                  className={`px-4 py-1.5 rounded text-xs font-bold uppercase tracking-wider transition-all ${
+                    bridgeOnline 
+                      ? 'bg-red/20 text-red border border-red/30 hover:bg-red/30' 
+                      : 'bg-s2 text-muted-foreground border border-b2 opacity-50 cursor-not-allowed'
+                  }`}
+                  data-testid="btn-sell-mkt-top"
+                >
+                  {tradeLoading === 'SELL' ? '...' : 'Sell Mkt'}
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-6">
+            <div className="flex flex-col items-end">
+              <span className="text-[10px] text-muted-foreground uppercase tracking-widest">Open P&L</span>
+              <span className={`data-number text-sm font-bold ${totalOpenPnl >= 0 ? 'text-[#22C55E]' : 'text-[#EF4444]'}`}>
+                {totalOpenPnl >= 0 ? '+' : ''}${totalOpenPnl.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              </span>
+            </div>
+            <div className="text-xs text-muted-foreground">{openTrades.length} open</div>
+          </div>
+        </div>
+
         <div className="flex-1 flex relative">
           <div className="flex-1 relative bg-background">
             <div ref={chartContainerRef} id="tradingview-chart" className="absolute inset-0" />

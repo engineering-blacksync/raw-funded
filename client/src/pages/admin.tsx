@@ -1046,7 +1046,7 @@ export default function Admin() {
                     ) : (
                       // Trader has no account — show all unassigned accounts
                       mt5Accounts
-                        .filter((acc: any) => !acc.trader_username || acc.trader_username === "available")
+                        .filter((acc: any) => !acc.trader_username || acc.trader_username === "available" || acc.trader_username === editingUser.username)
                         .map((acc: any) => (
                           <option key={acc.mt5_account} value={acc.mt5_account}>
                             {acc.mt5_account}

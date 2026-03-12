@@ -1039,25 +1039,12 @@ export default function Admin() {
                     data-testid="admin-edit-mt5-account"
                   >
                     <option value="">None</option>
-                    {editingUser.mt5Account ? (
-                      // Trader already has an account — only show their current one + None
-                      <option value={editingUser.mt5Account}>
-                        {editingUser.mt5Account}
+                    {mt5Accounts.map((acc: any) => (
+                      <option key={acc.mt5_account} value={acc.mt5_account}>
+                        {acc.trader_username ? `${acc.trader_username} - ` : ""}{acc.mt5_account}
                       </option>
-                    ) : (
-                      // Trader has no account — show all available accounts
-                      mt5Accounts
-                        .filter((acc: any) => !acc.trader_username)
-                        .map((acc: any) => (
-                          <option key={acc.mt5_account} value={acc.mt5_account}>
-                            {acc.mt5_account}
-                          </option>
-                        ))
-                    )}
+                    ))}
                   </select>
-                  {editingUser.mt5Account && (
-                    <p className="text-[10px] text-muted-foreground mt-1">To switch accounts, set to None first then reassign.</p>
-                  )}
                 </div>
                 <div>
                   <label className="block text-[10px] text-muted-foreground uppercase mb-1">Prop Firm</label>

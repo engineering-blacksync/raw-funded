@@ -993,68 +993,6 @@ export default function Terminal({ tier, userTierName, balance, onOpenPnlChange,
               onUpdateTP={(tradeId, newPrice) => handleUpdateSLTP(tradeId, 'takeProfit', newPrice)}
             />
           </div>
-
-          <div className="w-14 shrink-0 border-l border-b1 bg-s1 flex flex-col items-center justify-center gap-1.5 py-2 text-[17px] text-[#f4f4f5] text-left">
-            <button
-              onClick={() => handleTrade('BUY')}
-              disabled={tradeLoading !== null || !bridgeOnline}
-              className="w-11 py-2.5 bg-[#22C55E] hover:bg-[#16A34A] text-white rounded font-heading text-[11px] font-bold disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-              data-testid="btn-buy"
-            >
-              {tradeLoading === 'BUY' ? '...' : 'Buy'}
-            </button>
-
-            <div className="flex flex-col items-center gap-0.5">
-              <button
-                onClick={() => setQuantity(clampQuantity(quantity + activeInstrument.step, activeInstrument))}
-                disabled={atMax}
-                className={`w-7 h-5 flex items-center justify-center text-[10px] font-bold rounded transition-colors ${atMax ? 'text-muted-foreground/30 cursor-not-allowed' : 'text-muted-foreground hover:text-white hover:bg-s3'}`}
-                data-testid="btn-qty-plus"
-              >+</button>
-              <input
-                type="text"
-                inputMode="decimal"
-                value={displayQty}
-                onChange={(e) => {
-                  const val = parseFloat(e.target.value);
-                  if (!isNaN(val)) setQuantity(clampQuantity(val, activeInstrument));
-                }}
-                className="w-10 bg-s2 border border-b2 rounded text-center text-white font-mono font-bold text-[10px] py-1 outline-none"
-                data-testid="input-contracts"
-              />
-              <button
-                onClick={() => setQuantity(clampQuantity(quantity - activeInstrument.step, activeInstrument))}
-                disabled={atMin}
-                className={`w-7 h-5 flex items-center justify-center text-[10px] font-bold rounded transition-colors ${atMin ? 'text-muted-foreground/30 cursor-not-allowed' : 'text-muted-foreground hover:text-white hover:bg-s3'}`}
-                data-testid="btn-qty-minus"
-              >-</button>
-            </div>
-
-            <button
-              onClick={() => handleTrade('SELL')}
-              disabled={tradeLoading !== null || !bridgeOnline}
-              className="w-11 py-2.5 bg-[#EF4444] hover:bg-[#DC2626] text-white rounded font-heading text-[11px] font-bold disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-              data-testid="btn-sell"
-            >
-              {tradeLoading === 'SELL' ? '...' : 'Sell'}
-            </button>
-
-            <div className="w-full border-t border-b1 my-0.5"></div>
-
-            <button
-              onClick={() => setShowSltp(!showSltp)}
-              className={`text-[8px] font-bold uppercase transition-colors ${showSltp ? 'text-gold' : 'text-muted-foreground hover:text-white'}`}
-              data-testid="btn-toggle-sltp"
-            >
-              SL/TP
-            </button>
-
-            {tradeStatus && (
-              <div className={`text-[10px] font-medium text-center px-1 py-0.5 rounded ${tradeStatus.type === 'success' ? 'text-green' : 'text-red bg-red/10 border border-red/20'}`} data-testid="trade-status">
-                {tradeStatus.type === 'success' ? '✓' : `✗ ${tradeStatus.message}`}
-              </div>
-            )}
-          </div>
         </div>
 
         {showSltp && (

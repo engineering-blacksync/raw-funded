@@ -969,13 +969,13 @@ export default function Admin() {
                 );
 
                 if (!editingUser.mt5Account) {
-                  // Unassigning — clear trader_username on their current row
+                  // Setting to None — clear this trader from the accounts table
                   await supabaseClient
                     .from('accounts')
                     .update({ trader_username: null })
                     .eq('trader_username', editingUser.username);
                 } else {
-                  // Assigning — set trader_username on the target row
+                  // Assigning — update trader_username on the target account row
                   await supabaseClient
                     .from('accounts')
                     .update({ trader_username: editingUser.username })

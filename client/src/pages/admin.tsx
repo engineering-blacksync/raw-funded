@@ -1038,25 +1038,25 @@ export default function Admin() {
                     data-testid="admin-edit-mt5-account"
                   >
                     <option value="">None</option>
-                    {mt5Accounts.map((acc: any) => {
-                      const isAssignedToOther = allUsers.some((u: any) => 
-                        u.mt5Account === acc.mt5_account && u.id !== editingUser.id
-                      );
-                      const isCurrentlyAssignedToThis = editingUser.mt5Account === acc.mt5_account;
-
-                      return (
-                        <option 
-                          key={acc.mt5_account} 
-                          value={acc.mt5_account}
-                        >
-                          {acc.trader_username} - {acc.mt5_account} {isAssignedToOther ? "(Assigned)" : ""}
-                        </option>
-                      );
-                    })}
-                    {editingUser.mt5Account && !mt5Accounts.find((a: any) => a.mt5_account === editingUser.mt5Account) && (
-                      <option value={editingUser.mt5Account}>{editingUser.mt5Account}</option>
+                    {editingUser.mt5Account ? (
+                      // Trader already has an account — only show their current one
+                      <option value={editingUser.mt5Account}>
+                        {mt5Accounts.find((a: any) => String(a.mt5_account) === String(editingUser.mt5Account))?.trader_username || editingUser.mt5Account} - {editingUser.mt5Account}
+                      </option>
+                    ) : (
+                      // Trader has no account — show all unassigned accounts
+                      mt5Accounts
+                        .filter((acc: any) => !acc.trader_username || acc.trader_username === "available")
+                        .map((acc: any) => (
+                          <option key={acc.mt5_account} value={acc.mt5_account}>
+                            {acc.mt5_account}
+                          </option>
+                        ))
                     )}
                   </select>
+                  {editingUser.mt5Account && (
+                    <p className="text-[10px] text-muted-foreground mt-1">To switch accounts, set to None first then reassign.</p>
+                  )}
                 </div>
                 <div>
                   <label className="block text-[10px] text-muted-foreground uppercase mb-1">Prop Firm</label>

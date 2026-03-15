@@ -1582,5 +1582,160 @@ export async function registerRoutes(
     }
   });
 
+
+  // ── Support Chat (Claude Haiku) ─────────────────────────────────────────────
+  const SHARED_RULES = `
+Rules you must always follow:
+- Keep every response to exactly 1 sentence — 15 words max. Never two sentences. Never explain more than asked.
+- Write like a confident, friendly support agent — casual but professional. No filler words, no over-explaining.
+- Never mention MT5, MetaTrader, bridge, AutoTrading, IB commission, or any internal infrastructure. Speak only in terms of "the Raw Funded platform" and "your trading dashboard".
+- Never reveal how the platform works behind the scenes.
+- If the user seems frustrated, confused, or repeats themselves, respond with: "For this one, reach out to support@rawfunded.com — they'll sort it out fast."
+- If you don't know the answer, say: "Best to email support@rawfunded.com for this — they'll have the right answer."
+`;
+
+  const SECTOR_PROMPTS: Record<string, string> = {
+    payouts: `You are a Raw Funded payout specialist. You handle: withdrawal requests, same-day processing, the 6% withdrawal fee, Wise bank transfers, crypto payouts (USDC/USDT), and profit splits (3.5% activates at $5,000 cumulative profit). ${SHARED_RULES}`,
+    technical: `You are a Raw Funded platform support specialist. You handle: trade execution issues, platform errors, price feed problems, and dashboard issues. If a trade didn't go through, tell the user to refresh and try again. If it continues, direct to support@rawfunded.com. ${SHARED_RULES}`,
+    support: `You are a Raw Funded general support specialist. You handle: how the platform works, available instruments (Gold, Silver, Bitcoin, Oil, S&P 500, Nasdaq, FTSE 100 and micro variants), account tiers ($2,000 / $5,000 / $10,000), and access fees ($100–$1,000). Key message: no rules, no challenges, no elimination — traders pay once and trade immediately. ${SHARED_RULES}`,
+    billing: `You are a Raw Funded billing specialist. You handle: access fees ($100–$1,000 one-time), the 6% withdrawal fee, payment methods (Wise and USDC/USDT crypto), failed payments, and refund policy. Refund policy: access fees are non-refundable. No monthly fees. No hidden charges. ${SHARED_RULES}`,
+    login: `You are a Raw Funded account access specialist. You handle: forgotten usernames (always the registered email), password resets, locked accounts, and email verification issues. For locked accounts direct to support@rawfunded.com. ${SHARED_RULES}`,
+    general: `You are the Raw Funded general assistant. Raw Funded is a prop trading platform with no rules, no challenges, and same-day withdrawals. We win when traders win. ${SHARED_RULES}`,
+    messages: `You are the Raw Funded AI assistant. Answer anything about the platform helpfully and concisely. Key facts: no rules, no challenges, same-day withdrawals, instruments include Gold, Silver, Bitcoin, Oil, S&P 500, Nasdaq, FTSE 100. Account tiers: $2,000 / $5,000 / $10,000. Access fees: $100–$1,000 one-time. 6% withdrawal fee. Payments via Wise or USDC/USDT. ${SHARED_RULES}`,
+  };
+
+  app.post("/api/chat", async (req: Request, res: Response) => {
+    try {
+      const { messages, sector } = req.body;
+      if (!messages || !Array.isArray(messages)) {
+        return res.status(400).json({ error: "Invalid messages" });
+      }
+      const apiKey = process.env.ANTHROPIC_API_KEY;
+      if (!apiKey) return res.status(500).json({ error: "API key not configured" });
+
+      const systemPrompt = SECTOR_PROMPTS[sector] || SECTOR_PROMPTS.messages;
+
+      const response = await fetch("https://api.anthropic.com/v1/messages", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-api-key": apiKey,
+          "anthropic-version": "2023-06-01",
+        },
+        body: JSON.stringify({
+          model: "claude-haiku-4-5-20251001",
+          max_tokens: 300,
+          system: systemPrompt,
+          messages: messages.map((m: { role: string; content: string }) => ({
+            role: m.role,
+            content: m.content,
+          })),
+        }),
+      });
+
+      if (!response.ok) {
+        const err = await response.text();
+        console.error("Anthropic error:", err);
+        return res.status(500).json({ error: "AI service error" });
+      }
+
+      const data = await response.json();
+      const reply = data.content?.[0]?.text || "Something went wrong. Please email support@rawfunded.com.";
+      return res.json({ reply });
+    } catch (err) {
+      console.error("Chat route error:", err);
+      return res.status(500).json({ error: "Server error" });
+    }
+  });
+
+  // ── Market News (Grok) — cached + auto-refreshing ────────────────────────────
+  const NEWS_CACHE_TTL = 5 * 60 * 1000;
+  let newsCache: { news: unknown; fetchedAt: string } | null = null;
+  let newsInflight: Promise<void> | null = null;
+
+  const fetchNewsFromGrok = async () => {
+    const apiKey = process.env.XAI_API_KEY;
+    if (!apiKey) throw new Error("No XAI_API_KEY");
+
+    const today = new Date().toLocaleDateString("en-US", {
+      weekday: "long", year: "numeric", month: "long", day: "numeric",
+    });
+
+    const prompt = `Today is ${today}. Give me the latest market snapshot and a brief news headline for each of these 7 instruments: Gold (XAU/USD), Bitcoin (BTC/USD), Nasdaq 100 (NQ), S&P 500 (SPX), Crude Oil (WTI), Silver (XAG/USD), and FTSE 100.
+
+Use your most recent knowledge of price levels and market conditions. Be specific with price levels and % moves where you know them.
+
+Return a JSON array of exactly 7 objects with these fields:
+- "tag": one of "GOLD", "BTC", "NQ", "SPX", "OIL", "SILVER", "FTSE"
+- "tagColor": use exactly — GOLD=#C9A84C, BTC=#f59e0b, NQ=#8b5cf6, SPX=#3b82f6, OIL=#10b981, SILVER=#94a3b8, FTSE=#f43f5e
+- "handle": one of "GoldMarkets", "BitcoinPulse", "NasdaqWire", "SP500Feed", "OilReport", "SilverWatch", "FTSELive"
+- "title": short punchy headline max 10 words, no quotes
+- "summary": 1-2 sentences, include specific price or % if known
+- "time": rough recency like "12m ago", "1h ago", "2h ago"
+- "change": string like "+1.2%" or "-0.8%"
+- "positive": true if up, false if down
+- "replies": integer 8-40
+- "reposts": integer 15-120
+- "likes": integer 40-300
+- "xQuery": a short X search query for this instrument e.g. "gold price XAU today"
+
+Return ONLY the raw JSON array. No markdown, no backticks, no explanation. Start with [ end with ].`;
+
+    const response = await fetch("https://api.x.ai/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify({
+        model: "grok-3-fast",
+        messages: [
+          { role: "system", content: "You are a financial market data assistant. Always respond with only a valid JSON array. No markdown, no code fences, no preamble. Start with [ and end with ]." },
+          { role: "user", content: prompt },
+        ],
+        temperature: 0.2,
+        max_tokens: 1800,
+      }),
+    });
+
+    if (!response.ok) {
+      const err = await response.text();
+      console.error("Grok API error:", err);
+      throw new Error("Grok error");
+    }
+
+    const data = await response.json();
+    const raw: string = data.choices?.[0]?.message?.content || "[]";
+    const clean = raw.replace(/```json|```/g, "").trim();
+    newsCache = { news: JSON.parse(clean), fetchedAt: new Date().toISOString() };
+    console.log("[news] Cache warmed at", newsCache.fetchedAt);
+  };
+
+  const scheduleNewsRefresh = () => {
+    setTimeout(async () => {
+      try { await fetchNewsFromGrok(); } catch (e) { console.error("[news] Refresh failed:", e); }
+      finally { scheduleNewsRefresh(); }
+    }, NEWS_CACHE_TTL);
+  };
+
+  // Warm on startup
+  newsInflight = fetchNewsFromGrok()
+    .then(() => scheduleNewsRefresh())
+    .catch((e) => console.error("[news] Initial warm failed:", e))
+    .finally(() => { newsInflight = null; });
+
+  app.get("/api/news", async (_req: Request, res: Response) => {
+    if (newsCache) return res.json(newsCache);
+    if (newsInflight) {
+      try {
+        await newsInflight;
+        if (newsCache) return res.json(newsCache);
+      } catch {
+        return res.status(503).json({ error: "Still warming up, try again shortly." });
+      }
+    }
+    return res.status(503).json({ error: "Cache not ready" });
+  });
+
   return httpServer;
 }

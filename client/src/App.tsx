@@ -3,7 +3,6 @@ import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
-
 import Home from "@/pages/home";
 import Apply from "@/pages/apply";
 import Login from "@/pages/login";
@@ -15,6 +14,7 @@ import Pricing from "@/pages/pricing";
 import Onboarding from "@/pages/onboarding";
 import AIPage from "@/pages/ai";
 import NotFound from "@/pages/not-found";
+import SupportChat from "@/components/SupportChat";
 
 function Router() {
   return (
@@ -40,6 +40,7 @@ function App() {
       <TooltipProvider>
         <Toaster />
         <Router />
+        <SupportChat />
       </TooltipProvider>
     </QueryClientProvider>
   );

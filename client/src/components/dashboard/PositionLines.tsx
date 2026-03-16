@@ -94,7 +94,6 @@ function PriceLine({
 
   useEffect(() => {
     if (!dragging) return;
-
     const handleMove = (e: MouseEvent | TouchEvent) => {
       e.preventDefault();
       const clientY = 'touches' in e ? e.touches[0].clientY : e.clientY;
@@ -106,7 +105,6 @@ function PriceLine({
       const newY = ((currentPrice - newPrice) / (visibleRange * 2) + 0.5) * containerHeight;
       setDragY(Math.max(0, Math.min(containerHeight, newY)));
     };
-
     const handleUp = () => {
       setDragging(false);
       if (onDrag) {
@@ -115,7 +113,6 @@ function PriceLine({
       }
       setDragY(null);
     };
-
     window.addEventListener('mousemove', handleMove, { capture: true, passive: false });
     window.addEventListener('mouseup', handleUp, { capture: true });
     window.addEventListener('touchmove', handleMove, { capture: true, passive: false });
@@ -132,6 +129,7 @@ function PriceLine({
 
   const hasPnl = pnl !== undefined && pnl !== null;
   const pnlColor = hasPnl ? (pnl >= 0 ? '#22C55E' : '#EF4444') : null;
+  // Line color follows P&L for entry line, fixed color for TP/SL
   const lineColor = hasPnl && pnlColor ? pnlColor : color;
 
   const shadeTop = shadeFrom !== undefined ? Math.min(yPos, shadeFrom) : null;
@@ -141,124 +139,78 @@ function PriceLine({
     <>
       {/* Shaded zone */}
       {shadeTop !== null && shadeHeight !== null && shadeColor && (
-        <div
-          style={{
-            position: 'absolute',
-            top: `${shadeTop}px`,
-            left: 0,
-            right: 0,
-            height: `${shadeHeight}px`,
-            background: shadeColor,
-            pointerEvents: 'none',
-            zIndex: 5,
-          }}
-        />
+        <div style={{ position: 'absolute', top: `${shadeTop}px`, left: 0, right: 0, height: `${shadeHeight}px`, background: shadeColor, pointerEvents: 'none', zIndex: 5 }} />
       )}
 
       {/* Line wrapper */}
       <div
         onMouseDown={handleMouseDown}
         onTouchStart={handleMouseDown}
-        style={{
-          position: 'absolute',
-          top: `${yPos}px`,
-          left: 0,
-          right: 0,
-          zIndex: 15,
-          transform: 'translateY(-50%)',
-          pointerEvents: 'auto',
-          cursor: draggable ? (dragging ? 'grabbing' : 'ns-resize') : 'default',
-        }}
+        style={{ position: 'absolute', top: `${yPos}px`, left: 0, right: 0, zIndex: 15, transform: 'translateY(-50%)', pointerEvents: 'auto', cursor: draggable ? (dragging ? 'grabbing' : 'ns-resize') : 'default' }}
       >
-        {/* 40px tall invisible hit zone */}
+        {/* Wide hit zone */}
         {draggable && (
-          <div
-            style={{
-              position: 'absolute',
-              left: 0,
-              right: 0,
-              height: '40px',
-              top: '-20px',
-              zIndex: 16,
-              cursor: dragging ? 'grabbing' : 'ns-resize',
-            }}
-          />
+          <div style={{ position: 'absolute', left: 0, right: 0, height: '40px', top: '-20px', zIndex: 16, cursor: dragging ? 'grabbing' : 'ns-resize' }} />
         )}
 
         {/* The line */}
-        <div
-          style={{
-            width: '100%',
-            height: dragging ? '2px' : '1px',
-            background: dashed
-              ? `repeating-linear-gradient(to right, ${lineColor} 0, ${lineColor} 6px, transparent 6px, transparent 12px)`
-              : lineColor,
-            opacity: dragging ? 1 : 0.9,
-          }}
-        />
+        <div style={{
+          width: '100%',
+          height: dragging ? '2px' : '1px',
+          background: dashed
+            ? `repeating-linear-gradient(to right, ${lineColor} 0, ${lineColor} 6px, transparent 6px, transparent 12px)`
+            : lineColor,
+          opacity: dragging ? 1 : 0.9,
+        }} />
 
-        {/* Price tag */}
-        <div
-          style={{
-            position: 'absolute',
-            right: '4px',
-            top: '-10px',
-            background: lineColor,
-            color: lineColor === '#ffffff' ? '#000' : '#fff',
-            fontSize: '9px',
-            fontWeight: 700,
-            padding: '1px 5px',
-            borderRadius: '2px',
-            whiteSpace: 'nowrap',
-            fontFamily: "'JetBrains Mono', monospace",
-            letterSpacing: '0.02em',
-            boxShadow: '0 1px 4px rgba(0,0,0,0.5)',
-            userSelect: 'none',
-            zIndex: 17,
-          }}
-        >
+        {/* Price tag — outline style */}
+        <div style={{
+          position: 'absolute',
+          right: '4px',
+          top: '-10px',
+          background: 'transparent',
+          border: `1px solid ${lineColor}`,
+          color: lineColor,
+          fontSize: '9px',
+          fontWeight: 700,
+          padding: '1px 5px',
+          borderRadius: '2px',
+          whiteSpace: 'nowrap',
+          fontFamily: "'JetBrains Mono', monospace",
+          letterSpacing: '0.02em',
+          userSelect: 'none',
+          zIndex: 17,
+          backdropFilter: 'blur(2px)',
+        }}>
           {label} {formatLinePrice(displayPrice, instrument)}
         </div>
 
-        {/* P&L badge */}
+        {/* P&L badge — outline style */}
         {hasPnl && pnlColor && (
-          <div
-            style={{
-              position: 'absolute',
-              right: '4px',
-              top: '-28px',
-              background: pnlColor,
-              color: '#fff',
-              fontSize: '10px',
-              fontWeight: 800,
-              padding: '2px 8px',
-              borderRadius: '3px',
-              whiteSpace: 'nowrap',
-              fontFamily: "'JetBrains Mono', monospace",
-              boxShadow: '0 1px 6px rgba(0,0,0,0.6)',
-              userSelect: 'none',
-              zIndex: 17,
-            }}
-          >
+          <div style={{
+            position: 'absolute',
+            right: '4px',
+            top: '-28px',
+            background: 'transparent',
+            border: `1px solid ${pnlColor}`,
+            color: pnlColor,
+            fontSize: '10px',
+            fontWeight: 800,
+            padding: '2px 8px',
+            borderRadius: '3px',
+            whiteSpace: 'nowrap',
+            fontFamily: "'JetBrains Mono', monospace",
+            userSelect: 'none',
+            zIndex: 17,
+            backdropFilter: 'blur(2px)',
+          }}>
             {formatPnl(pnl)}
           </div>
         )}
 
         {/* Drag handle */}
         {draggable && (
-          <div
-            style={{
-              position: 'absolute',
-              left: '6px',
-              top: '-7px',
-              fontSize: '9px',
-              color: lineColor,
-              opacity: dragging ? 1 : 0.6,
-              userSelect: 'none',
-              fontWeight: 700,
-              letterSpacing: '1px',
-            }}
-          >
+          <div style={{ position: 'absolute', left: '6px', top: '-7px', fontSize: '9px', color: lineColor, opacity: dragging ? 1 : 0.6, userSelect: 'none', fontWeight: 700, letterSpacing: '1px' }}>
             ⋮⋮
           </div>
         )}
@@ -291,10 +243,7 @@ export default function PositionLines({
   const priceToY = (p: number) => ((currentPrice - p) / (visibleRange * 2) + 0.5) * containerHeight;
 
   return (
-    <div
-      ref={containerRef}
-      style={{ position: 'absolute', inset: 0, pointerEvents: 'none', overflow: 'hidden' }}
-    >
+    <div ref={containerRef} style={{ position: 'absolute', inset: 0, pointerEvents: 'none', overflow: 'hidden' }}>
       {positions.map(pos => {
         const entryYpx = priceToY(pos.entryPrice);
 
@@ -310,6 +259,7 @@ export default function PositionLines({
 
         return (
           <div key={pos.id} style={{ position: 'absolute', inset: 0 }}>
+            {/* Entry line */}
             <PriceLine
               price={pos.entryPrice}
               label={pos.side}
@@ -323,6 +273,7 @@ export default function PositionLines({
               pnl={pos.livePnl}
             />
 
+            {/* TP line */}
             {pos.takeProfit && (
               <PriceLine
                 price={pos.takeProfit}
@@ -340,6 +291,7 @@ export default function PositionLines({
               />
             )}
 
+            {/* SL line */}
             {pos.stopLoss && (
               <PriceLine
                 price={pos.stopLoss}

@@ -813,6 +813,7 @@ export default function Terminal({ tier, userTierName, balance, onOpenPnlChange,
   };
 
   const [closingAll, setClosingAll] = useState(false);
+  const [sltpEdit, setSltpEdit] = useState<{ id: string; field: 'sl' | 'tp'; value: string } | null>(null);
   const [showDebug, setShowDebug] = useState(false);
   const isDev = import.meta.env.DEV;
   const handleCloseAll = async () => {
@@ -1051,39 +1052,82 @@ export default function Terminal({ tier, userTierName, balance, onOpenPnlChange,
               {closingAll ? 'Closing...' : 'Close All'}
             </button>
           </div>
-          {positionsWithPnl.map(pos => (
-            <div
-              key={pos.supabaseId || pos.id}
-              className="flex items-center gap-3 px-3 py-2 border-b border-b1 hover:bg-s2/50 transition-colors group"
-              data-testid={`position-row-${pos.id}`}
-            >
-              <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded shrink-0 ${pos.side === 'BUY' ? 'bg-[#22C55E] text-white' : 'bg-[#EF4444] text-white'}`}>
-                {pos.side}
-              </span>
+          {positionsWithPnl.map(pos => {
+            const editingSlHere = sltpEdit?.id === pos.id && sltpEdit?.field === 'sl';
+            const editingTpHere = sltpEdit?.id === pos.id && sltpEdit?.field === 'tp';
 
-              <span className="text-[8px] font-bold px-1.5 py-0.5 rounded shrink-0 bg-[#22C55E]/20 text-[#22C55E]" data-testid={`badge-mt5-${pos.id}`}>
-                Live
-              </span>
+            const confirmSltp = (id: string, field: 'sl' | 'tp') => {
+              const val = parseFloat(sltpEdit?.value || '');
+              if (!isNaN(val) && val > 0) {
+                handleUpdateSLTP(id, field === 'sl' ? 'stopLoss' : 'takeProfit', val);
+              }
+              setSltpEdit(null);
+            };
 
-              <span className="text-white font-bold text-xs shrink-0">{(() => { const inst = INSTRUMENTS.find(i => i.label === pos.instrument); return inst ? Math.round(pos.size / inst.lotSize) : pos.size; })()} {pos.instrument}</span>
-              <span className="text-muted-foreground text-[11px] shrink-0">Entry <span className="text-gold data-number">{formatPrice(pos.entryPrice, pos.instrument)}</span></span>
-              <span className="text-muted-foreground text-[11px] shrink-0">Now <span className="text-white data-number">{pos.currentPrice ? formatPrice(pos.currentPrice, pos.instrument) : '---'}</span></span>
-
-              <div className="ml-auto flex items-center gap-2">
-                <span className={`data-number font-bold text-sm ${pos.livePnl >= 0 ? 'text-[#22C55E]' : 'text-[#EF4444]'}`}>
-                  {formatPnl(pos.livePnl)}
-                </span>
-                <button
-                  onClick={() => handleClose(pos.id)}
-                  disabled={closingId === pos.id}
-                  className="opacity-0 group-hover:opacity-100 text-[9px] text-muted-foreground hover:text-white bg-b1 border border-b2 px-1.5 py-0.5 rounded transition-all disabled:opacity-50"
-                  data-testid={`btn-close-${pos.id}`}
-                >
-                  {closingId === pos.id ? '...' : 'Close'}
-                </button>
+            return (
+              <div key={pos.supabaseId || pos.id} data-testid={`position-row-${pos.id}`}>
+                <div className="flex items-center gap-3 px-3 py-2 border-b border-b1 hover:bg-s2/50 transition-colors group">
+                  <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded shrink-0 ${pos.side === 'BUY' ? 'bg-[#22C55E] text-white' : 'bg-[#EF4444] text-white'}`}>
+                    {pos.side}
+                  </span>
+                  <span className="text-[8px] font-bold px-1.5 py-0.5 rounded shrink-0 bg-[#22C55E]/20 text-[#22C55E]" data-testid={`badge-mt5-${pos.id}`}>
+                    Live
+                  </span>
+                  <span className="text-white font-bold text-xs shrink-0">
+                    {(() => { const inst = INSTRUMENTS.find(i => i.label === pos.instrument); return inst ? Math.round(pos.size / inst.lotSize) : pos.size; })()} {pos.instrument}
+                  </span>
+                  <span className="text-muted-foreground text-[11px] shrink-0">Entry <span className="text-gold data-number">{formatPrice(pos.entryPrice, pos.instrument)}</span></span>
+                  <span className="text-muted-foreground text-[11px] shrink-0">Now <span className="text-white data-number">{pos.currentPrice ? formatPrice(pos.currentPrice, pos.instrument) : '---'}</span></span>
+                  <div className="flex items-center gap-1 shrink-0">
+                    {pos.stopLoss ? (
+                      <button onClick={() => setSltpEdit({ id: pos.id, field: 'sl', value: String(pos.stopLoss) })} className="text-[8px] font-bold px-1.5 py-0.5 rounded bg-[#EF4444]/20 text-[#EF4444] border border-[#EF4444]/30 hover:bg-[#EF4444]/40 transition-colors">
+                        SL {formatPrice(pos.stopLoss, pos.instrument)}
+                      </button>
+                    ) : (
+                      <button onClick={() => setSltpEdit({ id: pos.id, field: 'sl', value: '' })} className="text-[8px] font-bold px-1.5 py-0.5 rounded bg-s2 text-muted-foreground border border-b2 hover:text-[#EF4444] hover:border-[#EF4444]/30 transition-colors">
+                        + SL
+                      </button>
+                    )}
+                    {pos.takeProfit ? (
+                      <button onClick={() => setSltpEdit({ id: pos.id, field: 'tp', value: String(pos.takeProfit) })} className="text-[8px] font-bold px-1.5 py-0.5 rounded bg-[#22C55E]/20 text-[#22C55E] border border-[#22C55E]/30 hover:bg-[#22C55E]/40 transition-colors">
+                        TP {formatPrice(pos.takeProfit, pos.instrument)}
+                      </button>
+                    ) : (
+                      <button onClick={() => setSltpEdit({ id: pos.id, field: 'tp', value: '' })} className="text-[8px] font-bold px-1.5 py-0.5 rounded bg-s2 text-muted-foreground border border-b2 hover:text-[#22C55E] hover:border-[#22C55E]/30 transition-colors">
+                        + TP
+                      </button>
+                    )}
+                  </div>
+                  <div className="ml-auto flex items-center gap-2">
+                    <span className={`data-number font-bold text-sm ${pos.livePnl >= 0 ? 'text-[#22C55E]' : 'text-[#EF4444]'}`}>
+                      {formatPnl(pos.livePnl)}
+                    </span>
+                    <button onClick={() => handleClose(pos.id)} disabled={closingId === pos.id} className="opacity-0 group-hover:opacity-100 text-[9px] text-muted-foreground hover:text-white bg-b1 border border-b2 px-1.5 py-0.5 rounded transition-all disabled:opacity-50" data-testid={`btn-close-${pos.id}`}>
+                      {closingId === pos.id ? '...' : 'Close'}
+                    </button>
+                  </div>
+                </div>
+                {editingSlHere && (
+                  <div className="flex items-center gap-2 px-3 py-2 bg-[#EF4444]/5 border-b border-b1">
+                    <span className="text-[9px] font-bold text-[#EF4444] uppercase shrink-0">Stop Loss</span>
+                    <input autoFocus type="number" value={sltpEdit?.value || ''} onChange={e => setSltpEdit(prev => prev ? { ...prev, value: e.target.value } : null)} onKeyDown={e => { if (e.key === 'Enter') confirmSltp(pos.id, 'sl'); if (e.key === 'Escape') setSltpEdit(null); }} placeholder="Enter SL price" className="flex-1 bg-s2 border border-[#EF4444]/40 rounded px-2 py-1 text-xs text-white font-mono outline-none focus:border-[#EF4444]" />
+                    <button onClick={() => confirmSltp(pos.id, 'sl')} className="text-[9px] font-bold px-2 py-1 rounded bg-[#EF4444] text-white hover:bg-[#EF4444]/80 transition-colors shrink-0">Set</button>
+                    {pos.stopLoss && <button onClick={() => { handleUpdateSLTP(pos.id, 'stopLoss', null); setSltpEdit(null); }} className="text-[9px] font-bold px-2 py-1 rounded bg-s2 text-muted-foreground border border-b2 hover:text-white transition-colors shrink-0">Remove</button>}
+                    <button onClick={() => setSltpEdit(null)} className="text-[9px] text-muted-foreground hover:text-white transition-colors shrink-0">✕</button>
+                  </div>
+                )}
+                {editingTpHere && (
+                  <div className="flex items-center gap-2 px-3 py-2 bg-[#22C55E]/5 border-b border-b1">
+                    <span className="text-[9px] font-bold text-[#22C55E] uppercase shrink-0">Take Profit</span>
+                    <input autoFocus type="number" value={sltpEdit?.value || ''} onChange={e => setSltpEdit(prev => prev ? { ...prev, value: e.target.value } : null)} onKeyDown={e => { if (e.key === 'Enter') confirmSltp(pos.id, 'tp'); if (e.key === 'Escape') setSltpEdit(null); }} placeholder="Enter TP price" className="flex-1 bg-s2 border border-[#22C55E]/40 rounded px-2 py-1 text-xs text-white font-mono outline-none focus:border-[#22C55E]" />
+                    <button onClick={() => confirmSltp(pos.id, 'tp')} className="text-[9px] font-bold px-2 py-1 rounded bg-[#22C55E] text-white hover:bg-[#22C55E]/80 transition-colors shrink-0">Set</button>
+                    {pos.takeProfit && <button onClick={() => { handleUpdateSLTP(pos.id, 'takeProfit', null); setSltpEdit(null); }} className="text-[9px] font-bold px-2 py-1 rounded bg-s2 text-muted-foreground border border-b2 hover:text-white transition-colors shrink-0">Remove</button>}
+                    <button onClick={() => setSltpEdit(null)} className="text-[9px] text-muted-foreground hover:text-white transition-colors shrink-0">✕</button>
+                  </div>
+                )}
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
       {isDev && (

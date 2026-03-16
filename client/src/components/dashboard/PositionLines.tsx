@@ -8,6 +8,8 @@ interface Position {
   stopLoss: number | null;
   takeProfit: number | null;
   size: number;
+  livePnl?: number;
+  currentPrice?: number;
 }
 
 interface PositionLinesProps {
@@ -19,7 +21,7 @@ interface PositionLinesProps {
 }
 
 function getPriceRange(price: number, instrument: string): number {
-  if (['Bitcoin'].includes(instrument)) return price * 0.015;
+  if (['Bitcoin', 'MBT'].includes(instrument)) return price * 0.015;
   if (['Gold (GC)', 'MGC'].includes(instrument)) return price * 0.005;
   if (['Silver', 'SIL'].includes(instrument)) return price * 0.008;
   if (['Oil (WTI)', 'MCL'].includes(instrument)) return price * 0.008;
@@ -29,10 +31,22 @@ function getPriceRange(price: number, instrument: string): number {
 }
 
 function formatLinePrice(price: number, instrument: string): string {
-  if (['Bitcoin', 'S&P 500', 'Nasdaq', 'MNQ', 'MES'].includes(instrument)) {
+  if (['Bitcoin', 'MBT', 'S&P 500', 'Nasdaq', 'MNQ', 'MES'].includes(instrument)) {
     return price.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   }
   return price.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 4 });
+}
+
+function formatPnl(pnl: number): string {
+  return `${pnl >= 0 ? '+' : ''}$${Math.abs(pnl).toFixed(2)}`;
+}
+
+function isValidTP(side: string, entry: number, tp: number): boolean {
+  return side === 'BUY' ? tp > entry : tp < entry;
+}
+
+function isValidSL(side: string, entry: number, sl: number): boolean {
+  return side === 'BUY' ? sl < entry : sl > entry;
 }
 
 interface LineProps {
@@ -47,21 +61,25 @@ interface LineProps {
   currentPrice: number;
   visibleRange: number;
   instrument: string;
+  pnl?: number;
+  shadeFrom?: number;
+  shadeColor?: string;
 }
 
-function PriceLine({ price, label, color, dashed, yPercent, draggable, onDrag, containerHeight, currentPrice, visibleRange, instrument }: LineProps) {
+function PriceLine({
+  price, label, color, dashed, yPercent, draggable, onDrag,
+  containerHeight, currentPrice, visibleRange, instrument, pnl,
+  shadeFrom, shadeColor,
+}: LineProps) {
   const [dragging, setDragging] = useState(false);
   const [dragY, setDragY] = useState<number | null>(null);
-  const lineRef = useRef<HTMLDivElement>(null);
   const startYRef = useRef(0);
   const startPriceRef = useRef(price);
   const lastPriceRef = useRef(price);
 
   const displayPrice = dragY !== null ? lastPriceRef.current : price;
-
   const yPos = dragY !== null ? dragY : yPercent * containerHeight;
-
-  const visible = yPos >= -20 && yPos <= containerHeight + 20;
+  const visible = yPos >= -40 && yPos <= containerHeight + 40;
 
   const handleMouseDown = useCallback((e: React.MouseEvent | React.TouchEvent) => {
     if (!draggable) return;
@@ -76,7 +94,9 @@ function PriceLine({ price, label, color, dashed, yPercent, draggable, onDrag, c
 
   useEffect(() => {
     if (!dragging) return;
+
     const handleMove = (e: MouseEvent | TouchEvent) => {
+      e.preventDefault();
       const clientY = 'touches' in e ? e.touches[0].clientY : e.clientY;
       const deltaY = clientY - startYRef.current;
       const pxPerPrice = containerHeight / (visibleRange * 2);
@@ -86,6 +106,7 @@ function PriceLine({ price, label, color, dashed, yPercent, draggable, onDrag, c
       const newY = ((currentPrice - newPrice) / (visibleRange * 2) + 0.5) * containerHeight;
       setDragY(Math.max(0, Math.min(containerHeight, newY)));
     };
+
     const handleUp = () => {
       setDragging(false);
       if (onDrag) {
@@ -94,105 +115,168 @@ function PriceLine({ price, label, color, dashed, yPercent, draggable, onDrag, c
       }
       setDragY(null);
     };
-    window.addEventListener('mousemove', handleMove);
-    window.addEventListener('mouseup', handleUp);
-    window.addEventListener('touchmove', handleMove);
-    window.addEventListener('touchend', handleUp);
+
+    window.addEventListener('mousemove', handleMove, { capture: true, passive: false });
+    window.addEventListener('mouseup', handleUp, { capture: true });
+    window.addEventListener('touchmove', handleMove, { capture: true, passive: false });
+    window.addEventListener('touchend', handleUp, { capture: true });
     return () => {
-      window.removeEventListener('mousemove', handleMove);
-      window.removeEventListener('mouseup', handleUp);
-      window.removeEventListener('touchmove', handleMove);
-      window.removeEventListener('touchend', handleUp);
+      window.removeEventListener('mousemove', handleMove, { capture: true });
+      window.removeEventListener('mouseup', handleUp, { capture: true });
+      window.removeEventListener('touchmove', handleMove, { capture: true });
+      window.removeEventListener('touchend', handleUp, { capture: true });
     };
   }, [dragging, containerHeight, visibleRange, currentPrice, onDrag]);
 
   if (!visible) return null;
 
+  const hasPnl = pnl !== undefined && pnl !== null;
+  const pnlColor = hasPnl ? (pnl >= 0 ? '#22C55E' : '#EF4444') : null;
+  const lineColor = hasPnl && pnlColor ? pnlColor : color;
+
+  const shadeTop = shadeFrom !== undefined ? Math.min(yPos, shadeFrom) : null;
+  const shadeHeight = shadeFrom !== undefined ? Math.abs(yPos - shadeFrom) : null;
+
   return (
-    <div
-      ref={lineRef}
-      onMouseDown={handleMouseDown}
-      onTouchStart={handleMouseDown}
-      style={{
-        position: 'absolute',
-        top: `${yPos}px`,
-        left: 0,
-        right: 0,
-        zIndex: 10,
-        cursor: draggable ? (dragging ? 'grabbing' : 'grab') : 'default',
-        pointerEvents: 'auto',
-        transform: 'translateY(-50%)',
-      }}
-    >
-      <div
-        style={{
-          position: 'absolute',
-          left: 0,
-          right: 0,
-          height: draggable ? '12px' : '1px',
-          top: draggable ? '-6px' : '0',
-        }}
-      />
-      <div
-        style={{
-          width: '100%',
-          height: '1px',
-          background: dashed
-            ? `repeating-linear-gradient(to right, ${color} 0, ${color} 6px, transparent 6px, transparent 12px)`
-            : color,
-          opacity: dragging ? 1 : 0.8,
-        }}
-      />
-      <div
-        style={{
-          position: 'absolute',
-          right: '4px',
-          top: '-10px',
-          background: color,
-          color: color === '#ffffff' ? '#000' : '#fff',
-          fontSize: '9px',
-          fontWeight: 700,
-          padding: '1px 5px',
-          borderRadius: '2px',
-          whiteSpace: 'nowrap',
-          fontFamily: "'JetBrains Mono', monospace",
-          letterSpacing: '0.02em',
-          boxShadow: '0 1px 4px rgba(0,0,0,0.5)',
-          userSelect: 'none',
-        }}
-      >
-        {label} {formatLinePrice(displayPrice, instrument)}
-      </div>
-      {draggable && (
+    <>
+      {/* Shaded zone */}
+      {shadeTop !== null && shadeHeight !== null && shadeColor && (
         <div
           style={{
             position: 'absolute',
-            left: '4px',
-            top: '-8px',
-            fontSize: '8px',
-            color: color,
-            opacity: dragging ? 1 : 0.5,
-            userSelect: 'none',
+            top: `${shadeTop}px`,
+            left: 0,
+            right: 0,
+            height: `${shadeHeight}px`,
+            background: shadeColor,
+            pointerEvents: 'none',
+            zIndex: 5,
+          }}
+        />
+      )}
+
+      {/* Line wrapper */}
+      <div
+        onMouseDown={handleMouseDown}
+        onTouchStart={handleMouseDown}
+        style={{
+          position: 'absolute',
+          top: `${yPos}px`,
+          left: 0,
+          right: 0,
+          zIndex: 15,
+          transform: 'translateY(-50%)',
+          pointerEvents: 'auto',
+          cursor: draggable ? (dragging ? 'grabbing' : 'ns-resize') : 'default',
+        }}
+      >
+        {/* 40px tall invisible hit zone */}
+        {draggable && (
+          <div
+            style={{
+              position: 'absolute',
+              left: 0,
+              right: 0,
+              height: '40px',
+              top: '-20px',
+              zIndex: 16,
+              cursor: dragging ? 'grabbing' : 'ns-resize',
+            }}
+          />
+        )}
+
+        {/* The line */}
+        <div
+          style={{
+            width: '100%',
+            height: dragging ? '2px' : '1px',
+            background: dashed
+              ? `repeating-linear-gradient(to right, ${lineColor} 0, ${lineColor} 6px, transparent 6px, transparent 12px)`
+              : lineColor,
+            opacity: dragging ? 1 : 0.9,
+          }}
+        />
+
+        {/* Price tag */}
+        <div
+          style={{
+            position: 'absolute',
+            right: '4px',
+            top: '-10px',
+            background: lineColor,
+            color: lineColor === '#ffffff' ? '#000' : '#fff',
+            fontSize: '9px',
             fontWeight: 700,
+            padding: '1px 5px',
+            borderRadius: '2px',
+            whiteSpace: 'nowrap',
+            fontFamily: "'JetBrains Mono', monospace",
+            letterSpacing: '0.02em',
+            boxShadow: '0 1px 4px rgba(0,0,0,0.5)',
+            userSelect: 'none',
+            zIndex: 17,
           }}
         >
-          ⋮⋮
+          {label} {formatLinePrice(displayPrice, instrument)}
         </div>
-      )}
-    </div>
+
+        {/* P&L badge */}
+        {hasPnl && pnlColor && (
+          <div
+            style={{
+              position: 'absolute',
+              right: '4px',
+              top: '-28px',
+              background: pnlColor,
+              color: '#fff',
+              fontSize: '10px',
+              fontWeight: 800,
+              padding: '2px 8px',
+              borderRadius: '3px',
+              whiteSpace: 'nowrap',
+              fontFamily: "'JetBrains Mono', monospace",
+              boxShadow: '0 1px 6px rgba(0,0,0,0.6)',
+              userSelect: 'none',
+              zIndex: 17,
+            }}
+          >
+            {formatPnl(pnl)}
+          </div>
+        )}
+
+        {/* Drag handle */}
+        {draggable && (
+          <div
+            style={{
+              position: 'absolute',
+              left: '6px',
+              top: '-7px',
+              fontSize: '9px',
+              color: lineColor,
+              opacity: dragging ? 1 : 0.6,
+              userSelect: 'none',
+              fontWeight: 700,
+              letterSpacing: '1px',
+            }}
+          >
+            ⋮⋮
+          </div>
+        )}
+      </div>
+    </>
   );
 }
 
-export default function PositionLines({ positions, currentPrice, instrumentLabel, onUpdateSL, onUpdateTP }: PositionLinesProps) {
+export default function PositionLines({
+  positions, currentPrice, instrumentLabel, onUpdateSL, onUpdateTP,
+}: PositionLinesProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [containerHeight, setContainerHeight] = useState(0);
 
   useEffect(() => {
     if (!containerRef.current) return;
     const observer = new ResizeObserver(entries => {
-      for (const entry of entries) {
-        setContainerHeight(entry.contentRect.height);
-      }
+      for (const entry of entries) setContainerHeight(entry.contentRect.height);
     });
     observer.observe(containerRef.current);
     setContainerHeight(containerRef.current.clientHeight);
@@ -204,76 +288,76 @@ export default function PositionLines({ positions, currentPrice, instrumentLabel
   }
 
   const visibleRange = getPriceRange(currentPrice, instrumentLabel);
-
-  const priceToY = (p: number) => {
-    const ratio = (currentPrice - p) / (visibleRange * 2) + 0.5;
-    return ratio;
-  };
+  const priceToY = (p: number) => ((currentPrice - p) / (visibleRange * 2) + 0.5) * containerHeight;
 
   return (
     <div
       ref={containerRef}
-      style={{
-        position: 'absolute',
-        inset: 0,
-        pointerEvents: 'none',
-        overflow: 'hidden',
-      }}
+      style={{ position: 'absolute', inset: 0, pointerEvents: 'none', overflow: 'hidden' }}
     >
       {positions.map(pos => {
-        const entryY = priceToY(pos.entryPrice);
-        const lines = [
-          <PriceLine
-            key={`entry-${pos.id}`}
-            price={pos.entryPrice}
-            label="ENTRY"
-            color="#ffffff"
-            dashed
-            yPercent={entryY}
-            containerHeight={containerHeight}
-            currentPrice={currentPrice}
-            visibleRange={visibleRange}
-            instrument={instrumentLabel}
-          />,
-        ];
+        const entryYpx = priceToY(pos.entryPrice);
 
-        if (pos.takeProfit) {
-          lines.push(
+        const handleTPDrag = (newPrice: number) => {
+          if (!isValidTP(pos.side, pos.entryPrice, newPrice)) return;
+          onUpdateTP(pos.id, newPrice);
+        };
+
+        const handleSLDrag = (newPrice: number) => {
+          if (!isValidSL(pos.side, pos.entryPrice, newPrice)) return;
+          onUpdateSL(pos.id, newPrice);
+        };
+
+        return (
+          <div key={pos.id} style={{ position: 'absolute', inset: 0 }}>
             <PriceLine
-              key={`tp-${pos.id}`}
-              price={pos.takeProfit}
-              label="TP"
-              color="#22C55E"
-              yPercent={priceToY(pos.takeProfit)}
-              draggable
-              onDrag={(newPrice) => onUpdateTP(pos.id, newPrice)}
+              price={pos.entryPrice}
+              label={pos.side}
+              color="#ffffff"
+              dashed
+              yPercent={entryYpx / containerHeight}
               containerHeight={containerHeight}
               currentPrice={currentPrice}
               visibleRange={visibleRange}
               instrument={instrumentLabel}
+              pnl={pos.livePnl}
             />
-          );
-        }
 
-        if (pos.stopLoss) {
-          lines.push(
-            <PriceLine
-              key={`sl-${pos.id}`}
-              price={pos.stopLoss}
-              label="SL"
-              color="#EF4444"
-              yPercent={priceToY(pos.stopLoss)}
-              draggable
-              onDrag={(newPrice) => onUpdateSL(pos.id, newPrice)}
-              containerHeight={containerHeight}
-              currentPrice={currentPrice}
-              visibleRange={visibleRange}
-              instrument={instrumentLabel}
-            />
-          );
-        }
+            {pos.takeProfit && (
+              <PriceLine
+                price={pos.takeProfit}
+                label="TP"
+                color="#22C55E"
+                yPercent={priceToY(pos.takeProfit) / containerHeight}
+                draggable
+                onDrag={handleTPDrag}
+                containerHeight={containerHeight}
+                currentPrice={currentPrice}
+                visibleRange={visibleRange}
+                instrument={instrumentLabel}
+                shadeFrom={entryYpx}
+                shadeColor="rgba(34,197,94,0.06)"
+              />
+            )}
 
-        return lines;
+            {pos.stopLoss && (
+              <PriceLine
+                price={pos.stopLoss}
+                label="SL"
+                color="#EF4444"
+                yPercent={priceToY(pos.stopLoss) / containerHeight}
+                draggable
+                onDrag={handleSLDrag}
+                containerHeight={containerHeight}
+                currentPrice={currentPrice}
+                visibleRange={visibleRange}
+                instrument={instrumentLabel}
+                shadeFrom={entryYpx}
+                shadeColor="rgba(239,68,68,0.06)"
+              />
+            )}
+          </div>
+        );
       })}
     </div>
   );

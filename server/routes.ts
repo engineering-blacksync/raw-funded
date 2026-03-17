@@ -1719,10 +1719,10 @@ Return ONLY the raw JSON array. No markdown, no backticks, no explanation. Start
   };
 
   // Warm on startup
-  newsInflight = fetchNewsFromGrok()
-    .then(() => scheduleNewsRefresh())
-    .catch((e) => console.error("[news] Initial warm failed:", e))
-    .finally(() => { newsInflight = null; });
+  // newsInflight = fetchNewsFromGrok()
+  //  .then(() => scheduleNewsRefresh())
+  //  .catch((e) => console.error("[news] Initial warm failed:", e))
+  //  .finally(() => { newsInflight = null; });
 
   app.get("/api/news", async (_req: Request, res: Response) => {
     if (newsCache) return res.json(newsCache);
@@ -1737,5 +1737,46 @@ Return ONLY the raw JSON array. No markdown, no backticks, no explanation. Start
     return res.status(503).json({ error: "Cache not ready" });
   });
 
-  return httpServer;
-}
+  // ── Candle history for Lightweight Charts ─────────────────────────────────
+    const FINNHUB_CANDLE_MAP: Record<string, string> = {
+      'MBT':        'BINANCE:BTCUSDT',
+      'Gold (GC)':  'OANDA:XAU_USD',
+      'Silver':     'OANDA:XAG_USD',
+      'Oil (WTI)':  'OANDA:BCO_USD',
+      'S&P 500':    'FXCM:USA500.IDX/USD',
+      'Nasdaq':     'FXCM:USATEC.IDX/USD',
+      'MNQ':        'FXCM:USATEC.IDX/USD',
+      'MES':        'FXCM:USA500.IDX/USD',
+      'MGC':        'OANDA:XAU_USD',
+      'SIL':        'OANDA:XAG_USD',
+      'MCL':        'OANDA:BCO_USD',
+    };
+
+  app.get("/api/candles", requireApproved, async (req: Request, res: Response) => {
+    const instrument = req.query.instrument as string;
+    const count = parseInt(req.query.count as string) || 300;
+
+    try {
+      // BTC — use Coinbase REST (open CORS, reliable candles)
+      if (['MBT', 'Bitcoin', 'BTCUSD'].includes(instrument)) {
+        const r = await fetch(
+          `https://api.exchange.coinbase.com/products/BTC-USD/candles?granularity=300&limit=${count}`
+        );
+        if (!r.ok) return res.json([]);
+        const raw = await r.json();
+        const candles = raw.reverse().map((k: number[]) => ({
+          time: k[0], open: k[3], high: k[2], low: k[1], close: k[4],
+        }));
+        return res.json(candles);
+      }
+
+      // All other instruments — build from recent price history via TV scanner
+      // Return empty for now; live ticks will build the chart
+      return res.json([]);
+    } catch (err: any) {
+      return res.status(502).json({ message: err.message });
+    }
+  });
+
+    return httpServer;
+  }

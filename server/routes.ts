@@ -1754,25 +1754,75 @@ Return ONLY the raw JSON array. No markdown, no backticks, no explanation. Start
 
   app.get("/api/candles", requireApproved, async (req: Request, res: Response) => {
     const instrument = req.query.instrument as string;
+    const resolution = (req.query.resolution as string) || '5';
     const count = parseInt(req.query.count as string) || 300;
+    const finnhubKey = process.env.FINNHUB_API_KEY;
+
+    const resolutionToGranularity: Record<string, number> = {
+      '1': 60, '5': 300, '15': 900, '30': 1800, '60': 3600, 'D': 86400
+    };
+    const granSec = resolutionToGranularity[resolution] || 300;
+    const toTs = Math.floor(Date.now() / 1000);
+    const fromTs = toTs - granSec * count * 2;
 
     try {
-      // BTC — use Coinbase REST (open CORS, reliable candles)
       if (['MBT', 'Bitcoin', 'BTCUSD'].includes(instrument)) {
-        const r = await fetch(
-          `https://api.exchange.coinbase.com/products/BTC-USD/candles?granularity=300&limit=${count}`
+        if (finnhubKey) {
+          const r = await fetch(
+            `https://finnhub.io/api/v1/crypto/candle?symbol=BINANCE:BTCUSDT&resolution=${resolution}&from=${fromTs}&to=${toTs}&token=${finnhubKey}`
+          );
+          if (r.ok) {
+            const d = await r.json();
+            if (d.s === 'ok' && d.t?.length) {
+              const candles = d.t.map((t: number, i: number) => ({
+                time: t * 1000, open: d.o[i], high: d.h[i], low: d.l[i], close: d.c[i],
+              }));
+              return res.json(candles);
+            }
+          }
+        }
+        const r2 = await fetch(
+          `https://api.exchange.coinbase.com/products/BTC-USD/candles?granularity=${granSec}&limit=${count}`
         );
-        if (!r.ok) return res.json([]);
-        const raw = await r.json();
+        if (!r2.ok) return res.json([]);
+        const raw = await r2.json();
         const candles = raw.reverse().map((k: number[]) => ({
-          time: k[0], open: k[3], high: k[2], low: k[1], close: k[4],
+          time: k[0] * 1000, open: k[3], high: k[2], low: k[1], close: k[4],
         }));
         return res.json(candles);
       }
 
-      // All other instruments — build from recent price history via TV scanner
-      // Return empty for now; live ticks will build the chart
-      return res.json([]);
+      if (!finnhubKey) return res.json([]);
+
+      const INSTRUMENT_FINNHUB: Record<string, { type: 'forex' | 'crypto'; symbol: string }> = {
+        'MGC':        { type: 'forex',  symbol: 'OANDA:XAU_USD' },
+        'Gold (GC)':  { type: 'forex',  symbol: 'OANDA:XAU_USD' },
+        'Silver':     { type: 'forex',  symbol: 'OANDA:XAG_USD' },
+        'SIL':        { type: 'forex',  symbol: 'OANDA:XAG_USD' },
+        'Oil (WTI)':  { type: 'forex',  symbol: 'OANDA:BCO_USD' },
+        'MCL':        { type: 'forex',  symbol: 'OANDA:BCO_USD' },
+        'S&P 500':    { type: 'forex',  symbol: 'FXCM:USA500.IDX/USD' },
+        'MES':        { type: 'forex',  symbol: 'FXCM:USA500.IDX/USD' },
+        'Nasdaq':     { type: 'forex',  symbol: 'FXCM:USATEC.IDX/USD' },
+        'MNQ':        { type: 'forex',  symbol: 'FXCM:USATEC.IDX/USD' },
+      };
+
+      const cfg = INSTRUMENT_FINNHUB[instrument];
+      if (!cfg) return res.json([]);
+
+      const endpoint = cfg.type === 'forex'
+        ? `https://finnhub.io/api/v1/forex/candle?symbol=${encodeURIComponent(cfg.symbol)}&resolution=${resolution}&from=${fromTs}&to=${toTs}&token=${finnhubKey}`
+        : `https://finnhub.io/api/v1/crypto/candle?symbol=${encodeURIComponent(cfg.symbol)}&resolution=${resolution}&from=${fromTs}&to=${toTs}&token=${finnhubKey}`;
+
+      const r = await fetch(endpoint);
+      if (!r.ok) return res.json([]);
+      const d = await r.json();
+      if (d.s !== 'ok' || !d.t?.length) return res.json([]);
+
+      const candles = d.t.map((t: number, i: number) => ({
+        time: t * 1000, open: d.o[i], high: d.h[i], low: d.l[i], close: d.c[i],
+      }));
+      return res.json(candles);
     } catch (err: any) {
       return res.status(502).json({ message: err.message });
     }

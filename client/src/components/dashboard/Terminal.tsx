@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, useCallback } from 'react';
 import { createClient, type RealtimeChannel } from '@supabase/supabase-js';
 import type { Trade } from '@shared/schema';
 import PositionLines, { type PendingLine } from './PositionLines';
+import CandleChart from './CandleChart';
 
 type Mt5Status = 'pending' | 'filled' | 'rejected';
 interface LocalTrade extends Trade {
@@ -62,23 +63,6 @@ function getSpreadAdjustedEntry(instrument: string, side: string, size: number, 
 
   const spread = spreadPerContract * contracts;
   return side === 'BUY' ? fillPrice + spread : fillPrice - spread;
-}
-
-declare global {
-  interface Window { TradingView: any; }
-}
-
-function useTradingViewScript() {
-  const [loaded, setLoaded] = useState(!!window.TradingView);
-  useEffect(() => {
-    if (window.TradingView) { setLoaded(true); return; }
-    const script = document.createElement('script');
-    script.src = 'https://s3.tradingview.com/tv.js';
-    script.async = true;
-    script.onload = () => setLoaded(true);
-    document.head.appendChild(script);
-  }, []);
-  return loaded;
 }
 
 
@@ -263,9 +247,6 @@ function isMarketOpen(instrument: string): boolean {
 }
 
 export default function Terminal({ tier, userTierName, balance, onOpenPnlChange, allowedInstruments, username }: TerminalProps) {
-  const chartContainerRef = useRef<HTMLDivElement>(null);
-  const tvLoaded = useTradingViewScript();
-
   const visibleInstruments = allowedInstruments && allowedInstruments.length > 0
     ? INSTRUMENTS.filter(i => allowedInstruments.includes(i.label))
     : INSTRUMENTS;
@@ -636,37 +617,6 @@ export default function Terminal({ tier, userTierName, balance, onOpenPnlChange,
   const atMin = quantity <= activeInstrument.min;
   const atMax = quantity >= activeInstrument.max;
 
-  const createChart = useCallback(() => {
-    if (!chartContainerRef.current || !window.TradingView) return;
-    chartContainerRef.current.innerHTML = '';
-    const modeConfig = viewMode === 'pro'
-      ? { hide_side_toolbar: false, studies: [] as string[], withdateranges: true, save_image: true }
-      : { hide_side_toolbar: true, studies: [] as string[], withdateranges: false, save_image: false };
-
-    new window.TradingView.widget({
-      symbol: activeInstrument.symbol,
-      interval: "5",
-      container_id: "tradingview-chart",
-      autosize: true,
-      theme: "dark",
-      style: "1",
-      locale: "en",
-      toolbar_bg: "#09090B",
-      hide_side_toolbar: modeConfig.hide_side_toolbar,
-      studies: modeConfig.studies,
-      allow_symbol_change: false,
-      withdateranges: modeConfig.withdateranges,
-      save_image: modeConfig.save_image,
-      enable_publishing: false,
-      backgroundColor: "#09090B",
-      gridColor: "#1C1C22",
-    });
-  }, [activeInstrument.symbol, viewMode]);
-
-  useEffect(() => {
-    if (tvLoaded) createChart();
-  }, [tvLoaded, createChart]);
-
   const handleTrade = async (side: 'BUY' | 'SELL') => {
     if (!bridgeOnline) {
       setTradeStatus({ type: 'error', message: 'Trading unavailable — market is closed or bridge is offline.' });
@@ -980,12 +930,10 @@ export default function Terminal({ tier, userTierName, balance, onOpenPnlChange,
 
         <div className="flex-1 flex relative">
           <div className="flex-1 relative bg-background">
-            <div ref={chartContainerRef} id="tradingview-chart" className="absolute inset-0" />
-            {!tvLoaded && (
-              <div className="absolute inset-0 flex items-center justify-center">
-                <div className="w-8 h-8 border-2 border-gold border-t-transparent rounded-full animate-spin"></div>
-              </div>
-            )}
+            <CandleChart
+              instrument={activeInstrument.label}
+              currentPrice={livePrices[activeInstrument.label] || 0}
+            />
             {(() => {
               const pendingLines: PendingLine[] = [];
               const slVal = sltpEdit?.field === 'sl' ? parseFloat(sltpEdit.value) : parseFloat(orderSl);

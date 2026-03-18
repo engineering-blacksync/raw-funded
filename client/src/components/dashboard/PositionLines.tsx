@@ -230,7 +230,6 @@ export default function PositionLines({
 }: PositionLinesProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [containerHeight, setContainerHeight] = useState(0);
-
   const [visibleRange, setVisibleRange] = useState(() => getPriceRange(currentPrice || 1, instrumentLabel));
 
   useEffect(() => {
@@ -275,17 +274,15 @@ export default function PositionLines({
     return () => window.removeEventListener('wheel', handleWheel, { capture: true });
   }, [currentPrice, instrumentLabel]);
 
-  const shouldRender = currentPrice > 0 && containerHeight > 0 && (positions.length > 0 || pendingLines.length > 0);
-
-  if (!shouldRender) {
-    return <div ref={containerRef} style={{ position: 'absolute', inset: 0, pointerEvents: 'none' }} />;
-  }
-
+  const canDraw = currentPrice > 0 && containerHeight > 0;
   const priceToY = (p: number) =>
     ((currentPrice - p) / (visibleRange * 2) + 0.5) * containerHeight;
 
   return (
-    <>
+    <div
+      ref={containerRef}
+      style={{ position: 'absolute', inset: 0, pointerEvents: 'none', overflow: 'hidden' }}
+    >
       <style>{`
         @keyframes plPulse {
           0%, 100% { opacity: 0.45; }
@@ -293,117 +290,115 @@ export default function PositionLines({
         }
       `}</style>
 
-      <div ref={containerRef} style={{ position: 'absolute', inset: 0, pointerEvents: 'none', overflow: 'hidden' }}>
+      {canDraw && (
+        <>
+          <div
+            onClick={(e) => {
+              e.stopPropagation();
+              setVisibleRange(getPriceRange(currentPrice, instrumentLabel));
+            }}
+            style={{
+              position: 'absolute',
+              bottom: '10px',
+              left: '10px',
+              zIndex: 20,
+              pointerEvents: 'auto',
+              cursor: 'pointer',
+              background: 'rgba(0,0,0,0.45)',
+              border: '1px solid rgba(255,255,255,0.1)',
+              color: 'rgba(255,255,255,0.3)',
+              fontSize: '9px',
+              fontWeight: 700,
+              padding: '2px 7px',
+              borderRadius: '3px',
+              fontFamily: "'JetBrains Mono', monospace",
+              letterSpacing: '0.05em',
+              userSelect: 'none',
+              backdropFilter: 'blur(4px)',
+            }}
+          >
+            ⊙ reset zoom
+          </div>
 
-        <div
-          onClick={(e) => {
-            e.stopPropagation();
-            setVisibleRange(getPriceRange(currentPrice, instrumentLabel));
-          }}
-          style={{
-            position: 'absolute',
-            bottom: '10px',
-            left: '10px',
-            zIndex: 20,
-            pointerEvents: 'auto',
-            cursor: 'pointer',
-            background: 'rgba(0,0,0,0.45)',
-            border: '1px solid rgba(255,255,255,0.1)',
-            color: 'rgba(255,255,255,0.3)',
-            fontSize: '9px',
-            fontWeight: 700,
-            padding: '2px 7px',
-            borderRadius: '3px',
-            fontFamily: "'JetBrains Mono', monospace",
-            letterSpacing: '0.05em',
-            userSelect: 'none',
-            backdropFilter: 'blur(4px)',
-          }}
-        >
-          ⊙ reset zoom
-        </div>
-
-        {pendingLines.map((pl, i) => {
-          const yPx = priceToY(pl.price);
-          return (
+          {pendingLines.map((pl, i) => (
             <PriceLine
               key={`pending-${pl.type}-${i}`}
               price={pl.price}
               label={pl.type === 'sl' ? 'SL' : 'TP'}
               color={pl.type === 'sl' ? '#EF4444' : '#22C55E'}
-              yPercent={yPx / containerHeight}
+              yPercent={priceToY(pl.price) / containerHeight}
               containerHeight={containerHeight}
               currentPrice={currentPrice}
               visibleRange={visibleRange}
               instrument={instrumentLabel}
               preview
             />
-          );
-        })}
+          ))}
 
-        {positions.map(pos => {
-          const entryYpx = priceToY(pos.entryPrice);
+          {positions.map(pos => {
+            const entryYpx = priceToY(pos.entryPrice);
 
-          const handleTPDrag = (newPrice: number) => {
-            if (!isValidTP(pos.side, pos.entryPrice, newPrice)) return;
-            onUpdateTP(pos.id, newPrice);
-          };
+            const handleTPDrag = (newPrice: number) => {
+              if (!isValidTP(pos.side, pos.entryPrice, newPrice)) return;
+              onUpdateTP(pos.id, newPrice);
+            };
 
-          const handleSLDrag = (newPrice: number) => {
-            if (!isValidSL(pos.side, pos.entryPrice, newPrice)) return;
-            onUpdateSL(pos.id, newPrice);
-          };
+            const handleSLDrag = (newPrice: number) => {
+              if (!isValidSL(pos.side, pos.entryPrice, newPrice)) return;
+              onUpdateSL(pos.id, newPrice);
+            };
 
-          return (
-            <div key={pos.id} style={{ position: 'absolute', inset: 0 }}>
-              <PriceLine
-                price={pos.entryPrice}
-                label={pos.side}
-                color="#ffffff"
-                dashed
-                yPercent={entryYpx / containerHeight}
-                containerHeight={containerHeight}
-                currentPrice={currentPrice}
-                visibleRange={visibleRange}
-                instrument={instrumentLabel}
-                pnl={pos.livePnl}
-              />
-              {pos.takeProfit && (
+            return (
+              <div key={pos.id} style={{ position: 'absolute', inset: 0 }}>
                 <PriceLine
-                  price={pos.takeProfit}
-                  label="TP"
-                  color="#22C55E"
-                  yPercent={priceToY(pos.takeProfit) / containerHeight}
-                  draggable
-                  onDrag={handleTPDrag}
+                  price={pos.entryPrice}
+                  label={pos.side}
+                  color="#ffffff"
+                  dashed
+                  yPercent={entryYpx / containerHeight}
                   containerHeight={containerHeight}
                   currentPrice={currentPrice}
                   visibleRange={visibleRange}
                   instrument={instrumentLabel}
-                  shadeFrom={entryYpx}
-                  shadeColor="rgba(34,197,94,0.06)"
+                  pnl={pos.livePnl}
                 />
-              )}
-              {pos.stopLoss && (
-                <PriceLine
-                  price={pos.stopLoss}
-                  label="SL"
-                  color="#EF4444"
-                  yPercent={priceToY(pos.stopLoss) / containerHeight}
-                  draggable
-                  onDrag={handleSLDrag}
-                  containerHeight={containerHeight}
-                  currentPrice={currentPrice}
-                  visibleRange={visibleRange}
-                  instrument={instrumentLabel}
-                  shadeFrom={entryYpx}
-                  shadeColor="rgba(239,68,68,0.06)"
-                />
-              )}
-            </div>
-          );
-        })}
-      </div>
-    </>
+                {pos.takeProfit && (
+                  <PriceLine
+                    price={pos.takeProfit}
+                    label="TP"
+                    color="#22C55E"
+                    yPercent={priceToY(pos.takeProfit) / containerHeight}
+                    draggable
+                    onDrag={handleTPDrag}
+                    containerHeight={containerHeight}
+                    currentPrice={currentPrice}
+                    visibleRange={visibleRange}
+                    instrument={instrumentLabel}
+                    shadeFrom={entryYpx}
+                    shadeColor="rgba(34,197,94,0.06)"
+                  />
+                )}
+                {pos.stopLoss && (
+                  <PriceLine
+                    price={pos.stopLoss}
+                    label="SL"
+                    color="#EF4444"
+                    yPercent={priceToY(pos.stopLoss) / containerHeight}
+                    draggable
+                    onDrag={handleSLDrag}
+                    containerHeight={containerHeight}
+                    currentPrice={currentPrice}
+                    visibleRange={visibleRange}
+                    instrument={instrumentLabel}
+                    shadeFrom={entryYpx}
+                    shadeColor="rgba(239,68,68,0.06)"
+                  />
+                )}
+              </div>
+            );
+          })}
+        </>
+      )}
+    </div>
   );
 }

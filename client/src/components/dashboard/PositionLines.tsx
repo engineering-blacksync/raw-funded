@@ -74,8 +74,8 @@ interface LineProps {
 
 function PriceLine({
   price, label, color, dashed, yPx, draggable, onDragEnd,
-  containerHeight, pxPerPrice, instrument, pnl,
-  shadeFromPx, shadeColor, preview,
+  containerHeight, pxPerPrice,
+  instrument, pnl, shadeFromPx, shadeColor, preview,
 }: LineProps) {
   const [dragging, setDragging] = useState(false);
   const [liveY, setLiveY] = useState<number | null>(null);
@@ -102,9 +102,7 @@ function PriceLine({
       const clientY = 'touches' in e ? e.touches[0].clientY : e.clientY;
       const deltaY = clientY - startRef.current.clientY;
       const newY = Math.max(0, Math.min(containerHeight, startRef.current.startY + deltaY));
-      // price change is inverse of Y change
-      const deltaPrice = -deltaY / pxPerPrice;
-      lastPriceRef.current = startRef.current.startPrice + deltaPrice;
+      lastPriceRef.current = startRef.current.startPrice - (deltaY / pxPerPrice);
       setLiveY(newY);
     };
     const handleUp = () => {
@@ -210,37 +208,91 @@ function PriceLine({
   );
 }
 
+// Track last N price ticks to compute momentum.
+// Returns a bias value from -1 (strong downtrend) to +1 (strong uptrend).
+// TV places current price lower on screen when trending up (more history visible above),
+// and higher on screen when trending down.
+function useMomentumBias(currentPrice: number, instrument: string): number {
+  const WINDOW = 20; // last 20 ticks
+  const historyRef = useRef<number[]>([]);
+  const [bias, setBias] = useState(0);
+
+  useEffect(() => {
+    if (!currentPrice || currentPrice <= 0) return;
+    const history = historyRef.current;
+    history.push(currentPrice);
+    if (history.length > WINDOW) history.shift();
+    if (history.length < 3) return;
+
+    const first = history[0];
+    const last = history[history.length - 1];
+    const range = getPriceRange(currentPrice, instrument);
+    // Normalise move relative to visible price range so it's instrument-agnostic
+    const rawBias = (last - first) / (range * 2);
+    // Clamp to [-1, 1]
+    const clamped = Math.max(-1, Math.min(1, rawBias * 8));
+    setBias(prev => prev * 0.7 + clamped * 0.3); // smooth
+  }, [currentPrice]);
+
+  // Reset on instrument change
+  useEffect(() => {
+    historyRef.current = [];
+    setBias(0);
+  }, [instrument]);
+
+  return bias;
+}
+
 export default function PositionLines({
   positions, currentPrice, instrumentLabel, onUpdateSL, onUpdateTP, pendingLines = [],
 }: PositionLinesProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [containerHeight, setContainerHeight] = useState(0);
-
-  // ── Zoom (price-per-pixel scale) ──────────────────────────────────────────
   const [visibleRange, setVisibleRange] = useState(() => getPriceRange(currentPrice || 1, instrumentLabel));
 
-  // Reset zoom on instrument change
+  // Momentum bias — drives where current price sits vertically on our overlay
+  const momentumBias = useMomentumBias(currentPrice, instrumentLabel);
+
+  // CENTER: where current price Y sits on the overlay as a fraction of height.
+  // Uptrend  (+bias) → current price pushed lower on screen (larger fraction) → TV shows more history above
+  // Downtrend (-bias) → current price pushed higher on screen (smaller fraction) → TV shows more history below
+  // Neutral  (0)     → 0.6 (slightly below center, TV's natural resting position for a live chart)
+  // Range: 0.40 (strong downtrend) → 0.60 (neutral) → 0.75 (strong uptrend)
+  const CENTER = 0.60 + momentumBias * 0.15;
+
+  // Reset zoom when instrument changes
   useEffect(() => {
     if (!currentPrice || currentPrice <= 0) return;
     setVisibleRange(getPriceRange(currentPrice, instrumentLabel));
   }, [instrumentLabel]);
 
-  // Auto-expand so confirmed lines never clip off screen
+  // Auto-expand so all SL/TP lines are always visible
   useEffect(() => {
     if (!currentPrice || currentPrice <= 0) return;
     let maxDist = getPriceRange(currentPrice, instrumentLabel);
     for (const pos of positions) {
-      if (pos.stopLoss)   maxDist = Math.max(maxDist, Math.abs(currentPrice - pos.stopLoss)   * 1.5);
-      if (pos.takeProfit) maxDist = Math.max(maxDist, Math.abs(currentPrice - pos.takeProfit) * 1.5);
-      if (pos.entryPrice) maxDist = Math.max(maxDist, Math.abs(currentPrice - pos.entryPrice) * 1.5);
+      if (pos.stopLoss)   maxDist = Math.max(maxDist, Math.abs(currentPrice - pos.stopLoss)   * 1.3);
+      if (pos.takeProfit) maxDist = Math.max(maxDist, Math.abs(currentPrice - pos.takeProfit) * 1.3);
+      if (pos.entryPrice) maxDist = Math.max(maxDist, Math.abs(currentPrice - pos.entryPrice) * 1.3);
     }
     for (const pl of pendingLines) {
-      if (pl.price > 0) maxDist = Math.max(maxDist, Math.abs(currentPrice - pl.price) * 1.5);
+      if (pl.price > 0) maxDist = Math.max(maxDist, Math.abs(currentPrice - pl.price) * 1.3);
     }
     setVisibleRange(prev => Math.max(prev, maxDist));
   }, [positions, pendingLines, currentPrice, instrumentLabel]);
 
-  // Scroll wheel → zoom both our overlay and TV simultaneously (passive)
+  // Single containerRef div always mounted
+  useEffect(() => {
+    if (!containerRef.current) return;
+    const observer = new ResizeObserver(entries => {
+      for (const entry of entries) setContainerHeight(entry.contentRect.height);
+    });
+    observer.observe(containerRef.current);
+    setContainerHeight(containerRef.current.clientHeight);
+    return () => observer.disconnect();
+  }, []);
+
+  // Scroll wheel zoom — passive, TV zooms simultaneously
   useEffect(() => {
     if (!currentPrice || currentPrice <= 0) return;
     const base = getPriceRange(currentPrice, instrumentLabel);
@@ -252,93 +304,17 @@ export default function PositionLines({
     return () => window.removeEventListener('wheel', handleWheel, { capture: true });
   }, [currentPrice, instrumentLabel]);
 
-  // ── Calibration anchor ────────────────────────────────────────────────────
-  // anchorY:     pixel Y where current price was placed at calibration time
-  // anchorPrice: the currentPrice value at calibration time
-  // Together these give us a fixed reference: "price X is at pixel Y"
-  // Everything else is derived mathematically from this single reference point.
-  const [anchorY, setAnchorY] = useState<number | null>(null);       // null = not yet calibrated
-  const [anchorPrice, setAnchorPrice] = useState<number>(currentPrice);
-  const [anchorDragging, setAnchorDragging] = useState(false);
-  const anchorDragStart = useRef({ clientY: 0, anchorY: 0 });
-  const currentPriceRef = useRef(currentPrice);
-  useEffect(() => { currentPriceRef.current = currentPrice; }, [currentPrice]);
-
-  // Initialise anchor to center once container height is known
-  useEffect(() => {
-    if (containerHeight > 0 && anchorY === null) {
-      setAnchorY(containerHeight * 0.5);
-      setAnchorPrice(currentPrice);
-    }
-  }, [containerHeight]);
-
-  // Reset anchor when instrument changes
-  useEffect(() => {
-    setAnchorY(null);
-    setAnchorPrice(currentPrice);
-  }, [instrumentLabel]);
-
-  const effectiveAnchorY = anchorY ?? (containerHeight * 0.5);
-  const isCalibrated = anchorY !== null && Math.abs(anchorY - containerHeight * 0.5) > 5;
-
-  // Anchor drag handlers
-  const handleAnchorMouseDown = useCallback((e: React.MouseEvent | React.TouchEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    const clientY = 'touches' in e ? e.touches[0].clientY : e.clientY;
-    anchorDragStart.current = { clientY, anchorY: effectiveAnchorY };
-    setAnchorDragging(true);
-  }, [effectiveAnchorY]);
-
-  useEffect(() => {
-    if (!anchorDragging) return;
-    const handleMove = (e: MouseEvent | TouchEvent) => {
-      const clientY = 'touches' in e ? e.touches[0].clientY : e.clientY;
-      const deltaY = clientY - anchorDragStart.current.clientY;
-      const newY = Math.max(0, Math.min(containerHeight, anchorDragStart.current.anchorY + deltaY));
-      setAnchorY(newY);
-    };
-    const handleUp = () => {
-      // On release, lock anchorPrice to current price — "current price is here"
-      setAnchorPrice(currentPriceRef.current);
-      setAnchorDragging(false);
-    };
-    window.addEventListener('mousemove', handleMove, { capture: true, passive: true });
-    window.addEventListener('mouseup', handleUp, { capture: true });
-    window.addEventListener('touchmove', handleMove, { capture: true, passive: true });
-    window.addEventListener('touchend', handleUp, { capture: true });
-    return () => {
-      window.removeEventListener('mousemove', handleMove, { capture: true });
-      window.removeEventListener('mouseup', handleUp, { capture: true });
-      window.removeEventListener('touchmove', handleMove, { capture: true });
-      window.removeEventListener('touchend', handleUp, { capture: true });
-    };
-  }, [anchorDragging, containerHeight]);
-
-  // ── Container height ──────────────────────────────────────────────────────
-  useEffect(() => {
-    if (!containerRef.current) return;
-    const observer = new ResizeObserver(entries => {
-      for (const entry of entries) setContainerHeight(entry.contentRect.height);
-    });
-    observer.observe(containerRef.current);
-    setContainerHeight(containerRef.current.clientHeight);
-    return () => observer.disconnect();
-  }, []);
-
-  // ── Core math ─────────────────────────────────────────────────────────────
-  // pxPerPrice: how many pixels correspond to 1 unit of price
-  // priceToY:   convert any price to a pixel Y using the calibrated anchor
-  //
-  // Formula:
-  //   priceToY(p) = anchorY + (anchorPrice - p) * pxPerPrice
-  //
-  // When p === anchorPrice: returns anchorY  ✓
-  // When p > anchorPrice (price is higher): returns a smaller Y (higher on screen) ✓
-  // When p < anchorPrice (price is lower):  returns a larger  Y (lower on screen)  ✓
   const canDraw = currentPrice > 0 && containerHeight > 0;
+
+  // pxPerPrice: pixels per 1 unit of price
   const pxPerPrice = containerHeight / (visibleRange * 2);
-  const priceToY = (p: number) => effectiveAnchorY + (anchorPrice - p) * pxPerPrice;
+
+  // priceToY: converts a price to pixel Y
+  // current price sits at CENTER * containerHeight
+  // prices above current price → smaller Y (higher on screen)
+  // prices below current price → larger Y (lower on screen)
+  const priceToY = (p: number) =>
+    (CENTER + (currentPrice - p) / (visibleRange * 2)) * containerHeight;
 
   return (
     <div
@@ -347,110 +323,32 @@ export default function PositionLines({
     >
       <style>{`
         @keyframes plPulse { 0%,100%{opacity:0.45} 50%{opacity:0.75} }
-        @keyframes anchorPulse { 0%,100%{opacity:0.5} 50%{opacity:0.9} }
       `}</style>
 
       {canDraw && (
         <>
-          {/* ── Calibration anchor ── */}
-          {/* Drag this to match TradingView's current price line on the right axis */}
+          {/* Reset zoom */}
           <div
-            onMouseDown={handleAnchorMouseDown}
-            onTouchStart={handleAnchorMouseDown}
+            onClick={(e) => {
+              e.stopPropagation();
+              setVisibleRange(getPriceRange(currentPrice, instrumentLabel));
+            }}
             style={{
-              position: 'absolute',
-              top: `${effectiveAnchorY}px`,
-              left: 0, right: 0,
-              zIndex: 18,
-              transform: 'translateY(-50%)',
-              pointerEvents: 'auto',
-              cursor: anchorDragging ? 'grabbing' : 'ns-resize',
+              position: 'absolute', bottom: '10px', left: '10px',
+              zIndex: 20, pointerEvents: 'auto', cursor: 'pointer',
+              background: 'rgba(0,0,0,0.45)',
+              border: '1px solid rgba(255,255,255,0.1)',
+              color: 'rgba(255,255,255,0.3)',
+              fontSize: '9px', fontWeight: 700,
+              padding: '2px 7px', borderRadius: '3px',
+              fontFamily: "'JetBrains Mono', monospace",
+              userSelect: 'none', backdropFilter: 'blur(4px)',
             }}
           >
-            {/* Wide hit zone */}
-            <div style={{ position: 'absolute', left: 0, right: 0, height: '32px', top: '-16px', zIndex: 19 }} />
-
-            {/* The anchor line — very subtle when calibrated, more visible when not */}
-            <div style={{
-              width: '100%',
-              height: '1px',
-              background: isCalibrated
-                ? 'rgba(0,212,255,0.08)'
-                : `repeating-linear-gradient(to right, rgba(0,212,255,0.35) 0, rgba(0,212,255,0.35) 4px, transparent 4px, transparent 8px)`,
-              animation: isCalibrated ? 'none' : 'anchorPulse 2s ease-in-out infinite',
-            }} />
-
-            {/* Anchor handle label */}
-            <div style={{
-              position: 'absolute',
-              left: '40px',
-              top: '-11px',
-              background: 'rgba(0,0,0,0.6)',
-              border: `1px solid ${isCalibrated ? 'rgba(0,212,255,0.2)' : 'rgba(0,212,255,0.5)'}`,
-              color: isCalibrated ? 'rgba(0,212,255,0.35)' : 'rgba(0,212,255,0.8)',
-              fontSize: '8px',
-              fontWeight: 700,
-              padding: '1px 6px',
-              borderRadius: '2px',
-              whiteSpace: 'nowrap',
-              fontFamily: "'JetBrains Mono', monospace",
-              userSelect: 'none',
-              backdropFilter: 'blur(4px)',
-              animation: isCalibrated ? 'none' : 'anchorPulse 2s ease-in-out infinite',
-            }}>
-              {isCalibrated
-                ? `◎ ${formatLinePrice(anchorPrice, instrumentLabel)}`
-                : '↕ drag to sync with chart'}
-            </div>
+            ⊙ reset zoom
           </div>
 
-          {/* ── Reset controls ── */}
-          <div style={{
-            position: 'absolute', bottom: '10px', left: '10px',
-            display: 'flex', gap: '4px', zIndex: 20, pointerEvents: 'auto',
-          }}>
-            <div
-              onClick={(e) => {
-                e.stopPropagation();
-                setVisibleRange(getPriceRange(currentPrice, instrumentLabel));
-              }}
-              style={{
-                cursor: 'pointer',
-                background: 'rgba(0,0,0,0.45)',
-                border: '1px solid rgba(255,255,255,0.1)',
-                color: 'rgba(255,255,255,0.3)',
-                fontSize: '9px', fontWeight: 700,
-                padding: '2px 7px', borderRadius: '3px',
-                fontFamily: "'JetBrains Mono', monospace",
-                userSelect: 'none', backdropFilter: 'blur(4px)',
-              }}
-            >
-              ⊙ reset zoom
-            </div>
-            {isCalibrated && (
-              <div
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setAnchorY(containerHeight * 0.5);
-                  setAnchorPrice(currentPrice);
-                }}
-                style={{
-                  cursor: 'pointer',
-                  background: 'rgba(0,0,0,0.45)',
-                  border: '1px solid rgba(0,212,255,0.2)',
-                  color: 'rgba(0,212,255,0.35)',
-                  fontSize: '9px', fontWeight: 700,
-                  padding: '2px 7px', borderRadius: '3px',
-                  fontFamily: "'JetBrains Mono', monospace",
-                  userSelect: 'none', backdropFilter: 'blur(4px)',
-                }}
-              >
-                ↺ reset sync
-              </div>
-            )}
-          </div>
-
-          {/* ── Preview lines (while typing SL/TP) ── */}
+          {/* Preview lines while typing SL/TP */}
           {pendingLines.map((pl, i) => (
             <PriceLine
               key={`pending-${pl.type}-${i}`}
@@ -465,7 +363,7 @@ export default function PositionLines({
             />
           ))}
 
-          {/* ── Confirmed position lines ── */}
+          {/* Confirmed position lines */}
           {positions.map(pos => {
             const entryYpx = priceToY(pos.entryPrice);
 

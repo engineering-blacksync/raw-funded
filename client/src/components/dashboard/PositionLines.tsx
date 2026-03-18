@@ -12,12 +12,18 @@ interface Position {
   currentPrice?: number;
 }
 
+export interface PendingLine {
+  type: 'sl' | 'tp';
+  price: number;
+}
+
 interface PositionLinesProps {
   positions: Position[];
   currentPrice: number;
   instrumentLabel: string;
   onUpdateSL: (tradeId: string, newPrice: number | null) => void;
   onUpdateTP: (tradeId: string, newPrice: number | null) => void;
+  pendingLines?: PendingLine[];
 }
 
 function getPriceRange(price: number, instrument: string): number {
@@ -64,12 +70,13 @@ interface LineProps {
   pnl?: number;
   shadeFrom?: number;
   shadeColor?: string;
+  preview?: boolean;
 }
 
 function PriceLine({
   price, label, color, dashed, yPercent, draggable, onDrag,
   containerHeight, currentPrice, visibleRange, instrument, pnl,
-  shadeFrom, shadeColor,
+  shadeFrom, shadeColor, preview,
 }: LineProps) {
   const [dragging, setDragging] = useState(false);
   const [dragY, setDragY] = useState<number | null>(null);
@@ -130,6 +137,7 @@ function PriceLine({
   const hasPnl = pnl !== undefined && pnl !== null;
   const pnlColor = hasPnl ? (pnl >= 0 ? '#22C55E' : '#EF4444') : null;
   const lineColor = hasPnl && pnlColor ? pnlColor : color;
+  const opacity = preview ? 0.45 : (dragging ? 1 : 0.9);
 
   const shadeTop = shadeFrom !== undefined ? Math.min(yPos, shadeFrom) : null;
   const shadeHeight = shadeFrom !== undefined ? Math.abs(yPos - shadeFrom) : null;
@@ -137,23 +145,33 @@ function PriceLine({
   return (
     <>
       {shadeTop !== null && shadeHeight !== null && shadeColor && (
-        <div style={{ position: 'absolute', top: `${shadeTop}px`, left: 0, right: 0, height: `${shadeHeight}px`, background: shadeColor, pointerEvents: 'none', zIndex: 5 }} />
+        <div style={{ position: 'absolute', top: `${shadeTop}px`, left: 0, right: 0, height: `${shadeHeight}px`, background: shadeColor, pointerEvents: 'none', zIndex: 5, opacity }} />
       )}
       <div
         onMouseDown={handleMouseDown}
         onTouchStart={handleMouseDown}
-        style={{ position: 'absolute', top: `${yPos}px`, left: 0, right: 0, zIndex: 15, transform: 'translateY(-50%)', pointerEvents: 'auto', cursor: draggable ? (dragging ? 'grabbing' : 'ns-resize') : 'default' }}
+        style={{
+          position: 'absolute',
+          top: `${yPos}px`,
+          left: 0,
+          right: 0,
+          zIndex: 15,
+          transform: 'translateY(-50%)',
+          pointerEvents: draggable ? 'auto' : 'none',
+          cursor: draggable ? (dragging ? 'grabbing' : 'ns-resize') : 'default',
+          opacity,
+          animation: preview ? 'plPulse 1.4s ease-in-out infinite' : 'none',
+        }}
       >
-        {draggable && (
+        {draggable && !preview && (
           <div style={{ position: 'absolute', left: 0, right: 0, height: '40px', top: '-20px', zIndex: 16, cursor: dragging ? 'grabbing' : 'ns-resize' }} />
         )}
         <div style={{
           width: '100%',
           height: dragging ? '2px' : '1px',
-          background: dashed
+          background: dashed || preview
             ? `repeating-linear-gradient(to right, ${lineColor} 0, ${lineColor} 6px, transparent 6px, transparent 12px)`
             : lineColor,
-          opacity: dragging ? 1 : 0.9,
         }} />
         <div style={{
           position: 'absolute',
@@ -174,6 +192,7 @@ function PriceLine({
           backdropFilter: 'blur(2px)',
         }}>
           {label} {formatLinePrice(displayPrice, instrument)}
+          {preview && <span style={{ marginLeft: '4px', fontSize: '8px', opacity: 0.7 }}>preview</span>}
         </div>
         {hasPnl && pnlColor && (
           <div style={{
@@ -196,7 +215,7 @@ function PriceLine({
             {formatPnl(pnl)}
           </div>
         )}
-        {draggable && (
+        {draggable && !preview && (
           <div style={{ position: 'absolute', left: '6px', top: '-7px', fontSize: '9px', color: lineColor, opacity: dragging ? 1 : 0.6, userSelect: 'none', fontWeight: 700, letterSpacing: '1px' }}>
             ⋮⋮
           </div>
@@ -207,22 +226,18 @@ function PriceLine({
 }
 
 export default function PositionLines({
-  positions, currentPrice, instrumentLabel, onUpdateSL, onUpdateTP,
+  positions, currentPrice, instrumentLabel, onUpdateSL, onUpdateTP, pendingLines = [],
 }: PositionLinesProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [containerHeight, setContainerHeight] = useState(0);
 
-  // visibleRange is now reactive state instead of a hardcoded constant
   const [visibleRange, setVisibleRange] = useState(() => getPriceRange(currentPrice || 1, instrumentLabel));
 
-  // Reset zoom when instrument changes
   useEffect(() => {
     if (!currentPrice || currentPrice <= 0) return;
     setVisibleRange(getPriceRange(currentPrice, instrumentLabel));
   }, [instrumentLabel]);
 
-  // Auto-expand visibleRange so every SL/TP line is always on screen.
-  // Only grows here — user controls shrinking via scroll wheel.
   useEffect(() => {
     if (!currentPrice || currentPrice <= 0) return;
     let maxDist = getPriceRange(currentPrice, instrumentLabel);
@@ -231,10 +246,12 @@ export default function PositionLines({
       if (pos.takeProfit) maxDist = Math.max(maxDist, Math.abs(currentPrice - pos.takeProfit) * 1.5);
       if (pos.entryPrice) maxDist = Math.max(maxDist, Math.abs(currentPrice - pos.entryPrice) * 1.5);
     }
+    for (const pl of pendingLines) {
+      if (pl.price > 0) maxDist = Math.max(maxDist, Math.abs(currentPrice - pl.price) * 1.5);
+    }
     setVisibleRange(prev => Math.max(prev, maxDist));
-  }, [positions, currentPrice, instrumentLabel]);
+  }, [positions, pendingLines, currentPrice, instrumentLabel]);
 
-  // Container height observer
   useEffect(() => {
     if (!containerRef.current) return;
     const observer = new ResizeObserver(entries => {
@@ -245,25 +262,22 @@ export default function PositionLines({
     return () => observer.disconnect();
   }, []);
 
-  // Wheel zoom — window capture phase so we shadow TV's scroll.
-  // passive: true means we do NOT block TV from also handling the scroll.
-  // Both TV and our lines zoom at the same time.
   useEffect(() => {
     if (!currentPrice || currentPrice <= 0) return;
     const baseRange = getPriceRange(currentPrice, instrumentLabel);
     const minRange = baseRange * 0.05;
     const maxRange = baseRange * 25;
-
     const handleWheel = (e: WheelEvent) => {
       const zoomFactor = e.deltaY > 0 ? 1.12 : 0.89;
       setVisibleRange(prev => Math.min(maxRange, Math.max(minRange, prev * zoomFactor)));
     };
-
     window.addEventListener('wheel', handleWheel, { capture: true, passive: true });
     return () => window.removeEventListener('wheel', handleWheel, { capture: true });
   }, [currentPrice, instrumentLabel]);
 
-  if (!currentPrice || currentPrice <= 0 || positions.length === 0 || containerHeight === 0) {
+  const shouldRender = currentPrice > 0 && containerHeight > 0 && (positions.length > 0 || pendingLines.length > 0);
+
+  if (!shouldRender) {
     return <div ref={containerRef} style={{ position: 'absolute', inset: 0, pointerEvents: 'none' }} />;
   }
 
@@ -271,101 +285,125 @@ export default function PositionLines({
     ((currentPrice - p) / (visibleRange * 2) + 0.5) * containerHeight;
 
   return (
-    // pointerEvents: none on the container — TV iframe underneath is fully unblocked.
-    // Only the line drag handles have pointerEvents: auto.
-    <div ref={containerRef} style={{ position: 'absolute', inset: 0, pointerEvents: 'none', overflow: 'hidden' }}>
+    <>
+      <style>{`
+        @keyframes plPulse {
+          0%, 100% { opacity: 0.45; }
+          50% { opacity: 0.75; }
+        }
+      `}</style>
 
-      {/* Reset zoom button */}
-      <div
-        onClick={(e) => {
-          e.stopPropagation();
-          setVisibleRange(getPriceRange(currentPrice, instrumentLabel));
-        }}
-        style={{
-          position: 'absolute',
-          bottom: '10px',
-          left: '10px',
-          zIndex: 20,
-          pointerEvents: 'auto',
-          cursor: 'pointer',
-          background: 'rgba(0,0,0,0.45)',
-          border: '1px solid rgba(255,255,255,0.1)',
-          color: 'rgba(255,255,255,0.3)',
-          fontSize: '9px',
-          fontWeight: 700,
-          padding: '2px 7px',
-          borderRadius: '3px',
-          fontFamily: "'JetBrains Mono', monospace",
-          letterSpacing: '0.05em',
-          userSelect: 'none',
-          backdropFilter: 'blur(4px)',
-        }}
-      >
-        ⊙ reset zoom
-      </div>
+      <div ref={containerRef} style={{ position: 'absolute', inset: 0, pointerEvents: 'none', overflow: 'hidden' }}>
 
-      {positions.map(pos => {
-        const entryYpx = priceToY(pos.entryPrice);
+        <div
+          onClick={(e) => {
+            e.stopPropagation();
+            setVisibleRange(getPriceRange(currentPrice, instrumentLabel));
+          }}
+          style={{
+            position: 'absolute',
+            bottom: '10px',
+            left: '10px',
+            zIndex: 20,
+            pointerEvents: 'auto',
+            cursor: 'pointer',
+            background: 'rgba(0,0,0,0.45)',
+            border: '1px solid rgba(255,255,255,0.1)',
+            color: 'rgba(255,255,255,0.3)',
+            fontSize: '9px',
+            fontWeight: 700,
+            padding: '2px 7px',
+            borderRadius: '3px',
+            fontFamily: "'JetBrains Mono', monospace",
+            letterSpacing: '0.05em',
+            userSelect: 'none',
+            backdropFilter: 'blur(4px)',
+          }}
+        >
+          ⊙ reset zoom
+        </div>
 
-        const handleTPDrag = (newPrice: number) => {
-          if (!isValidTP(pos.side, pos.entryPrice, newPrice)) return;
-          onUpdateTP(pos.id, newPrice);
-        };
-
-        const handleSLDrag = (newPrice: number) => {
-          if (!isValidSL(pos.side, pos.entryPrice, newPrice)) return;
-          onUpdateSL(pos.id, newPrice);
-        };
-
-        return (
-          <div key={pos.id} style={{ position: 'absolute', inset: 0 }}>
+        {pendingLines.map((pl, i) => {
+          const yPx = priceToY(pl.price);
+          return (
             <PriceLine
-              price={pos.entryPrice}
-              label={pos.side}
-              color="#ffffff"
-              dashed
-              yPercent={entryYpx / containerHeight}
+              key={`pending-${pl.type}-${i}`}
+              price={pl.price}
+              label={pl.type === 'sl' ? 'SL' : 'TP'}
+              color={pl.type === 'sl' ? '#EF4444' : '#22C55E'}
+              yPercent={yPx / containerHeight}
               containerHeight={containerHeight}
               currentPrice={currentPrice}
               visibleRange={visibleRange}
               instrument={instrumentLabel}
-              pnl={pos.livePnl}
+              preview
             />
-            {pos.takeProfit && (
+          );
+        })}
+
+        {positions.map(pos => {
+          const entryYpx = priceToY(pos.entryPrice);
+
+          const handleTPDrag = (newPrice: number) => {
+            if (!isValidTP(pos.side, pos.entryPrice, newPrice)) return;
+            onUpdateTP(pos.id, newPrice);
+          };
+
+          const handleSLDrag = (newPrice: number) => {
+            if (!isValidSL(pos.side, pos.entryPrice, newPrice)) return;
+            onUpdateSL(pos.id, newPrice);
+          };
+
+          return (
+            <div key={pos.id} style={{ position: 'absolute', inset: 0 }}>
               <PriceLine
-                price={pos.takeProfit}
-                label="TP"
-                color="#22C55E"
-                yPercent={priceToY(pos.takeProfit) / containerHeight}
-                draggable
-                onDrag={handleTPDrag}
+                price={pos.entryPrice}
+                label={pos.side}
+                color="#ffffff"
+                dashed
+                yPercent={entryYpx / containerHeight}
                 containerHeight={containerHeight}
                 currentPrice={currentPrice}
                 visibleRange={visibleRange}
                 instrument={instrumentLabel}
-                shadeFrom={entryYpx}
-                shadeColor="rgba(34,197,94,0.06)"
+                pnl={pos.livePnl}
               />
-            )}
-            {pos.stopLoss && (
-              <PriceLine
-                price={pos.stopLoss}
-                label="SL"
-                color="#EF4444"
-                yPercent={priceToY(pos.stopLoss) / containerHeight}
-                draggable
-                onDrag={handleSLDrag}
-                containerHeight={containerHeight}
-                currentPrice={currentPrice}
-                visibleRange={visibleRange}
-                instrument={instrumentLabel}
-                shadeFrom={entryYpx}
-                shadeColor="rgba(239,68,68,0.06)"
-              />
-            )}
-          </div>
-        );
-      })}
-    </div>
+              {pos.takeProfit && (
+                <PriceLine
+                  price={pos.takeProfit}
+                  label="TP"
+                  color="#22C55E"
+                  yPercent={priceToY(pos.takeProfit) / containerHeight}
+                  draggable
+                  onDrag={handleTPDrag}
+                  containerHeight={containerHeight}
+                  currentPrice={currentPrice}
+                  visibleRange={visibleRange}
+                  instrument={instrumentLabel}
+                  shadeFrom={entryYpx}
+                  shadeColor="rgba(34,197,94,0.06)"
+                />
+              )}
+              {pos.stopLoss && (
+                <PriceLine
+                  price={pos.stopLoss}
+                  label="SL"
+                  color="#EF4444"
+                  yPercent={priceToY(pos.stopLoss) / containerHeight}
+                  draggable
+                  onDrag={handleSLDrag}
+                  containerHeight={containerHeight}
+                  currentPrice={currentPrice}
+                  visibleRange={visibleRange}
+                  instrument={instrumentLabel}
+                  shadeFrom={entryYpx}
+                  shadeColor="rgba(239,68,68,0.06)"
+                />
+              )}
+            </div>
+          );
+        })}
+      </div>
+    </>
   );
 }

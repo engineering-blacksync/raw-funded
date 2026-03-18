@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { createClient, type RealtimeChannel } from '@supabase/supabase-js';
 import type { Trade } from '@shared/schema';
-import PositionLines from './PositionLines';
+import PositionLines, { type PendingLine } from './PositionLines';
 
 type Mt5Status = 'pending' | 'filled' | 'rejected';
 interface LocalTrade extends Trade {
@@ -986,13 +986,23 @@ export default function Terminal({ tier, userTierName, balance, onOpenPnlChange,
                 <div className="w-8 h-8 border-2 border-gold border-t-transparent rounded-full animate-spin"></div>
               </div>
             )}
-            <PositionLines
-              positions={activePositions}
-              currentPrice={livePrices[activeInstrument.label] || 0}
-              instrumentLabel={activeInstrument.label}
-              onUpdateSL={(tradeId, newPrice) => handleUpdateSLTP(tradeId, 'stopLoss', newPrice)}
-              onUpdateTP={(tradeId, newPrice) => handleUpdateSLTP(tradeId, 'takeProfit', newPrice)}
-            />
+            {(() => {
+              const pendingLines: PendingLine[] = [];
+              const slVal = sltpEdit?.field === 'sl' ? parseFloat(sltpEdit.value) : parseFloat(orderSl);
+              const tpVal = sltpEdit?.field === 'tp' ? parseFloat(sltpEdit.value) : parseFloat(orderTp);
+              if (!isNaN(slVal) && slVal > 0) pendingLines.push({ type: 'sl', price: slVal });
+              if (!isNaN(tpVal) && tpVal > 0) pendingLines.push({ type: 'tp', price: tpVal });
+              return (
+                <PositionLines
+                  positions={activePositions}
+                  currentPrice={livePrices[activeInstrument.label] || 0}
+                  instrumentLabel={activeInstrument.label}
+                  onUpdateSL={(tradeId, newPrice) => handleUpdateSLTP(tradeId, 'stopLoss', newPrice)}
+                  onUpdateTP={(tradeId, newPrice) => handleUpdateSLTP(tradeId, 'takeProfit', newPrice)}
+                  pendingLines={pendingLines}
+                />
+              );
+            })()}
           </div>
         </div>
 

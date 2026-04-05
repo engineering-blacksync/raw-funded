@@ -1,0 +1,822 @@
+
+> rest-express@1.0.0 dev
+> NODE_ENV=development tsx server/index.ts
+
+[1G[0K[stripe] Initializing schema...
+[stripe] Schema ready
+{ autoExpandLists: [90mundefined[39m, stripeApiVersion: [90mundefined[39m } StripeSync initialized
+[stripe] Webhook setup returned no URL (may already exist)
+[stripe] Data synced
+[finnhub] WS connected, subscribing to symbols...
+7:49:16 PM [express] serving on port 5000
+[finnhub] ticks: MBT=66879.54, Bitcoin=66879.54, BTCUSD=66879.54 | SSE clients: 0
+[finnhub] ticks: MBT=66897.8, Bitcoin=66897.8, BTCUSD=66897.8 | SSE clients: 0
+[finnhub] ticks: MBT=66897.8, Bitcoin=66897.8, BTCUSD=66897.8 | SSE clients: 0
+[finnhub] ticks: MBT=66897.79, Bitcoin=66897.79, BTCUSD=66897.79 | SSE clients: 0
+[finnhub] ticks: MBT=66897.8, Bitcoin=66897.8, BTCUSD=66897.8 | SSE clients: 0
+[finnhub] ticks: MBT=66897.79, Bitcoin=66897.79, BTCUSD=66897.79 | SSE clients: 0
+[finnhub] ticks: MBT=66897.79, Bitcoin=66897.79, BTCUSD=66897.79 | SSE clients: 0
+[finnhub] ticks: MBT=66897.8, Bitcoin=66897.8, BTCUSD=66897.8 | SSE clients: 0
+[finnhub] ticks: MBT=66897.79, Bitcoin=66897.79, BTCUSD=66897.79 | SSE clients: 0
+[finnhub] ticks: MBT=66897.8, Bitcoin=66897.8, BTCUSD=66897.8 | SSE clients: 0
+[finnhub] ticks: MBT=66897.8, Bitcoin=66897.8, BTCUSD=66897.8 | SSE clients: 0
+[finnhub] ticks: MBT=66892.13, Bitcoin=66892.13, BTCUSD=66892.13 | SSE clients: 0
+[finnhub] ticks: MBT=66892.13, Bitcoin=66892.13, BTCUSD=66892.13 | SSE clients: 0
+[finnhub] ticks: MBT=66892.13, Bitcoin=66892.13, BTCUSD=66892.13 | SSE clients: 0
+[finnhub] ticks: MBT=66887.37, Bitcoin=66887.37, BTCUSD=66887.37 | SSE clients: 0
+[finnhub] ticks: MBT=66887.36, Bitcoin=66887.36, BTCUSD=66887.36 | SSE clients: 0
+[finnhub] ticks: MBT=66887.36, Bitcoin=66887.36, BTCUSD=66887.36 | SSE clients: 0
+[finnhub] ticks: MBT=66887.36, Bitcoin=66887.36, BTCUSD=66887.36 | SSE clients: 0
+[finnhub] ticks: MBT=66887.36, Bitcoin=66887.36, BTCUSD=66887.36 | SSE clients: 0
+[finnhub] ticks: MBT=66887.37, Bitcoin=66887.37, BTCUSD=66887.37 | SSE clients: 0
+[finnhub] ticks: MBT=66887.36, Bitcoin=66887.36, BTCUSD=66887.36 | SSE clients: 0
+[finnhub] ticks: MBT=66887.37, Bitcoin=66887.37, BTCUSD=66887.37 | SSE clients: 0
+[finnhub] ticks: MBT=66887.36, Bitcoin=66887.36, BTCUSD=66887.36 | SSE clients: 0
+[finnhub] ticks: MBT=66887.36, Bitcoin=66887.36, BTCUSD=66887.36 | SSE clients: 0
+[finnhub] ticks: MBT=66887.36, Bitcoin=66887.36, BTCUSD=66887.36 | SSE clients: 0
+[finnhub] ticks: MBT=66887.36, Bitcoin=66887.36, BTCUSD=66887.36 | SSE clients: 0
+[finnhub] ticks: MBT=66887.37, Bitcoin=66887.37, BTCUSD=66887.37 | SSE clients: 0
+[finnhub] ticks: MBT=66887.36, Bitcoin=66887.36, BTCUSD=66887.36 | SSE clients: 0
+[finnhub] ticks: MBT=66887.36, Bitcoin=66887.36, BTCUSD=66887.36 | SSE clients: 0
+[finnhub] ticks: MBT=66887.36, Bitcoin=66887.36, BTCUSD=66887.36 | SSE clients: 0
+[finnhub] ticks: MBT=66885.5, Bitcoin=66885.5, BTCUSD=66885.5 | SSE clients: 0
+[finnhub] ticks: MBT=66880.01, Bitcoin=66880.01, BTCUSD=66880.01 | SSE clients: 0
+[finnhub] ticks: MBT=66884.33, Bitcoin=66884.33, BTCUSD=66884.33 | SSE clients: 0
+[finnhub] ticks: MBT=66889.79, Bitcoin=66889.79, BTCUSD=66889.79 | SSE clients: 0
+[finnhub] ticks: MBT=66889.79, Bitcoin=66889.79, BTCUSD=66889.79 | SSE clients: 0
+[finnhub] ticks: MBT=66889.79, Bitcoin=66889.79, BTCUSD=66889.79 | SSE clients: 0
+[finnhub] ticks: MBT=66889.79, Bitcoin=66889.79, BTCUSD=66889.79 | SSE clients: 0
+[finnhub] ticks: MBT=66889.78, Bitcoin=66889.78, BTCUSD=66889.78 | SSE clients: 0
+[finnhub] ticks: MBT=66889.78, Bitcoin=66889.78, BTCUSD=66889.78 | SSE clients: 0
+[finnhub] ticks: MBT=66889.79, Bitcoin=66889.79, BTCUSD=66889.79 | SSE clients: 0
+[finnhub] ticks: MBT=66889.78, Bitcoin=66889.78, BTCUSD=66889.78 | SSE clients: 0
+[finnhub] ticks: MBT=66889.79, Bitcoin=66889.79, BTCUSD=66889.79 | SSE clients: 0
+[finnhub] ticks: MBT=66889.79, Bitcoin=66889.79, BTCUSD=66889.79 | SSE clients: 0
+[finnhub] ticks: MBT=66889.78, Bitcoin=66889.78, BTCUSD=66889.78 | SSE clients: 0
+[finnhub] ticks: MBT=66889.78, Bitcoin=66889.78, BTCUSD=66889.78 | SSE clients: 0
+[finnhub] WS closed, reconnecting in 3s...
+[finnhub] WS connected, subscribing to symbols...
+[finnhub] ticks: MBT=66889.79, Bitcoin=66889.79, BTCUSD=66889.79 | SSE clients: 0
+[finnhub] ticks: MBT=66889.78, Bitcoin=66889.78, BTCUSD=66889.78 | SSE clients: 0
+[finnhub] WS closed, reconnecting in 3s...
+[finnhub] WS connected, subscribing to symbols...
+[finnhub] ticks: MBT=66889.78, Bitcoin=66889.78, BTCUSD=66889.78 | SSE clients: 0
+[finnhub] WS closed, reconnecting in 3s...
+[finnhub] WS error: Unexpected server response: 429
+[finnhub] WS closed, reconnecting in 4.5s...
+[finnhub] WS error: Unexpected server response: 429
+[finnhub] WS closed, reconnecting in 6.75s...
+[finnhub] WS error: Unexpected server response: 429
+[finnhub] WS closed, reconnecting in 10.125s...
+[finnhub] WS error: Unexpected server response: 429
+[finnhub] WS closed, reconnecting in 15.1875s...
+[finnhub] WS error: Unexpected server response: 429
+[finnhub] WS closed, reconnecting in 22.78125s...
+[finnhub] WS connected, subscribing to symbols...
+[finnhub] ticks: MBT=66885.74, Bitcoin=66885.74, BTCUSD=66885.74 | SSE clients: 0
+[finnhub] WS closed, reconnecting in 3s...
+[finnhub] WS connected, subscribing to symbols...
+[finnhub] ticks: MBT=66885.74, Bitcoin=66885.74, BTCUSD=66885.74 | SSE clients: 0
+[finnhub] WS closed, reconnecting in 3s...
+[finnhub] WS connected, subscribing to symbols...
+[finnhub] ticks: MBT=66880.34, Bitcoin=66880.34, BTCUSD=66880.34 | SSE clients: 0
+[finnhub] ticks: MBT=66880.33, Bitcoin=66880.33, BTCUSD=66880.33 | SSE clients: 0
+[finnhub] ticks: MBT=66880.34, Bitcoin=66880.34, BTCUSD=66880.34 | SSE clients: 0
+[finnhub] ticks: MBT=66875.1, Bitcoin=66875.1, BTCUSD=66875.1 | SSE clients: 0
+[finnhub] ticks: MBT=66875.1, Bitcoin=66875.1, BTCUSD=66875.1 | SSE clients: 0
+[finnhub] ticks: MBT=66875.08, Bitcoin=66875.08, BTCUSD=66875.08 | SSE clients: 0
+[finnhub] ticks: MBT=66860.65, Bitcoin=66860.65, BTCUSD=66860.65 | SSE clients: 0
+[finnhub] ticks: MBT=66860.66, Bitcoin=66860.66, BTCUSD=66860.66 | SSE clients: 0
+[finnhub] ticks: MBT=66860.65, Bitcoin=66860.65, BTCUSD=66860.65 | SSE clients: 0
+[finnhub] ticks: MBT=66862.17, Bitcoin=66862.17, BTCUSD=66862.17 | SSE clients: 0
+[finnhub] ticks: MBT=66862.17, Bitcoin=66862.17, BTCUSD=66862.17 | SSE clients: 0
+[finnhub] ticks: MBT=66862.57, Bitcoin=66862.57, BTCUSD=66862.57 | SSE clients: 0
+[finnhub] WS closed, reconnecting in 3s...
+[finnhub] WS connected, subscribing to symbols...
+[finnhub] ticks: MBT=66864.34, Bitcoin=66864.34, BTCUSD=66864.34 | SSE clients: 0
+[finnhub] WS closed, reconnecting in 3s...
+[finnhub] WS connected, subscribing to symbols...
+[finnhub] WS closed, reconnecting in 3s...
+[finnhub] WS error: Unexpected server response: 429
+[finnhub] WS closed, reconnecting in 4.5s...
+[finnhub] WS error: Unexpected server response: 429
+[finnhub] WS closed, reconnecting in 6.75s...
+[finnhub] WS error: Unexpected server response: 429
+[finnhub] WS closed, reconnecting in 10.125s...
+[finnhub] WS error: Unexpected server response: 429
+[finnhub] WS closed, reconnecting in 15.1875s...
+[finnhub] WS error: Unexpected server response: 429
+[finnhub] WS closed, reconnecting in 22.78125s...
+[finnhub] WS connected, subscribing to symbols...
+[finnhub] WS closed, reconnecting in 3s...
+[finnhub] WS connected, subscribing to symbols...
+[finnhub] ticks: MBT=66864.33, Bitcoin=66864.33, BTCUSD=66864.33 | SSE clients: 0
+[finnhub] WS closed, reconnecting in 3s...
+[finnhub] WS connected, subscribing to symbols...
+[finnhub] ticks: MBT=66864.34, Bitcoin=66864.34, BTCUSD=66864.34 | SSE clients: 0
+[finnhub] ticks: MBT=66862.95, Bitcoin=66862.95, BTCUSD=66862.95 | SSE clients: 0
+[finnhub] ticks: MBT=66862.95, Bitcoin=66862.95, BTCUSD=66862.95 | SSE clients: 0
+[finnhub] ticks: MBT=66862.95, Bitcoin=66862.95, BTCUSD=66862.95 | SSE clients: 0
+[finnhub] ticks: MBT=66865.05, Bitcoin=66865.05, BTCUSD=66865.05 | SSE clients: 0
+[finnhub] ticks: MBT=66865.05, Bitcoin=66865.05, BTCUSD=66865.05 | SSE clients: 0
+[finnhub] ticks: MBT=66865.04, Bitcoin=66865.04, BTCUSD=66865.04 | SSE clients: 0
+[finnhub] ticks: MBT=66865.04, Bitcoin=66865.04, BTCUSD=66865.04 | SSE clients: 0
+[finnhub] ticks: MBT=66867.99, Bitcoin=66867.99, BTCUSD=66867.99 | SSE clients: 0
+[finnhub] ticks: MBT=66870.5, Bitcoin=66870.5, BTCUSD=66870.5 | SSE clients: 0
+[finnhub] ticks: MBT=66870.51, Bitcoin=66870.51, BTCUSD=66870.51 | SSE clients: 0
+[finnhub] ticks: MBT=66870.51, Bitcoin=66870.51, BTCUSD=66870.51 | SSE clients: 0
+[finnhub] WS closed, reconnecting in 3s...
+[finnhub] WS connected, subscribing to symbols...
+[finnhub] ticks: MBT=66870.51, Bitcoin=66870.51, BTCUSD=66870.51 | SSE clients: 0
+[finnhub] WS closed, reconnecting in 3s...
+[finnhub] WS connected, subscribing to symbols...
+[finnhub] ticks: MBT=66870.51, Bitcoin=66870.51, BTCUSD=66870.51 | SSE clients: 0
+[finnhub] WS closed, reconnecting in 3s...
+[finnhub] WS error: Unexpected server response: 429
+[finnhub] WS closed, reconnecting in 4.5s...
+[finnhub] WS error: Unexpected server response: 429
+[finnhub] WS closed, reconnecting in 6.75s...
+[finnhub] WS error: Unexpected server response: 429
+[finnhub] WS closed, reconnecting in 10.125s...
+[finnhub] WS error: Unexpected server response: 429
+[finnhub] WS closed, reconnecting in 15.1875s...
+[finnhub] WS error: Unexpected server response: 429
+[finnhub] WS closed, reconnecting in 22.78125s...
+[finnhub] WS connected, subscribing to symbols...
+[finnhub] ticks: MBT=66870.49, Bitcoin=66870.49, BTCUSD=66870.49 | SSE clients: 0
+[finnhub] WS closed, reconnecting in 3s...
+[finnhub] WS connected, subscribing to symbols...
+[finnhub] ticks: MBT=66885.73, Bitcoin=66885.73, BTCUSD=66885.73 | SSE clients: 0
+[finnhub] WS closed, reconnecting in 3s...
+[finnhub] WS connected, subscribing to symbols...
+[finnhub] ticks: MBT=66885.74, Bitcoin=66885.74, BTCUSD=66885.74 | SSE clients: 0
+[finnhub] ticks: MBT=66885.73, Bitcoin=66885.73, BTCUSD=66885.73 | SSE clients: 0
+[finnhub] ticks: MBT=66884.05, Bitcoin=66884.05, BTCUSD=66884.05 | SSE clients: 0
+[finnhub] ticks: MBT=66877.83, Bitcoin=66877.83, BTCUSD=66877.83 | SSE clients: 0
+[finnhub] ticks: MBT=66877.83, Bitcoin=66877.83, BTCUSD=66877.83 | SSE clients: 0
+[finnhub] ticks: MBT=66877.83, Bitcoin=66877.83, BTCUSD=66877.83 | SSE clients: 0
+[finnhub] ticks: MBT=66877.83, Bitcoin=66877.83, BTCUSD=66877.83 | SSE clients: 0
+[finnhub] ticks: MBT=66877.83, Bitcoin=66877.83, BTCUSD=66877.83 | SSE clients: 0
+[finnhub] ticks: MBT=66878.29, Bitcoin=66878.29, BTCUSD=66878.29 | SSE clients: 0
+[finnhub] ticks: MBT=66878.29, Bitcoin=66878.29, BTCUSD=66878.29 | SSE clients: 0
+[finnhub] ticks: MBT=66878.29, Bitcoin=66878.29, BTCUSD=66878.29 | SSE clients: 0
+[finnhub] ticks: MBT=66878.29, Bitcoin=66878.29, BTCUSD=66878.29 | SSE clients: 0
+[finnhub] WS closed, reconnecting in 3s...
+[finnhub] WS connected, subscribing to symbols...
+[finnhub] ticks: MBT=66878.28, Bitcoin=66878.28, BTCUSD=66878.28 | SSE clients: 0
+[finnhub] WS closed, reconnecting in 3s...
+[finnhub] WS connected, subscribing to symbols...
+[finnhub] ticks: MBT=66878.29, Bitcoin=66878.29, BTCUSD=66878.29 | SSE clients: 0
+[finnhub] WS closed, reconnecting in 3s...
+[finnhub] WS error: Unexpected server response: 429
+[finnhub] WS closed, reconnecting in 4.5s...
+[finnhub] WS error: Unexpected server response: 429
+[finnhub] WS closed, reconnecting in 6.75s...
+[finnhub] WS error: Unexpected server response: 429
+[finnhub] WS closed, reconnecting in 10.125s...
+[finnhub] WS error: Unexpected server response: 429
+[finnhub] WS closed, reconnecting in 15.1875s...
+[finnhub] WS error: Unexpected server response: 429
+[finnhub] WS closed, reconnecting in 22.78125s...
+[finnhub] WS connected, subscribing to symbols...
+[finnhub] ticks: MBT=66886.83, Bitcoin=66886.83, BTCUSD=66886.83 | SSE clients: 0
+[finnhub] WS closed, reconnecting in 3s...
+[finnhub] WS connected, subscribing to symbols...
+[finnhub] ticks: MBT=66886.82, Bitcoin=66886.82, BTCUSD=66886.82 | SSE clients: 0
+[finnhub] WS closed, reconnecting in 3s...
+[finnhub] WS connected, subscribing to symbols...
+[finnhub] ticks: MBT=66885.98, Bitcoin=66885.98, BTCUSD=66885.98 | SSE clients: 0
+[finnhub] ticks: MBT=66863.01, Bitcoin=66863.01, BTCUSD=66863.01 | SSE clients: 0
+[finnhub] ticks: MBT=66863.01, Bitcoin=66863.01, BTCUSD=66863.01 | SSE clients: 0
+[finnhub] ticks: MBT=66863.01, Bitcoin=66863.01, BTCUSD=66863.01 | SSE clients: 0
+[finnhub] ticks: MBT=66863.01, Bitcoin=66863.01, BTCUSD=66863.01 | SSE clients: 0
+[finnhub] ticks: MBT=66863.01, Bitcoin=66863.01, BTCUSD=66863.01 | SSE clients: 0
+[finnhub] ticks: MBT=66863.01, Bitcoin=66863.01, BTCUSD=66863.01 | SSE clients: 0
+[finnhub] ticks: MBT=66863, Bitcoin=66863, BTCUSD=66863 | SSE clients: 0
+[finnhub] ticks: Gold (GC)=4676.745, MGC=4676.745, XAUUSD=4676.745, Silver=72.997, SIL=72.997, XAGUSD=72.997, Oil (WTI)=111.9495, MCL=111.9495, WTIUSD=111.9495, MBT=66869.66, Bitcoin=66869.66, BTCUSD=66869.66 | SSE clients: 0
+[finnhub] ticks: MBT=66867.16, Bitcoin=66867.16, BTCUSD=66867.16 | SSE clients: 0
+[finnhub] ticks: MBT=66867.16, Bitcoin=66867.16, BTCUSD=66867.16 | SSE clients: 0
+[finnhub] ticks: MBT=66867.16, Bitcoin=66867.16, BTCUSD=66867.16 | SSE clients: 0
+[finnhub] ticks: MBT=66867.16, Bitcoin=66867.16, BTCUSD=66867.16 | SSE clients: 0
+[finnhub] WS closed, reconnecting in 3s...
+[finnhub] WS connected, subscribing to symbols...
+[finnhub] ticks: MBT=66867.17, Bitcoin=66867.17, BTCUSD=66867.17 | SSE clients: 0
+[finnhub] WS closed, reconnecting in 3s...
+[finnhub] WS connected, subscribing to symbols...
+[finnhub] ticks: MBT=66867.17, Bitcoin=66867.17, BTCUSD=66867.17 | SSE clients: 0
+[finnhub] WS closed, reconnecting in 3s...
+[finnhub] WS error: Unexpected server response: 429
+[finnhub] WS closed, reconnecting in 4.5s...
+[finnhub] WS error: Unexpected server response: 429
+[finnhub] WS closed, reconnecting in 6.75s...
+[finnhub] WS error: Unexpected server response: 429
+[finnhub] WS closed, reconnecting in 10.125s...
+[finnhub] WS error: Unexpected server response: 429
+[finnhub] WS closed, reconnecting in 15.1875s...
+[finnhub] WS error: Unexpected server response: 429
+[finnhub] WS closed, reconnecting in 22.78125s...
+[finnhub] WS connected, subscribing to symbols...
+[finnhub] ticks: MBT=66872.14, Bitcoin=66872.14, BTCUSD=66872.14 | SSE clients: 0
+[finnhub] WS closed, reconnecting in 3s...
+[finnhub] WS connected, subscribing to symbols...
+[finnhub] ticks: MBT=66872.14, Bitcoin=66872.14, BTCUSD=66872.14 | SSE clients: 0
+[finnhub] WS closed, reconnecting in 3s...
+[finnhub] WS connected, subscribing to symbols...
+[finnhub] ticks: MBT=66872.15, Bitcoin=66872.15, BTCUSD=66872.15 | SSE clients: 0
+[finnhub] ticks: MBT=66872.14, Bitcoin=66872.14, BTCUSD=66872.14 | SSE clients: 0
+[finnhub] ticks: MBT=66872.15, Bitcoin=66872.15, BTCUSD=66872.15 | SSE clients: 0
+[finnhub] ticks: MBT=66872.14, Bitcoin=66872.14, BTCUSD=66872.14 | SSE clients: 0
+[finnhub] ticks: MBT=66872.14, Bitcoin=66872.14, BTCUSD=66872.14 | SSE clients: 0
+[finnhub] ticks: MBT=66872.15, Bitcoin=66872.15, BTCUSD=66872.15 | SSE clients: 0
+[finnhub] ticks: MBT=66870.47, Bitcoin=66870.47, BTCUSD=66870.47 | SSE clients: 0
+[finnhub] ticks: MBT=66867.17, Bitcoin=66867.17, BTCUSD=66867.17 | SSE clients: 0
+[finnhub] ticks: MBT=66866.59, Bitcoin=66866.59, BTCUSD=66866.59 | SSE clients: 0
+[finnhub] ticks: MBT=66867.17, Bitcoin=66867.17, BTCUSD=66867.17 | SSE clients: 0
+[finnhub] ticks: MBT=66867.17, Bitcoin=66867.17, BTCUSD=66867.17 | SSE clients: 0
+[finnhub] ticks: MBT=66870, Bitcoin=66870, BTCUSD=66870 | SSE clients: 0
+[finnhub] ticks: MBT=66870.02, Bitcoin=66870.02, BTCUSD=66870.02 | SSE clients: 0
+[finnhub] WS closed, reconnecting in 3s...
+[finnhub] WS connected, subscribing to symbols...
+[finnhub] ticks: MBT=66876.7, Bitcoin=66876.7, BTCUSD=66876.7 | SSE clients: 0
+[finnhub] WS closed, reconnecting in 3s...
+[finnhub] WS connected, subscribing to symbols...
+[finnhub] ticks: MBT=66876.7, Bitcoin=66876.7, BTCUSD=66876.7 | SSE clients: 0
+[finnhub] WS closed, reconnecting in 3s...
+[finnhub] WS error: Unexpected server response: 429
+[finnhub] WS closed, reconnecting in 4.5s...
+[finnhub] WS error: Unexpected server response: 429
+[finnhub] WS closed, reconnecting in 6.75s...
+[finnhub] WS error: Unexpected server response: 429
+[finnhub] WS closed, reconnecting in 10.125s...
+[finnhub] WS error: Unexpected server response: 429
+[finnhub] WS closed, reconnecting in 15.1875s...
+[finnhub] WS error: Unexpected server response: 429
+[finnhub] WS closed, reconnecting in 22.78125s...
+[finnhub] WS connected, subscribing to symbols...
+[finnhub] ticks: MBT=66853.48, Bitcoin=66853.48, BTCUSD=66853.48 | SSE clients: 0
+[finnhub] WS closed, reconnecting in 3s...
+[finnhub] WS connected, subscribing to symbols...
+[finnhub] ticks: MBT=66853.49, Bitcoin=66853.49, BTCUSD=66853.49 | SSE clients: 0
+[finnhub] WS closed, reconnecting in 3s...
+[finnhub] WS connected, subscribing to symbols...
+[finnhub] ticks: MBT=66853.49, Bitcoin=66853.49, BTCUSD=66853.49 | SSE clients: 0
+[finnhub] ticks: MBT=66853.49, Bitcoin=66853.49, BTCUSD=66853.49 | SSE clients: 0
+[finnhub] ticks: MBT=66853.48, Bitcoin=66853.48, BTCUSD=66853.48 | SSE clients: 0
+[finnhub] ticks: MBT=66853.48, Bitcoin=66853.48, BTCUSD=66853.48 | SSE clients: 0
+[finnhub] ticks: MBT=66853.49, Bitcoin=66853.49, BTCUSD=66853.49 | SSE clients: 0
+[finnhub] ticks: MBT=66853.49, Bitcoin=66853.49, BTCUSD=66853.49 | SSE clients: 0
+[finnhub] ticks: MBT=66853.5, Bitcoin=66853.5, BTCUSD=66853.5 | SSE clients: 0
+[finnhub] ticks: MBT=66853.5, Bitcoin=66853.5, BTCUSD=66853.5 | SSE clients: 0
+[finnhub] ticks: MBT=66853.5, Bitcoin=66853.5, BTCUSD=66853.5 | SSE clients: 0
+[finnhub] ticks: MBT=66862.93, Bitcoin=66862.93, BTCUSD=66862.93 | SSE clients: 0
+[finnhub] WS closed, reconnecting in 3s...
+[finnhub] WS connected, subscribing to symbols...
+[finnhub] ticks: Gold (GC)=4676.745, MGC=4676.745, XAUUSD=4676.745, Silver=72.997, SIL=72.997, XAGUSD=72.997, Oil (WTI)=111.9495, MCL=111.9495, WTIUSD=111.9495, MBT=66862.92, Bitcoin=66862.92, BTCUSD=66862.92 | SSE clients: 0
+[finnhub] WS closed, reconnecting in 3s...
+[finnhub] WS connected, subscribing to symbols...
+[finnhub] ticks: MBT=66862.92, Bitcoin=66862.92, BTCUSD=66862.92 | SSE clients: 0
+[finnhub] WS closed, reconnecting in 3s...
+[finnhub] WS error: Unexpected server response: 429
+[finnhub] WS closed, reconnecting in 4.5s...
+[finnhub] WS error: Unexpected server response: 429
+[finnhub] WS closed, reconnecting in 6.75s...
+[finnhub] WS error: Unexpected server response: 429
+[finnhub] WS closed, reconnecting in 10.125s...
+[finnhub] WS error: Unexpected server response: 429
+[finnhub] WS closed, reconnecting in 15.1875s...
+[finnhub] WS error: Unexpected server response: 429
+[finnhub] WS closed, reconnecting in 22.78125s...
+[finnhub] WS connected, subscribing to symbols...
+[finnhub] ticks: MBT=66862.93, Bitcoin=66862.93, BTCUSD=66862.93 | SSE clients: 0
+[finnhub] WS closed, reconnecting in 3s...
+[finnhub] WS connected, subscribing to symbols...
+[finnhub] ticks: MBT=66886.26, Bitcoin=66886.26, BTCUSD=66886.26 | SSE clients: 0
+[finnhub] WS closed, reconnecting in 3s...
+[finnhub] WS connected, subscribing to symbols...
+[finnhub] ticks: MBT=66895.48, Bitcoin=66895.48, BTCUSD=66895.48 | SSE clients: 0
+[finnhub] ticks: MBT=66895.48, Bitcoin=66895.48, BTCUSD=66895.48 | SSE clients: 0
+[finnhub] ticks: MBT=66895.49, Bitcoin=66895.49, BTCUSD=66895.49 | SSE clients: 0
+[finnhub] ticks: MBT=66895.49, Bitcoin=66895.49, BTCUSD=66895.49 | SSE clients: 0
+[finnhub] ticks: MBT=66895.49, Bitcoin=66895.49, BTCUSD=66895.49 | SSE clients: 0
+[finnhub] ticks: MBT=66902.17, Bitcoin=66902.17, BTCUSD=66902.17 | SSE clients: 0
+[finnhub] ticks: MBT=66905.99, Bitcoin=66905.99, BTCUSD=66905.99 | SSE clients: 0
+[finnhub] ticks: MBT=66909.99, Bitcoin=66909.99, BTCUSD=66909.99 | SSE clients: 0
+[finnhub] ticks: MBT=66912.84, Bitcoin=66912.84, BTCUSD=66912.84 | SSE clients: 0
+[finnhub] ticks: MBT=66912.84, Bitcoin=66912.84, BTCUSD=66912.84 | SSE clients: 0
+[finnhub] ticks: MBT=66912.84, Bitcoin=66912.84, BTCUSD=66912.84 | SSE clients: 0
+[finnhub] ticks: MBT=66912.84, Bitcoin=66912.84, BTCUSD=66912.84 | SSE clients: 0
+[finnhub] ticks: MBT=66912.84, Bitcoin=66912.84, BTCUSD=66912.84 | SSE clients: 0
+[finnhub] WS closed, reconnecting in 3s...
+[finnhub] WS connected, subscribing to symbols...
+[finnhub] ticks: MBT=66912.84, Bitcoin=66912.84, BTCUSD=66912.84 | SSE clients: 0
+[finnhub] WS closed, reconnecting in 3s...
+[finnhub] WS connected, subscribing to symbols...
+[finnhub] ticks: MBT=66912.85, Bitcoin=66912.85, BTCUSD=66912.85 | SSE clients: 0
+[finnhub] WS closed, reconnecting in 3s...
+[finnhub] WS error: Unexpected server response: 429
+[finnhub] WS closed, reconnecting in 4.5s...
+[finnhub] WS error: Unexpected server response: 429
+[finnhub] WS closed, reconnecting in 6.75s...
+[finnhub] WS error: Unexpected server response: 429
+[finnhub] WS closed, reconnecting in 10.125s...
+[finnhub] WS error: Unexpected server response: 429
+[finnhub] WS closed, reconnecting in 15.1875s...
+[finnhub] WS error: Unexpected server response: 429
+[finnhub] WS closed, reconnecting in 22.78125s...
+[finnhub] WS connected, subscribing to symbols...
+[finnhub] ticks: MBT=66888.16, Bitcoin=66888.16, BTCUSD=66888.16 | SSE clients: 0
+[finnhub] WS closed, reconnecting in 3s...
+[finnhub] WS connected, subscribing to symbols...
+[finnhub] ticks: MBT=66888.14, Bitcoin=66888.14, BTCUSD=66888.14 | SSE clients: 0
+[finnhub] WS closed, reconnecting in 3s...
+[finnhub] WS connected, subscribing to symbols...
+[finnhub] ticks: MBT=66888.14, Bitcoin=66888.14, BTCUSD=66888.14 | SSE clients: 0
+[finnhub] ticks: MBT=66886.08, Bitcoin=66886.08, BTCUSD=66886.08 | SSE clients: 0
+[finnhub] ticks: MBT=66878.39, Bitcoin=66878.39, BTCUSD=66878.39 | SSE clients: 0
+[finnhub] ticks: MBT=66875.76, Bitcoin=66875.76, BTCUSD=66875.76 | SSE clients: 0
+[finnhub] ticks: MBT=66875.1, Bitcoin=66875.1, BTCUSD=66875.1 | SSE clients: 0
+[finnhub] ticks: MBT=66875.1, Bitcoin=66875.1, BTCUSD=66875.1 | SSE clients: 0
+[finnhub] ticks: MBT=66875.09, Bitcoin=66875.09, BTCUSD=66875.09 | SSE clients: 0
+[finnhub] ticks: MBT=66875.09, Bitcoin=66875.09, BTCUSD=66875.09 | SSE clients: 0
+[finnhub] ticks: MBT=66875.1, Bitcoin=66875.1, BTCUSD=66875.1 | SSE clients: 0
+[finnhub] ticks: MBT=66875.09, Bitcoin=66875.09, BTCUSD=66875.09 | SSE clients: 0
+[finnhub] ticks: MBT=66875.09, Bitcoin=66875.09, BTCUSD=66875.09 | SSE clients: 0
+[finnhub] ticks: MBT=66875.1, Bitcoin=66875.1, BTCUSD=66875.1 | SSE clients: 0
+[finnhub] ticks: MBT=66875.09, Bitcoin=66875.09, BTCUSD=66875.09 | SSE clients: 0
+[finnhub] WS closed, reconnecting in 3s...
+[finnhub] WS connected, subscribing to symbols...
+[finnhub] ticks: MBT=66875.1, Bitcoin=66875.1, BTCUSD=66875.1 | SSE clients: 0
+[finnhub] WS closed, reconnecting in 3s...
+[finnhub] WS connected, subscribing to symbols...
+[finnhub] ticks: Gold (GC)=4676.745, MGC=4676.745, XAUUSD=4676.745, Silver=72.997, SIL=72.997, XAGUSD=72.997, Oil (WTI)=111.9495, MCL=111.9495, WTIUSD=111.9495, MBT=66875.1, Bitcoin=66875.1, BTCUSD=66875.1 | SSE clients: 0
+[finnhub] WS closed, reconnecting in 3s...
+[finnhub] WS error: Unexpected server response: 429
+[finnhub] WS closed, reconnecting in 4.5s...
+[finnhub] WS error: Unexpected server response: 429
+[finnhub] WS closed, reconnecting in 6.75s...
+[finnhub] WS error: Unexpected server response: 429
+[finnhub] WS closed, reconnecting in 10.125s...
+[finnhub] WS error: Unexpected server response: 429
+[finnhub] WS closed, reconnecting in 15.1875s...
+[finnhub] WS error: Unexpected server response: 429
+[finnhub] WS closed, reconnecting in 22.78125s...
+[finnhub] WS connected, subscribing to symbols...
+[finnhub] ticks: MBT=66899.99, Bitcoin=66899.99, BTCUSD=66899.99, Gold (GC)=4676.745, MGC=4676.745, XAUUSD=4676.745, Silver=72.997, SIL=72.997, XAGUSD=72.997, Oil (WTI)=111.9495, MCL=111.9495, WTIUSD=111.9495 | SSE clients: 0
+[finnhub] WS closed, reconnecting in 3s...
+[finnhub] WS connected, subscribing to symbols...
+[finnhub] ticks: MBT=66899.99, Bitcoin=66899.99, BTCUSD=66899.99 | SSE clients: 0
+[finnhub] WS closed, reconnecting in 3s...
+[finnhub] WS connected, subscribing to symbols...
+[finnhub] ticks: MBT=66899.99, Bitcoin=66899.99, BTCUSD=66899.99 | SSE clients: 0
+[finnhub] ticks: MBT=66908.43, Bitcoin=66908.43, BTCUSD=66908.43 | SSE clients: 0
+[finnhub] ticks: MBT=66906.75, Bitcoin=66906.75, BTCUSD=66906.75 | SSE clients: 0
+[finnhub] ticks: MBT=66906.76, Bitcoin=66906.76, BTCUSD=66906.76 | SSE clients: 0
+[finnhub] ticks: MBT=66906.76, Bitcoin=66906.76, BTCUSD=66906.76 | SSE clients: 0
+[finnhub] ticks: MBT=66906.75, Bitcoin=66906.75, BTCUSD=66906.75 | SSE clients: 0
+[finnhub] ticks: MBT=66906.76, Bitcoin=66906.76, BTCUSD=66906.76 | SSE clients: 0
+[finnhub] ticks: MBT=66906.76, Bitcoin=66906.76, BTCUSD=66906.76 | SSE clients: 0
+[finnhub] ticks: MBT=66906.74, Bitcoin=66906.74, BTCUSD=66906.74 | SSE clients: 0
+[finnhub] ticks: MBT=66899.99, Bitcoin=66899.99, BTCUSD=66899.99 | SSE clients: 0
+[finnhub] ticks: MBT=66899.99, Bitcoin=66899.99, BTCUSD=66899.99 | SSE clients: 0
+[finnhub] WS closed, reconnecting in 3s...
+[finnhub] WS connected, subscribing to symbols...
+[finnhub] ticks: MBT=66899.99, Bitcoin=66899.99, BTCUSD=66899.99 | SSE clients: 0
+[finnhub] WS closed, reconnecting in 3s...
+[finnhub] WS connected, subscribing to symbols...
+[finnhub] WS closed, reconnecting in 3s...
+[finnhub] WS error: Unexpected server response: 429
+[finnhub] WS closed, reconnecting in 4.5s...
+[finnhub] WS error: Unexpected server response: 429
+[finnhub] WS closed, reconnecting in 6.75s...
+[finnhub] WS error: Unexpected server response: 429
+[finnhub] WS closed, reconnecting in 10.125s...
+[finnhub] WS error: Unexpected server response: 429
+[finnhub] WS closed, reconnecting in 15.1875s...
+[finnhub] WS error: Unexpected server response: 429
+[finnhub] WS closed, reconnecting in 22.78125s...
+[finnhub] WS connected, subscribing to symbols...
+[finnhub] ticks: MBT=66896.78, Bitcoin=66896.78, BTCUSD=66896.78 | SSE clients: 0
+[finnhub] WS closed, reconnecting in 3s...
+[finnhub] WS connected, subscribing to symbols...
+[finnhub] ticks: MBT=66896.77, Bitcoin=66896.77, BTCUSD=66896.77 | SSE clients: 0
+[finnhub] WS closed, reconnecting in 3s...
+[finnhub] WS connected, subscribing to symbols...
+[finnhub] ticks: MBT=66893.4, Bitcoin=66893.4, BTCUSD=66893.4 | SSE clients: 0
+[finnhub] ticks: MBT=66893.4, Bitcoin=66893.4, BTCUSD=66893.4 | SSE clients: 0
+[finnhub] ticks: MBT=66893.41, Bitcoin=66893.41, BTCUSD=66893.41 | SSE clients: 0
+[finnhub] ticks: MBT=66887.88, Bitcoin=66887.88, BTCUSD=66887.88 | SSE clients: 0
+[finnhub] ticks: MBT=66882.16, Bitcoin=66882.16, BTCUSD=66882.16 | SSE clients: 0
+[finnhub] ticks: Gold (GC)=4676.745, MGC=4676.745, XAUUSD=4676.745, Silver=72.997, SIL=72.997, XAGUSD=72.997, Oil (WTI)=111.9495, MCL=111.9495, WTIUSD=111.9495, MBT=66882.17, Bitcoin=66882.17, BTCUSD=66882.17 | SSE clients: 0
+[finnhub] ticks: MBT=66882.17, Bitcoin=66882.17, BTCUSD=66882.17 | SSE clients: 0
+[finnhub] ticks: MBT=66876.88, Bitcoin=66876.88, BTCUSD=66876.88 | SSE clients: 0
+[finnhub] ticks: MBT=66876.88, Bitcoin=66876.88, BTCUSD=66876.88 | SSE clients: 0
+[finnhub] ticks: MBT=66876.88, Bitcoin=66876.88, BTCUSD=66876.88 | SSE clients: 0
+[finnhub] ticks: MBT=66876.87, Bitcoin=66876.87, BTCUSD=66876.87 | SSE clients: 0
+[finnhub] WS closed, reconnecting in 3s...
+[finnhub] WS connected, subscribing to symbols...
+[finnhub] ticks: MBT=66876.88, Bitcoin=66876.88, BTCUSD=66876.88 | SSE clients: 0
+[finnhub] WS closed, reconnecting in 3s...
+[finnhub] WS connected, subscribing to symbols...
+[finnhub] ticks: MBT=66876.87, Bitcoin=66876.87, BTCUSD=66876.87 | SSE clients: 0
+[finnhub] WS closed, reconnecting in 3s...
+[finnhub] WS error: Unexpected server response: 429
+[finnhub] WS closed, reconnecting in 4.5s...
+[finnhub] WS error: Unexpected server response: 429
+[finnhub] WS closed, reconnecting in 6.75s...
+[finnhub] WS error: Unexpected server response: 429
+[finnhub] WS closed, reconnecting in 10.125s...
+[finnhub] WS error: Unexpected server response: 429
+[finnhub] WS closed, reconnecting in 15.1875s...
+[finnhub] WS error: Unexpected server response: 429
+[finnhub] WS closed, reconnecting in 22.78125s...
+[finnhub] WS connected, subscribing to symbols...
+[finnhub] ticks: MBT=66895.83, Bitcoin=66895.83, BTCUSD=66895.83 | SSE clients: 0
+[finnhub] WS closed, reconnecting in 3s...
+[finnhub] WS connected, subscribing to symbols...
+[finnhub] ticks: MBT=66900.78, Bitcoin=66900.78, BTCUSD=66900.78 | SSE clients: 0
+[finnhub] WS closed, reconnecting in 3s...
+[finnhub] WS connected, subscribing to symbols...
+[finnhub] ticks: MBT=66900.77, Bitcoin=66900.77, BTCUSD=66900.77 | SSE clients: 0
+[finnhub] ticks: MBT=66903.47, Bitcoin=66903.47, BTCUSD=66903.47 | SSE clients: 0
+[finnhub] ticks: MBT=66903.48, Bitcoin=66903.48, BTCUSD=66903.48 | SSE clients: 0
+[finnhub] ticks: MBT=66903.48, Bitcoin=66903.48, BTCUSD=66903.48 | SSE clients: 0
+[finnhub] ticks: MBT=66903.47, Bitcoin=66903.47, BTCUSD=66903.47 | SSE clients: 0
+[finnhub] ticks: MBT=66903.47, Bitcoin=66903.47, BTCUSD=66903.47 | SSE clients: 0
+[finnhub] ticks: MBT=66903.48, Bitcoin=66903.48, BTCUSD=66903.48 | SSE clients: 0
+[finnhub] ticks: MBT=66903.48, Bitcoin=66903.48, BTCUSD=66903.48 | SSE clients: 0
+[finnhub] ticks: MBT=66903.48, Bitcoin=66903.48, BTCUSD=66903.48 | SSE clients: 0
+[finnhub] ticks: MBT=66903.48, Bitcoin=66903.48, BTCUSD=66903.48 | SSE clients: 0
+[finnhub] ticks: MBT=66903.47, Bitcoin=66903.47, BTCUSD=66903.47 | SSE clients: 0
+[finnhub] ticks: MBT=66903.47, Bitcoin=66903.47, BTCUSD=66903.47 | SSE clients: 0
+[finnhub] ticks: MBT=66891.31, Bitcoin=66891.31, BTCUSD=66891.31 | SSE clients: 0
+[finnhub] ticks: MBT=66891.31, Bitcoin=66891.31, BTCUSD=66891.31 | SSE clients: 0
+[finnhub] ticks: MBT=66891.31, Bitcoin=66891.31, BTCUSD=66891.31 | SSE clients: 0
+[finnhub] ticks: MBT=66891.3, Bitcoin=66891.3, BTCUSD=66891.3 | SSE clients: 0
+[finnhub] ticks: MBT=66890.88, Bitcoin=66890.88, BTCUSD=66890.88 | SSE clients: 0
+[finnhub] ticks: MBT=66880.72, Bitcoin=66880.72, BTCUSD=66880.72 | SSE clients: 0
+[finnhub] ticks: MBT=66880.73, Bitcoin=66880.73, BTCUSD=66880.73 | SSE clients: 0
+[finnhub] ticks: MBT=66880.72, Bitcoin=66880.72, BTCUSD=66880.72 | SSE clients: 0
+[finnhub] ticks: MBT=66880.73, Bitcoin=66880.73, BTCUSD=66880.73 | SSE clients: 0
+[finnhub] ticks: MBT=66880.73, Bitcoin=66880.73, BTCUSD=66880.73 | SSE clients: 0
+[finnhub] ticks: MBT=66880.73, Bitcoin=66880.73, BTCUSD=66880.73 | SSE clients: 0
+[finnhub] ticks: MBT=66885.04, Bitcoin=66885.04, BTCUSD=66885.04 | SSE clients: 0
+[finnhub] ticks: MBT=66885.99, Bitcoin=66885.99, BTCUSD=66885.99 | SSE clients: 0
+[finnhub] ticks: MBT=66885.99, Bitcoin=66885.99, BTCUSD=66885.99 | SSE clients: 0
+[finnhub] ticks: MBT=66880.01, Bitcoin=66880.01, BTCUSD=66880.01 | SSE clients: 0
+[finnhub] ticks: MBT=66880.01, Bitcoin=66880.01, BTCUSD=66880.01 | SSE clients: 0
+[finnhub] ticks: MBT=66880, Bitcoin=66880, BTCUSD=66880 | SSE clients: 0
+[finnhub] ticks: MBT=66880, Bitcoin=66880, BTCUSD=66880 | SSE clients: 0
+[finnhub] ticks: MBT=66880, Bitcoin=66880, BTCUSD=66880 | SSE clients: 0
+[finnhub] ticks: MBT=66880, Bitcoin=66880, BTCUSD=66880 | SSE clients: 0
+[finnhub] ticks: MBT=66880, Bitcoin=66880, BTCUSD=66880 | SSE clients: 0
+[finnhub] ticks: MBT=66880, Bitcoin=66880, BTCUSD=66880 | SSE clients: 0
+[finnhub] ticks: MBT=66880, Bitcoin=66880, BTCUSD=66880 | SSE clients: 0
+[finnhub] ticks: MBT=66885.2, Bitcoin=66885.2, BTCUSD=66885.2 | SSE clients: 0
+[finnhub] ticks: MBT=66885.2, Bitcoin=66885.2, BTCUSD=66885.2 | SSE clients: 0
+[finnhub] ticks: MBT=66885.2, Bitcoin=66885.2, BTCUSD=66885.2 | SSE clients: 0
+[finnhub] ticks: MBT=66885.21, Bitcoin=66885.21, BTCUSD=66885.21 | SSE clients: 0
+[finnhub] ticks: MBT=66885.21, Bitcoin=66885.21, BTCUSD=66885.21 | SSE clients: 0
+[finnhub] ticks: MBT=66885.21, Bitcoin=66885.21, BTCUSD=66885.21 | SSE clients: 0
+[finnhub] ticks: MBT=66885.2, Bitcoin=66885.2, BTCUSD=66885.2 | SSE clients: 0
+[finnhub] ticks: MBT=66882.78, Bitcoin=66882.78, BTCUSD=66882.78 | SSE clients: 0
+[finnhub] ticks: MBT=66882.78, Bitcoin=66882.78, BTCUSD=66882.78 | SSE clients: 0
+[finnhub] ticks: MBT=66882.78, Bitcoin=66882.78, BTCUSD=66882.78 | SSE clients: 0
+[finnhub] ticks: MBT=66882.78, Bitcoin=66882.78, BTCUSD=66882.78 | SSE clients: 0
+[finnhub] ticks: MBT=66881.12, Bitcoin=66881.12, BTCUSD=66881.12 | SSE clients: 0
+[finnhub] ticks: MBT=66881.12, Bitcoin=66881.12, BTCUSD=66881.12 | SSE clients: 0
+[finnhub] ticks: MBT=66881.11, Bitcoin=66881.11, BTCUSD=66881.11 | SSE clients: 0
+[finnhub] ticks: MBT=66881.11, Bitcoin=66881.11, BTCUSD=66881.11 | SSE clients: 0
+[finnhub] ticks: MBT=66881.11, Bitcoin=66881.11, BTCUSD=66881.11 | SSE clients: 0
+[finnhub] ticks: MBT=66877.6, Bitcoin=66877.6, BTCUSD=66877.6 | SSE clients: 0
+[finnhub] ticks: MBT=66877.6, Bitcoin=66877.6, BTCUSD=66877.6 | SSE clients: 0
+[finnhub] ticks: MBT=66877.6, Bitcoin=66877.6, BTCUSD=66877.6 | SSE clients: 0
+[finnhub] ticks: MBT=66877.6, Bitcoin=66877.6, BTCUSD=66877.6 | SSE clients: 0
+[finnhub] ticks: MBT=66877.59, Bitcoin=66877.59, BTCUSD=66877.59 | SSE clients: 0
+[finnhub] ticks: MBT=66877.59, Bitcoin=66877.59, BTCUSD=66877.59 | SSE clients: 0
+[finnhub] ticks: MBT=66877.59, Bitcoin=66877.59, BTCUSD=66877.59 | SSE clients: 0
+[finnhub] ticks: MBT=66877.59, Bitcoin=66877.59, BTCUSD=66877.59 | SSE clients: 0
+[finnhub] ticks: MBT=66877.6, Bitcoin=66877.6, BTCUSD=66877.6 | SSE clients: 0
+[finnhub] ticks: MBT=66875.1, Bitcoin=66875.1, BTCUSD=66875.1 | SSE clients: 0
+[finnhub] ticks: MBT=66872.56, Bitcoin=66872.56, BTCUSD=66872.56 | SSE clients: 0
+[finnhub] ticks: MBT=66872.56, Bitcoin=66872.56, BTCUSD=66872.56 | SSE clients: 0
+[finnhub] ticks: MBT=66872.56, Bitcoin=66872.56, BTCUSD=66872.56 | SSE clients: 0
+[finnhub] ticks: MBT=66872.56, Bitcoin=66872.56, BTCUSD=66872.56 | SSE clients: 0
+[finnhub] ticks: MBT=66872.57, Bitcoin=66872.57, BTCUSD=66872.57 | SSE clients: 0
+[finnhub] ticks: MBT=66872.56, Bitcoin=66872.56, BTCUSD=66872.56 | SSE clients: 0
+[finnhub] ticks: MBT=66872.57, Bitcoin=66872.57, BTCUSD=66872.57 | SSE clients: 0
+[finnhub] ticks: MBT=66872.57, Bitcoin=66872.57, BTCUSD=66872.57 | SSE clients: 0
+[finnhub] ticks: MBT=66872.56, Bitcoin=66872.56, BTCUSD=66872.56 | SSE clients: 0
+[finnhub] ticks: MBT=66872.57, Bitcoin=66872.57, BTCUSD=66872.57 | SSE clients: 0
+[finnhub] ticks: MBT=66872.56, Bitcoin=66872.56, BTCUSD=66872.56 | SSE clients: 0
+[finnhub] ticks: MBT=66872.56, Bitcoin=66872.56, BTCUSD=66872.56 | SSE clients: 0
+[finnhub] ticks: MBT=66872.56, Bitcoin=66872.56, BTCUSD=66872.56 | SSE clients: 0
+[finnhub] ticks: MBT=66872.57, Bitcoin=66872.57, BTCUSD=66872.57 | SSE clients: 0
+[finnhub] ticks: MBT=66872.57, Bitcoin=66872.57, BTCUSD=66872.57 | SSE clients: 0
+[finnhub] ticks: MBT=66872.57, Bitcoin=66872.57, BTCUSD=66872.57 | SSE clients: 0
+[finnhub] ticks: MBT=66872.57, Bitcoin=66872.57, BTCUSD=66872.57 | SSE clients: 0
+[finnhub] ticks: MBT=66872.57, Bitcoin=66872.57, BTCUSD=66872.57 | SSE clients: 0
+[finnhub] ticks: MBT=66872.56, Bitcoin=66872.56, BTCUSD=66872.56 | SSE clients: 0
+[finnhub] ticks: MBT=66872.57, Bitcoin=66872.57, BTCUSD=66872.57 | SSE clients: 0
+[finnhub] ticks: MBT=66877.59, Bitcoin=66877.59, BTCUSD=66877.59 | SSE clients: 0
+[finnhub] ticks: MBT=66877.59, Bitcoin=66877.59, BTCUSD=66877.59 | SSE clients: 0
+[finnhub] ticks: MBT=66877.6, Bitcoin=66877.6, BTCUSD=66877.6 | SSE clients: 0
+[finnhub] ticks: MBT=66877.59, Bitcoin=66877.59, BTCUSD=66877.59 | SSE clients: 0
+[finnhub] ticks: MBT=66877.6, Bitcoin=66877.6, BTCUSD=66877.6 | SSE clients: 0
+[finnhub] ticks: MBT=66877.6, Bitcoin=66877.6, BTCUSD=66877.6 | SSE clients: 0
+[finnhub] ticks: MBT=66877.6, Bitcoin=66877.6, BTCUSD=66877.6 | SSE clients: 0
+[finnhub] ticks: MBT=66877.6, Bitcoin=66877.6, BTCUSD=66877.6 | SSE clients: 0
+[finnhub] ticks: MBT=66877.6, Bitcoin=66877.6, BTCUSD=66877.6 | SSE clients: 0
+[finnhub] ticks: MBT=66877.59, Bitcoin=66877.59, BTCUSD=66877.59 | SSE clients: 0
+[finnhub] ticks: MBT=66877.59, Bitcoin=66877.59, BTCUSD=66877.59 | SSE clients: 0
+[finnhub] ticks: MBT=66877.59, Bitcoin=66877.59, BTCUSD=66877.59 | SSE clients: 0
+[finnhub] ticks: MBT=66877.59, Bitcoin=66877.59, BTCUSD=66877.59 | SSE clients: 0
+[finnhub] ticks: MBT=66877.59, Bitcoin=66877.59, BTCUSD=66877.59 | SSE clients: 0
+[finnhub] ticks: MBT=66877.6, Bitcoin=66877.6, BTCUSD=66877.6 | SSE clients: 0
+[finnhub] ticks: MBT=66877.6, Bitcoin=66877.6, BTCUSD=66877.6 | SSE clients: 0
+[finnhub] ticks: MBT=66877.59, Bitcoin=66877.59, BTCUSD=66877.59 | SSE clients: 0
+[finnhub] ticks: MBT=66877.59, Bitcoin=66877.59, BTCUSD=66877.59 | SSE clients: 0
+[finnhub] ticks: MBT=66877.6, Bitcoin=66877.6, BTCUSD=66877.6 | SSE clients: 0
+[finnhub] ticks: MBT=66877.59, Bitcoin=66877.59, BTCUSD=66877.59 | SSE clients: 0
+[finnhub] ticks: MBT=66877.6, Bitcoin=66877.6, BTCUSD=66877.6 | SSE clients: 0
+[finnhub] ticks: MBT=66877.6, Bitcoin=66877.6, BTCUSD=66877.6 | SSE clients: 0
+[finnhub] ticks: MBT=66877.59, Bitcoin=66877.59, BTCUSD=66877.59 | SSE clients: 0
+[finnhub] ticks: MBT=66877.59, Bitcoin=66877.59, BTCUSD=66877.59 | SSE clients: 0
+[finnhub] ticks: MBT=66877.6, Bitcoin=66877.6, BTCUSD=66877.6 | SSE clients: 0
+[finnhub] ticks: MBT=66877.6, Bitcoin=66877.6, BTCUSD=66877.6 | SSE clients: 0
+[finnhub] ticks: MBT=66877.6, Bitcoin=66877.6, BTCUSD=66877.6 | SSE clients: 0
+[finnhub] ticks: MBT=66877.59, Bitcoin=66877.59, BTCUSD=66877.59 | SSE clients: 0
+[finnhub] ticks: MBT=66881.23, Bitcoin=66881.23, BTCUSD=66881.23 | SSE clients: 0
+[finnhub] ticks: MBT=66881.22, Bitcoin=66881.22, BTCUSD=66881.22 | SSE clients: 0
+[finnhub] ticks: MBT=66881.23, Bitcoin=66881.23, BTCUSD=66881.23 | SSE clients: 0
+[finnhub] ticks: MBT=66881.22, Bitcoin=66881.22, BTCUSD=66881.22 | SSE clients: 0
+[finnhub] ticks: MBT=66895.92, Bitcoin=66895.92, BTCUSD=66895.92 | SSE clients: 0
+[finnhub] ticks: MBT=66895.92, Bitcoin=66895.92, BTCUSD=66895.92 | SSE clients: 0
+[finnhub] ticks: MBT=66895.92, Bitcoin=66895.92, BTCUSD=66895.92 | SSE clients: 0
+[finnhub] ticks: MBT=66895.91, Bitcoin=66895.91, BTCUSD=66895.91 | SSE clients: 0
+[finnhub] ticks: MBT=66895.92, Bitcoin=66895.92, BTCUSD=66895.92 | SSE clients: 0
+[finnhub] ticks: MBT=66895.91, Bitcoin=66895.91, BTCUSD=66895.91 | SSE clients: 0
+[finnhub] ticks: MBT=66884.15, Bitcoin=66884.15, BTCUSD=66884.15 | SSE clients: 0
+[finnhub] ticks: MBT=66877.6, Bitcoin=66877.6, BTCUSD=66877.6 | SSE clients: 0
+[finnhub] ticks: MBT=66877.6, Bitcoin=66877.6, BTCUSD=66877.6 | SSE clients: 0
+[finnhub] ticks: MBT=66877.6, Bitcoin=66877.6, BTCUSD=66877.6 | SSE clients: 0
+[finnhub] ticks: MBT=66877.59, Bitcoin=66877.59, BTCUSD=66877.59 | SSE clients: 0
+[finnhub] ticks: MBT=66877.6, Bitcoin=66877.6, BTCUSD=66877.6 | SSE clients: 0
+[finnhub] ticks: MBT=66868.33, Bitcoin=66868.33, BTCUSD=66868.33 | SSE clients: 0
+[finnhub] ticks: MBT=66868.33, Bitcoin=66868.33, BTCUSD=66868.33 | SSE clients: 0
+[finnhub] ticks: MBT=66868.33, Bitcoin=66868.33, BTCUSD=66868.33 | SSE clients: 0
+[finnhub] ticks: MBT=66868.34, Bitcoin=66868.34, BTCUSD=66868.34 | SSE clients: 0
+[finnhub] ticks: MBT=66868.34, Bitcoin=66868.34, BTCUSD=66868.34 | SSE clients: 0
+[finnhub] ticks: MBT=66868.33, Bitcoin=66868.33, BTCUSD=66868.33 | SSE clients: 0
+[finnhub] ticks: MBT=66868.33, Bitcoin=66868.33, BTCUSD=66868.33 | SSE clients: 0
+[finnhub] ticks: MBT=66869.93, Bitcoin=66869.93, BTCUSD=66869.93 | SSE clients: 0
+[finnhub] ticks: MBT=66869.93, Bitcoin=66869.93, BTCUSD=66869.93 | SSE clients: 0
+[finnhub] ticks: MBT=66869.94, Bitcoin=66869.94, BTCUSD=66869.94 | SSE clients: 0
+[finnhub] ticks: MBT=66869.94, Bitcoin=66869.94, BTCUSD=66869.94 | SSE clients: 0
+[finnhub] ticks: Gold (GC)=4676.745, MGC=4676.745, XAUUSD=4676.745, Silver=72.997, SIL=72.997, XAGUSD=72.997, Oil (WTI)=111.9495, MCL=111.9495, WTIUSD=111.9495, MBT=66869.93, Bitcoin=66869.93, BTCUSD=66869.93 | SSE clients: 0
+[finnhub] ticks: MBT=66869.93, Bitcoin=66869.93, BTCUSD=66869.93 | SSE clients: 0
+[finnhub] ticks: MBT=66869.94, Bitcoin=66869.94, BTCUSD=66869.94 | SSE clients: 0
+[finnhub] ticks: MBT=66873.41, Bitcoin=66873.41, BTCUSD=66873.41 | SSE clients: 0
+[finnhub] ticks: MBT=66880.7, Bitcoin=66880.7, BTCUSD=66880.7 | SSE clients: 0
+[finnhub] ticks: MBT=66880.7, Bitcoin=66880.7, BTCUSD=66880.7 | SSE clients: 0
+[finnhub] ticks: MBT=66880.7, Bitcoin=66880.7, BTCUSD=66880.7 | SSE clients: 0
+[finnhub] ticks: MBT=66880.71, Bitcoin=66880.71, BTCUSD=66880.71 | SSE clients: 0
+[finnhub] ticks: MBT=66880.7, Bitcoin=66880.7, BTCUSD=66880.7 | SSE clients: 0
+[finnhub] ticks: MBT=66880.7, Bitcoin=66880.7, BTCUSD=66880.7 | SSE clients: 0
+[finnhub] ticks: MBT=66880.71, Bitcoin=66880.71, BTCUSD=66880.71 | SSE clients: 0
+[finnhub] ticks: MBT=66880.71, Bitcoin=66880.71, BTCUSD=66880.71 | SSE clients: 0
+[finnhub] ticks: MBT=66880.71, Bitcoin=66880.71, BTCUSD=66880.71 | SSE clients: 0
+[finnhub] ticks: MBT=66880.71, Bitcoin=66880.71, BTCUSD=66880.71 | SSE clients: 0
+[finnhub] ticks: MBT=66880.7, Bitcoin=66880.7, BTCUSD=66880.7 | SSE clients: 0
+[finnhub] ticks: MBT=66880.71, Bitcoin=66880.71, BTCUSD=66880.71 | SSE clients: 0
+[finnhub] ticks: MBT=66880.71, Bitcoin=66880.71, BTCUSD=66880.71 | SSE clients: 0
+[finnhub] ticks: MBT=66880.7, Bitcoin=66880.7, BTCUSD=66880.7 | SSE clients: 0
+[finnhub] ticks: MBT=66880.7, Bitcoin=66880.7, BTCUSD=66880.7 | SSE clients: 0
+[finnhub] ticks: MBT=66880.71, Bitcoin=66880.71, BTCUSD=66880.71 | SSE clients: 0
+[finnhub] ticks: MBT=66880.71, Bitcoin=66880.71, BTCUSD=66880.71 | SSE clients: 0
+[finnhub] ticks: MBT=66880.71, Bitcoin=66880.71, BTCUSD=66880.71 | SSE clients: 0
+[finnhub] ticks: MBT=66880.71, Bitcoin=66880.71, BTCUSD=66880.71 | SSE clients: 0
+[finnhub] ticks: MBT=66880.71, Bitcoin=66880.71, BTCUSD=66880.71 | SSE clients: 0
+[finnhub] ticks: MBT=66880.7, Bitcoin=66880.7, BTCUSD=66880.7 | SSE clients: 0
+[finnhub] ticks: Gold (GC)=4676.745, MGC=4676.745, XAUUSD=4676.745, Silver=72.997, SIL=72.997, XAGUSD=72.997, Oil (WTI)=111.9495, MCL=111.9495, WTIUSD=111.9495 | SSE clients: 0
+[finnhub] ticks: MBT=66880.7, Bitcoin=66880.7, BTCUSD=66880.7 | SSE clients: 0
+[finnhub] ticks: MBT=66880.72, Bitcoin=66880.72, BTCUSD=66880.72 | SSE clients: 0
+[finnhub] ticks: MBT=66881.03, Bitcoin=66881.03, BTCUSD=66881.03 | SSE clients: 0
+[finnhub] ticks: MBT=66875.53, Bitcoin=66875.53, BTCUSD=66875.53 | SSE clients: 0
+[finnhub] ticks: MBT=66870.04, Bitcoin=66870.04, BTCUSD=66870.04 | SSE clients: 0
+[finnhub] ticks: MBT=66870.03, Bitcoin=66870.03, BTCUSD=66870.03 | SSE clients: 0
+[finnhub] ticks: MBT=66870.03, Bitcoin=66870.03, BTCUSD=66870.03 | SSE clients: 0
+[finnhub] ticks: MBT=66870.04, Bitcoin=66870.04, BTCUSD=66870.04 | SSE clients: 0
+[finnhub] ticks: MBT=66870.04, Bitcoin=66870.04, BTCUSD=66870.04 | SSE clients: 0
+[finnhub] ticks: MBT=66870.04, Bitcoin=66870.04, BTCUSD=66870.04 | SSE clients: 0
+[finnhub] ticks: MBT=66870.03, Bitcoin=66870.03, BTCUSD=66870.03 | SSE clients: 0
+[finnhub] ticks: MBT=66870.03, Bitcoin=66870.03, BTCUSD=66870.03 | SSE clients: 0
+[finnhub] ticks: MBT=66870.04, Bitcoin=66870.04, BTCUSD=66870.04 | SSE clients: 0
+[finnhub] ticks: MBT=66870.04, Bitcoin=66870.04, BTCUSD=66870.04 | SSE clients: 0
+[finnhub] ticks: MBT=66870.04, Bitcoin=66870.04, BTCUSD=66870.04 | SSE clients: 0
+[finnhub] ticks: MBT=66870.03, Bitcoin=66870.03, BTCUSD=66870.03 | SSE clients: 0
+[finnhub] ticks: MBT=66870.03, Bitcoin=66870.03, BTCUSD=66870.03 | SSE clients: 0
+[finnhub] ticks: MBT=66870.03, Bitcoin=66870.03, BTCUSD=66870.03 | SSE clients: 0
+[finnhub] ticks: MBT=66870.04, Bitcoin=66870.04, BTCUSD=66870.04 | SSE clients: 0
+[finnhub] ticks: MBT=66870.03, Bitcoin=66870.03, BTCUSD=66870.03 | SSE clients: 0
+[finnhub] ticks: MBT=66870.04, Bitcoin=66870.04, BTCUSD=66870.04 | SSE clients: 0
+[finnhub] ticks: MBT=66870.03, Bitcoin=66870.03, BTCUSD=66870.03 | SSE clients: 0
+[finnhub] ticks: MBT=66870.04, Bitcoin=66870.04, BTCUSD=66870.04 | SSE clients: 0
+[finnhub] ticks: MBT=66870.03, Bitcoin=66870.03, BTCUSD=66870.03 | SSE clients: 0
+[finnhub] ticks: MBT=66870.04, Bitcoin=66870.04, BTCUSD=66870.04 | SSE clients: 0
+[finnhub] ticks: MBT=66870.03, Bitcoin=66870.03, BTCUSD=66870.03 | SSE clients: 0
+[finnhub] ticks: MBT=66870.03, Bitcoin=66870.03, BTCUSD=66870.03 | SSE clients: 0
+[finnhub] ticks: MBT=66870.03, Bitcoin=66870.03, BTCUSD=66870.03 | SSE clients: 0
+[finnhub] ticks: MBT=66870.04, Bitcoin=66870.04, BTCUSD=66870.04 | SSE clients: 0
+[finnhub] ticks: MBT=66863.99, Bitcoin=66863.99, BTCUSD=66863.99 | SSE clients: 0
+[finnhub] ticks: MBT=66863.98, Bitcoin=66863.98, BTCUSD=66863.98 | SSE clients: 0
+[finnhub] ticks: MBT=66863.98, Bitcoin=66863.98, BTCUSD=66863.98 | SSE clients: 0
+[finnhub] ticks: MBT=66863.99, Bitcoin=66863.99, BTCUSD=66863.99 | SSE clients: 0
+[finnhub] ticks: MBT=66863.98, Bitcoin=66863.98, BTCUSD=66863.98 | SSE clients: 0
+[finnhub] ticks: MBT=66863.98, Bitcoin=66863.98, BTCUSD=66863.98 | SSE clients: 0
+[finnhub] ticks: MBT=66863.98, Bitcoin=66863.98, BTCUSD=66863.98 | SSE clients: 0
+[finnhub] ticks: MBT=66863.98, Bitcoin=66863.98, BTCUSD=66863.98 | SSE clients: 0
+[finnhub] ticks: MBT=66863.98, Bitcoin=66863.98, BTCUSD=66863.98 | SSE clients: 0
+[finnhub] ticks: MBT=66855.74, Bitcoin=66855.74, BTCUSD=66855.74 | SSE clients: 0
+[finnhub] ticks: MBT=66855.74, Bitcoin=66855.74, BTCUSD=66855.74 | SSE clients: 0
+[finnhub] ticks: MBT=66855.74, Bitcoin=66855.74, BTCUSD=66855.74 | SSE clients: 0
+[finnhub] ticks: MBT=66855.73, Bitcoin=66855.73, BTCUSD=66855.73 | SSE clients: 0
+[finnhub] WS closed, reconnecting in 3s...
+[finnhub] WS connected, subscribing to symbols...
+[finnhub] ticks: MBT=66855.73, Bitcoin=66855.73, BTCUSD=66855.73 | SSE clients: 0
+[finnhub] WS closed, reconnecting in 3s...
+[finnhub] WS connected, subscribing to symbols...
+[finnhub] ticks: MBT=66855.74, Bitcoin=66855.74, BTCUSD=66855.74 | SSE clients: 0
+[finnhub] WS closed, reconnecting in 3s...
+[finnhub] WS error: Unexpected server response: 429
+[finnhub] WS closed, reconnecting in 4.5s...
+[finnhub] WS error: Unexpected server response: 429
+[finnhub] WS closed, reconnecting in 6.75s...
+[finnhub] WS error: Unexpected server response: 429
+[finnhub] WS closed, reconnecting in 10.125s...
+[finnhub] WS error: Unexpected server response: 429
+[finnhub] WS closed, reconnecting in 15.1875s...
+[finnhub] WS error: Unexpected server response: 429
+[finnhub] WS closed, reconnecting in 22.78125s...
+[finnhub] WS connected, subscribing to symbols...
+[finnhub] ticks: MBT=66895.53, Bitcoin=66895.53, BTCUSD=66895.53 | SSE clients: 0
+[finnhub] WS closed, reconnecting in 3s...
+[finnhub] WS connected, subscribing to symbols...
+[finnhub] ticks: MBT=66895.52, Bitcoin=66895.52, BTCUSD=66895.52 | SSE clients: 0
+[finnhub] WS closed, reconnecting in 3s...
+[finnhub] WS connected, subscribing to symbols...
+[finnhub] ticks: MBT=66895.53, Bitcoin=66895.53, BTCUSD=66895.53 | SSE clients: 0
+[finnhub] ticks: MBT=66895.53, Bitcoin=66895.53, BTCUSD=66895.53 | SSE clients: 0
+[finnhub] ticks: MBT=66895.53, Bitcoin=66895.53, BTCUSD=66895.53 | SSE clients: 0
+[finnhub] ticks: MBT=66895.52, Bitcoin=66895.52, BTCUSD=66895.52 | SSE clients: 0
+[finnhub] ticks: MBT=66895.53, Bitcoin=66895.53, BTCUSD=66895.53 | SSE clients: 0
+[finnhub] ticks: MBT=66895.52, Bitcoin=66895.52, BTCUSD=66895.52 | SSE clients: 0
+[finnhub] ticks: MBT=66895.53, Bitcoin=66895.53, BTCUSD=66895.53 | SSE clients: 0
+[finnhub] ticks: MBT=66893.04, Bitcoin=66893.04, BTCUSD=66893.04 | SSE clients: 0
+[finnhub] ticks: MBT=66893.03, Bitcoin=66893.03, BTCUSD=66893.03 | SSE clients: 0
+[finnhub] ticks: MBT=66890.48, Bitcoin=66890.48, BTCUSD=66890.48 | SSE clients: 0
+[finnhub] ticks: MBT=66890.48, Bitcoin=66890.48, BTCUSD=66890.48 | SSE clients: 0
+[finnhub] ticks: MBT=66890.48, Bitcoin=66890.48, BTCUSD=66890.48 | SSE clients: 0
+[finnhub] WS closed, reconnecting in 3s...
+[finnhub] WS connected, subscribing to symbols...
+[finnhub] ticks: MBT=66890.49, Bitcoin=66890.49, BTCUSD=66890.49, Gold (GC)=4676.745, MGC=4676.745, XAUUSD=4676.745, Silver=72.997, SIL=72.997, XAGUSD=72.997, Oil (WTI)=111.9495, MCL=111.9495, WTIUSD=111.9495 | SSE clients: 0
+[finnhub] WS closed, reconnecting in 3s...
+[finnhub] WS connected, subscribing to symbols...
+[finnhub] ticks: MBT=66890.49, Bitcoin=66890.49, BTCUSD=66890.49 | SSE clients: 0
+[finnhub] WS closed, reconnecting in 3s...
+[finnhub] WS error: Unexpected server response: 429
+[finnhub] WS closed, reconnecting in 4.5s...
+[finnhub] WS error: Unexpected server response: 429
+[finnhub] WS closed, reconnecting in 6.75s...
+[finnhub] WS error: Unexpected server response: 429
+[finnhub] WS closed, reconnecting in 10.125s...
+[finnhub] WS error: Unexpected server response: 429
+[finnhub] WS closed, reconnecting in 15.1875s...
+[finnhub] WS error: Unexpected server response: 429
+[finnhub] WS closed, reconnecting in 22.78125s...
+[finnhub] WS connected, subscribing to symbols...
+[finnhub] ticks: MBT=66907.92, Bitcoin=66907.92, BTCUSD=66907.92 | SSE clients: 0
+[finnhub] WS closed, reconnecting in 3s...
+[finnhub] WS connected, subscribing to symbols...
+[finnhub] ticks: MBT=66907.92, Bitcoin=66907.92, BTCUSD=66907.92 | SSE clients: 0
+[finnhub] WS closed, reconnecting in 3s...
+[finnhub] WS connected, subscribing to symbols...
+[finnhub] ticks: MBT=66907.93, Bitcoin=66907.93, BTCUSD=66907.93 | SSE clients: 0
+[finnhub] ticks: MBT=66907.93, Bitcoin=66907.93, BTCUSD=66907.93 | SSE clients: 0
+[finnhub] ticks: MBT=66907.93, Bitcoin=66907.93, BTCUSD=66907.93 | SSE clients: 0
+[finnhub] ticks: MBT=66907.93, Bitcoin=66907.93, BTCUSD=66907.93 | SSE clients: 0
+[finnhub] ticks: MBT=66907.92, Bitcoin=66907.92, BTCUSD=66907.92 | SSE clients: 0
+[finnhub] ticks: MBT=66907.93, Bitcoin=66907.93, BTCUSD=66907.93 | SSE clients: 0
+[finnhub] ticks: MBT=66907.93, Bitcoin=66907.93, BTCUSD=66907.93 | SSE clients: 0
+[finnhub] ticks: MBT=66907.92, Bitcoin=66907.92, BTCUSD=66907.92 | SSE clients: 0
+[finnhub] ticks: MBT=66907.92, Bitcoin=66907.92, BTCUSD=66907.92 | SSE clients: 0
+[finnhub] ticks: MBT=66919.6, Bitcoin=66919.6, BTCUSD=66919.6 | SSE clients: 0
+[finnhub] ticks: MBT=66919.6, Bitcoin=66919.6, BTCUSD=66919.6 | SSE clients: 0
+[finnhub] ticks: MBT=66914.78, Bitcoin=66914.78, BTCUSD=66914.78 | SSE clients: 0
+[finnhub] WS closed, reconnecting in 3s...
+[finnhub] WS connected, subscribing to symbols...
+[finnhub] ticks: MBT=66913.99, Bitcoin=66913.99, BTCUSD=66913.99 | SSE clients: 0
+[finnhub] WS closed, reconnecting in 3s...
+[finnhub] WS connected, subscribing to symbols...
+[finnhub] ticks: MBT=66909.23, Bitcoin=66909.23, BTCUSD=66909.23 | SSE clients: 0
+[finnhub] WS closed, reconnecting in 3s...
+[finnhub] WS error: Unexpected server response: 429
+[finnhub] WS closed, reconnecting in 4.5s...
+[finnhub] WS error: Unexpected server response: 429
+[finnhub] WS closed, reconnecting in 6.75s...
+[finnhub] WS error: Unexpected server response: 429
+[finnhub] WS closed, reconnecting in 10.125s...
+[finnhub] WS error: Unexpected server response: 429
+[finnhub] WS closed, reconnecting in 15.1875s...
+[finnhub] WS error: Unexpected server response: 429
+[finnhub] WS closed, reconnecting in 22.78125s...
+[finnhub] WS connected, subscribing to symbols...
+[finnhub] ticks: MBT=66902.35, Bitcoin=66902.35, BTCUSD=66902.35 | SSE clients: 0
+[finnhub] WS closed, reconnecting in 3s...
+[finnhub] WS connected, subscribing to symbols...
+[finnhub] ticks: MBT=66895.76, Bitcoin=66895.76, BTCUSD=66895.76 | SSE clients: 0
+[finnhub] WS closed, reconnecting in 3s...
+[finnhub] WS connected, subscribing to symbols...
+[finnhub] ticks: MBT=66884.81, Bitcoin=66884.81, BTCUSD=66884.81 | SSE clients: 0
+[finnhub] ticks: MBT=66884.81, Bitcoin=66884.81, BTCUSD=66884.81 | SSE clients: 0
+[finnhub] ticks: MBT=66884.35, Bitcoin=66884.35, BTCUSD=66884.35 | SSE clients: 0
+[finnhub] ticks: MBT=66876.23, Bitcoin=66876.23, BTCUSD=66876.23 | SSE clients: 0
+[finnhub] ticks: MBT=66876.22, Bitcoin=66876.22, BTCUSD=66876.22 | SSE clients: 0
+[finnhub] ticks: MBT=66876.21, Bitcoin=66876.21, BTCUSD=66876.21 | SSE clients: 0
+[finnhub] ticks: MBT=66876.22, Bitcoin=66876.22, BTCUSD=66876.22 | SSE clients: 0
+[finnhub] ticks: MBT=66876.22, Bitcoin=66876.22, BTCUSD=66876.22 | SSE clients: 0
+[finnhub] ticks: MBT=66876.21, Bitcoin=66876.21, BTCUSD=66876.21 | SSE clients: 0
+[finnhub] ticks: MBT=66876.21, Bitcoin=66876.21, BTCUSD=66876.21 | SSE clients: 0
+[finnhub] ticks: MBT=66876.22, Bitcoin=66876.22, BTCUSD=66876.22 | SSE clients: 0
+[finnhub] ticks: MBT=66876.21, Bitcoin=66876.21, BTCUSD=66876.21 | SSE clients: 0
+[finnhub] WS closed, reconnecting in 3s...
+[finnhub] WS connected, subscribing to symbols...
+[finnhub] ticks: MBT=66876.21, Bitcoin=66876.21, BTCUSD=66876.21 | SSE clients: 0
+[finnhub] WS closed, reconnecting in 3s...
+[finnhub] WS connected, subscribing to symbols...
+[finnhub] ticks: MBT=66876.22, Bitcoin=66876.22, BTCUSD=66876.22 | SSE clients: 0
+[finnhub] WS closed, reconnecting in 3s...
+[finnhub] WS error: Unexpected server response: 429
+[finnhub] WS closed, reconnecting in 4.5s...
+[finnhub] WS error: Unexpected server response: 429
+[finnhub] WS closed, reconnecting in 6.75s...
+[finnhub] WS error: Unexpected server response: 429
+[finnhub] WS closed, reconnecting in 10.125s...
+[finnhub] WS error: Unexpected server response: 429
+[finnhub] WS closed, reconnecting in 15.1875s...
+[finnhub] WS error: Unexpected server response: 429
+[finnhub] WS closed, reconnecting in 22.78125s...
+[finnhub] WS connected, subscribing to symbols...
+[finnhub] ticks: MBT=66900.75, Bitcoin=66900.75, BTCUSD=66900.75 | SSE clients: 0
+[finnhub] WS closed, reconnecting in 3s...
+[finnhub] WS connected, subscribing to symbols...
+[finnhub] ticks: MBT=66900.75, Bitcoin=66900.75, BTCUSD=66900.75 | SSE clients: 0
+[finnhub] WS closed, reconnecting in 3s...
+[finnhub] WS connected, subscribing to symbols...
+[finnhub] ticks: MBT=66900.75, Bitcoin=66900.75, BTCUSD=66900.75 | SSE clients: 0
+[finnhub] ticks: MBT=66900.75, Bitcoin=66900.75, BTCUSD=66900.75 | SSE clients: 0
+[finnhub] ticks: MBT=66900.75, Bitcoin=66900.75, BTCUSD=66900.75 | SSE clients: 0
+[finnhub] ticks: MBT=66900.75, Bitcoin=66900.75, BTCUSD=66900.75 | SSE clients: 0
+[finnhub] ticks: MBT=66900.75, Bitcoin=66900.75, BTCUSD=66900.75 | SSE clients: 0
+[finnhub] ticks: MBT=66900.74, Bitcoin=66900.74, BTCUSD=66900.74 | SSE clients: 0
+[finnhub] ticks: MBT=66900.74, Bitcoin=66900.74, BTCUSD=66900.74 | SSE clients: 0
+[finnhub] ticks: MBT=66899.08, Bitcoin=66899.08, BTCUSD=66899.08 | SSE clients: 0
+[finnhub] ticks: MBT=66899.09, Bitcoin=66899.09, BTCUSD=66899.09 | SSE clients: 0
+[finnhub] ticks: MBT=66899.08, Bitcoin=66899.08, BTCUSD=66899.08 | SSE clients: 0
+[finnhub] ticks: MBT=66895.93, Bitcoin=66895.93, BTCUSD=66895.93 | SSE clients: 0
+[finnhub] ticks: MBT=66892.04, Bitcoin=66892.04, BTCUSD=66892.04 | SSE clients: 0
+[finnhub] ticks: MBT=66890.78, Bitcoin=66890.78, BTCUSD=66890.78 | SSE clients: 0
+[finnhub] WS closed, reconnecting in 3s...
+[finnhub] WS connected, subscribing to symbols...
+[finnhub] WS closed, reconnecting in 3s...
+[finnhub] WS connected, subscribing to symbols...
+[finnhub] ticks: MBT=66890.78, Bitcoin=66890.78, BTCUSD=66890.78 | SSE clients: 0
+[finnhub] WS closed, reconnecting in 3s...
+[finnhub] WS error: Unexpected server response: 429
+[finnhub] WS closed, reconnecting in 4.5s...
+[finnhub] WS error: Unexpected server response: 429
+[finnhub] WS closed, reconnecting in 6.75s...
+[finnhub] WS error: Unexpected server response: 429
+[finnhub] WS closed, reconnecting in 10.125s...
+[finnhub] WS error: Unexpected server response: 429
+[finnhub] WS closed, reconnecting in 15.1875s...
+[finnhub] WS error: Unexpected server response: 429
+[finnhub] WS closed, reconnecting in 22.78125s...
+[finnhub] WS connected, subscribing to symbols...
+[finnhub] ticks: MBT=66891.8, Bitcoin=66891.8, BTCUSD=66891.8 | SSE clients: 0
+[finnhub] WS closed, reconnecting in 3s...
+[finnhub] WS connected, subscribing to symbols...
+[finnhub] ticks: MBT=66886.1, Bitcoin=66886.1, BTCUSD=66886.1 | SSE clients: 0
+[finnhub] WS closed, reconnecting in 3s...
+[finnhub] WS connected, subscribing to symbols...
+[finnhub] ticks: MBT=66872.4, Bitcoin=66872.4, BTCUSD=66872.4 | SSE clients: 0
+[finnhub] ticks: MBT=66872.41, Bitcoin=66872.41, BTCUSD=66872.41 | SSE clients: 0
+[finnhub] ticks: MBT=66872.4, Bitcoin=66872.4, BTCUSD=66872.4 | SSE clients: 0
+[finnhub] ticks: MBT=66872.41, Bitcoin=66872.41, BTCUSD=66872.41 | SSE clients: 0
+[finnhub] ticks: MBT=66872.41, Bitcoin=66872.41, BTCUSD=66872.41 | SSE clients: 0
+[finnhub] ticks: MBT=66872.4, Bitcoin=66872.4, BTCUSD=66872.4 | SSE clients: 0
+[finnhub] ticks: MBT=66872.4, Bitcoin=66872.4, BTCUSD=66872.4 | SSE clients: 0
+[finnhub] ticks: MBT=66872.4, Bitcoin=66872.4, BTCUSD=66872.4 | SSE clients: 0
+[finnhub] ticks: MBT=66872.41, Bitcoin=66872.41, BTCUSD=66872.41 | SSE clients: 0
+[finnhub] ticks: MBT=66872.4, Bitcoin=66872.4, BTCUSD=66872.4 | SSE clients: 0
+[finnhub] ticks: MBT=66872.41, Bitcoin=66872.41, BTCUSD=66872.41 | SSE clients: 0
+[finnhub] ticks: MBT=66872.41, Bitcoin=66872.41, BTCUSD=66872.41 | SSE clients: 0
